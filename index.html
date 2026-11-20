@@ -187,7 +187,7 @@ const COLORS=['#2d72d2','#238551','#c87619','#7961db','#cd4246','#00a396','#5f6b
 const USERS={manager:{name:'王敏 · 运营经理',groups:['managers']},agent:{name:'赵磊 · 租赁专员',groups:['agents']},viewer:{name:'访客 · 只读',groups:['viewers']}}
 const USER_GROUPS=[['managers','运营经理组'],['agents','租赁专员组'],['viewers','只读访客组']]
 const OPS=[['is','is'],['isNot','is not'],['lt','is less than'],['gte','is greater than or equals']]
-const RULES={create:['Create object','创建新对象，主键必填，其余属性可选。'],modify:['Modify object(s)','修改对象参数所引用的对象。'],delete:['Delete object(s)','删除对象参数所引用的对象。'],createIface:['Create object(s) of interface','创建任一实现了该接口的对象类型的对象；用 Object type 参数选择具体类型，只能写接口属性，且每个实现类型的主键都要映射到接口属性。'],modifyIface:['Modify object(s) of interface','通过 interface reference 参数修改任一实现类型的对象；只能写接口属性，主键不能修改。'],deleteIface:['Delete object(s) of interface','通过 interface reference 参数删除任一实现类型的对象。'],createLink:['Create link(s)','在多对多关系（Join table）的两端对象之间新增关联。'],deleteLink:['Delete link','删除多对多关系中两个对象之间的关联。']}
+const RULES={create:['Create object','创建新对象，主键必填，其余属性可选。'],modify:['Modify object(s)','修改对象参数所引用的对象。'],delete:['Delete object(s)','删除对象参数所引用的对象。'],function:['Function','由一个已发布的 @OntologyEditFunction 产生本次提交的全部编辑；不能与其他 Ontology 规则组合。'],createIface:['Create object(s) of interface','创建任一实现了该接口的对象类型的对象；用 Object type 参数选择具体类型，只能写接口属性，且每个实现类型的主键都要映射到接口属性。'],modifyIface:['Modify object(s) of interface','通过 interface reference 参数修改任一实现类型的对象；只能写接口属性，主键不能修改。'],deleteIface:['Delete object(s) of interface','通过 interface reference 参数删除任一实现类型的对象。'],createLink:['Create link(s)','在多对多关系（Join table）的两端对象之间新增关联。'],deleteLink:['Delete link','删除多对多关系中两个对象之间的关联。']}
 const OBJECT_RULES=['create','modify','delete'],LINK_RULES=['createLink','deleteLink'],IFACE_RULES=['createIface','modifyIface','deleteIface']
 const SOURCES=[['param','From parameter'],['objprop','Object parameter property'],['static','Static value'],['user','Current User/Time · 用户'],['time','Current User/Time · 时间']]
 const LINK_MODES={
@@ -240,7 +240,7 @@ const emptyOnto=()=>({objectTypes:{},linkTypes:{},actionTypes:{},sharedProps:{},
 function fresh(){
  const datasets={}
  for(const [k,v] of Object.entries(SEED_DS))datasets[k]={...clone(v),path:'/租赁沙盒/datasets/'+k,rid:'ri.foundry.main.dataset.'+hex(8)}
- return {datasets,committed:emptyOnto(),working:emptyOnto(),valueTypes:{},functions:[],edits:{},linkEdits:{},logs:[],seq:{},user:'manager',
+ return {datasets,committed:emptyOnto(),working:emptyOnto(),valueTypes:{},functions:[],fnRepo:{source:newFnSource(),committed:'',tags:[]},fnMetrics:{},edits:{},linkEdits:{},logs:[],seq:{},user:'manager',
   ui:{modal:null,wiz:null,msg:null,toast:null,nav:false,newMenu:false,more:false,search:'',recent:[],selProp:{},otFilter:'',dsSel:'Tenant',demo:false}}
 }
 let S=fresh()
@@ -285,7 +285,8 @@ const implementsIf=(ot,ifaceId)=>!!ot?.interfaces.some(x=>x.iface===ifaceId)
 const ifaceImpls=(ifaceId,onto=W())=>Object.values(onto.objectTypes).filter(o=>implementsIf(o,ifaceId))
 const ifaceLocal=(ot,ifaceId,ip)=>ot?.interfaces.find(x=>x.iface===ifaceId)?.mapping[ip]||''
 const isIfaceAction=at=>at.rules.some(r=>IFACE_RULES.includes(r.type))
-const actionTarget=(at,onto=W())=>{const ifs=[...new Set(at.rules.filter(r=>IFACE_RULES.includes(r.type)).map(r=>r.interface))];return ifs.length?'接口 · '+ifs.map(i=>onto.interfaces[i]?.name||i).join('、'):otName(at.objectType,onto)}
+const isFnAction=at=>at.rules.some(r=>r.type==='function')
+const actionTarget=(at,onto=W())=>{if(isFnAction(at))return '函数 · '+at.rules[0].fn;const ifs=[...new Set(at.rules.filter(r=>IFACE_RULES.includes(r.type)).map(r=>r.interface))];return ifs.length?'接口 · '+ifs.map(i=>onto.interfaces[i]?.name||i).join('、'):otName(at.objectType,onto)}
 /* 取对象参数（Object reference / Interface reference）上的属性 */
 function paramObject(at,vals,pid,onto){
  const p=at.parameters.find(x=>x.id===pid);if(!p)return null
@@ -448,7 +449,8 @@ function validateOnto(onto=W()){
   const c='actionTypes',ot=onto.objectTypes[at.objectType]
   if(!at.name)E(c,k,'缺少 Action type name。')
   if(!/^[a-z][A-Za-z0-9]{0,99}$/.test(at.apiName))E(c,k,'API name 须为 camelCase。')
-  if(!ot&&!isIfaceAction(at)){E(c,k,'目标对象类型不存在。');continue}
+  if(!at.rules.length)E(c,k,'至少需要一条规则。')
+  if(!ot&&!isIfaceAction(at)&&!isFnAction(at)){E(c,k,'目标对象类型不存在。');continue}
   if(isIfaceAction(at)&&at.actionLog.enabled)E(c,k,'接口动作暂不支持 Action log，请在 Capabilities 中关闭。')
   const pids=new Set()
   for(const p of at.parameters){
@@ -461,6 +463,18 @@ function validateOnto(onto=W()){
   const refOK=path=>{const [pid,prop]=String(path).split('.');const p=at.parameters.find(x=>x.id===pid);if(!p)return false;if(!prop)return true;if(p.type==='Interface reference')return !!onto.interfaces[p.interface]?.properties.some(x=>x.apiName===prop);return p.type==='Object reference'&&!!propOf(onto.objectTypes[p.objectType],prop)}
   at.parameters.forEach((p,pi)=>{if(p.default?.kind!=='objprop')return;const src=String(p.default.value).split('.')[0],si=at.parameters.findIndex(x=>x.id===src);if(!refOK(p.default.value))E(c,k,'参数 '+p.name+' 的默认值引用了无效的对象参数属性。');else if(si>=pi)E(c,k,'参数 '+p.name+' 的 Object property default value 只能引用排在它前面的参数。')})
   for(const r of at.rules){
+   if(r.type==='function'){
+    if(at.rules.length>1)E(c,k,'Function rule 不能与其他 Ontology 规则组合。')
+    const meta=fnVersionMeta(r.fn,r.version)
+    if(!meta){E(c,k,'Function rule 引用的函数 '+r.fn+'@'+r.version+' 不存在。');continue}
+    if(meta.kind!=='edit')E(c,k,'Function rule 只能使用 @OntologyEditFunction。')
+    if(r.autoUpgrade&&semver(r.version)?.[0]===0)E(c,k,'0.y.z 版本不支持 Auto upgrade。')
+    for(const inp of meta.inputs){const pid=r.inputs?.[inp.name],p=at.parameters.find(x=>x.id===pid),t=fnParamType(inp.type,onto)
+     if(!p){E(c,k,'函数输入 '+inp.name+' 没有映射到参数。');continue}
+     if(!t||p.type!==t.type||(t.type==='Object reference'&&p.objectType!==t.objectType))E(c,k,'函数输入 '+inp.name+'（'+inp.type+'）与参数 '+p.name+'（'+p.type+'）类型不一致。')}
+    for(const e of meta.edits)if(!otByApi(e,onto))E(c,k,'函数声明编辑的对象类型 '+e+' 已不存在。')
+    continue
+   }
    if(IFACE_RULES.includes(r.type)){
     const it=onto.interfaces[r.interface]
     if(!it){E(c,k,RULES[r.type][0]+' 引用的接口不存在。');continue}
@@ -573,6 +587,18 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
   return ''
  }
  for(const r of at.rules){
+  if(r.type==='function'){
+   const rs=fnResolve(r)
+   if(!rs){failures.push('函数 '+r.fn+'@'+r.version+' 不存在。');continue}
+   const raw={};for(const inp of rs.meta.inputs)raw[inp.name]=vals[r.inputs?.[inp.name]]??''
+   const res=runFunction(rs.meta,raw,onto,{edit:true})
+   if(!dry)fnRecord(r.fn,res)
+   if(!res.ok){failures.push(res.userFacing?res.error:'函数执行失败：'+res.error);continue}
+   const declared=new Set((fnVersionMeta(r.fn,r.version)||rs.meta).edits),bad=new Set()
+   for(const e of res.edits){const types=e.link?[onto.linkTypes[e.link].a.objectType,onto.linkTypes[e.link].b.objectType]:[e.ot];for(const t of types){const api=onto.objectTypes[t]?.apiName;if(!declared.has(api))bad.add(api)}}
+   if(bad.size){failures.push('Provenance：函数编辑了 @Edits 中没有声明的对象类型 '+[...bad].join('、')+'，动作失败。');continue}
+   edits.push(...res.edits);continue
+  }
   if(IFACE_RULES.includes(r.type)){
    const it=onto.interfaces[r.interface]
    if(!it){failures.push('规则引用的接口不存在。');continue}
@@ -800,7 +826,14 @@ function loadSample(){
  S.valueTypes.leaseStatus={id:'leaseStatus',apiName:'leaseStatus',name:'租约状态',description:'租约只允许两种状态',baseType:'String',constraint:{kind:'enum',values:'有效, 已结束',pattern:'',min:'',max:''},message:'租约状态只能是「有效」或「已结束」。',example:'有效'}
  S.valueTypes.houseStatus={id:'houseStatus',apiName:'houseStatus',name:'房屋出租状态',description:'房屋是否已出租',baseType:'String',constraint:{kind:'enum',values:'空置, 已出租',pattern:'',min:'',max:''},message:'房屋状态只能是「空置」或「已出租」。',example:'空置'}
  S.valueTypes.phoneNumber={id:'phoneNumber',apiName:'phoneNumber',name:'手机号',description:'中国大陆 11 位手机号',baseType:'String',constraint:{kind:'regex',values:'',pattern:'1\\d{10}',min:'',max:''},message:'联系电话须为 11 位手机号。',example:'13800000001'}
- S.committed=buildSample();syncShared(S.committed);S.working=clone(S.committed)
+ S.committed=buildSample();syncShared(S.committed)
+ S.fnRepo={source:sampleFnSource(),committed:sampleFnSource(),tags:[]}
+ const chk=compileRepo(S.fnRepo.committed,S.committed);if(chk.errors.length)throw Error('样例函数编译失败：'+chk.errors[0])
+ S.fnRepo.tags.push({version:'1.0.0',time:new Date().toISOString(),functions:clone(chk.functions)})
+ S.committed.actionTypes['settle-expired']=mkAT({id:'settle-expired',apiName:'settleExpiredLeases',name:'批量结清到期租约',description:'函数驱动的动作：调用 LeaseFunctions.settleExpiredLeases，一次结清截至某日所有已到期的有效租约，并让房屋恢复空置。',objectType:'lease',version:1,
+  parameters:[mkParam('asOf','截止日期','Date')],rules:[{type:'function',fn:'LeaseFunctions.settleExpiredLeases',version:'1.0.0',autoUpgrade:false,inputs:{asOf:'asOf'},mappings:[]}],
+  criteria:[{kind:'user',groups:['managers'],message:'只有运营经理可以批量结清。'}],actionLog:{enabled:true,summary:'批量结清截至 /asOf 的到期租约'}})
+ S.working=clone(S.committed)
 }
 
 /* ============ UI 片段 ============ */
@@ -855,13 +888,13 @@ function renderNav(){
  const a=(h,l,n)=>'<a href="#/'+h+'"'+(r===h?' aria-current="page"':'')+'><span>'+l+'</span>'+(n!==undefined?'<span class="cnt">'+n+'</span>':'')+'</a>'
  return '<nav class="side'+(S.ui.nav?' open':'')+'" aria-label="应用导航">'+
  '<h6>Foundry 数据</h6>'+a('datasets','Datasets 数据集',Object.keys(S.datasets).length)+
- '<h6>Ontology Manager</h6>'+a('discover','Discover 首页')+a('object-types','Object types',cnt('objectTypes'))+a('link-types','Link types',cnt('linkTypes'))+a('action-types','Action types',cnt('actionTypes'))+
+ '<h6>Ontology Manager</h6>'+a('discover','Discover 首页')+a('object-types','Object types',cnt('objectTypes'))+a('link-types','Link types',cnt('linkTypes'))+a('action-types','Action types',cnt('actionTypes'))+a('functions','Functions',Object.keys(fnRegistry()).length)+
  '<h6>Resources</h6>'+a('shared-properties','Shared properties',cnt('sharedProps'))+a('interfaces','Interfaces',cnt('interfaces'))+a('groups','Object type groups',cnt('groups'))+
- '<h6>其他应用</h6>'+a('value-types','Value Types Manager',Object.keys(S.valueTypes).length)+a('explorer','Object Explorer · 业务台')+a('action-log','Action Log',S.logs.length)+'</nav>'
+ '<h6>其他应用</h6>'+a('value-types','Value Types Manager',Object.keys(S.valueTypes).length)+a('functions-repo','Code Repositories · 函数仓库')+a('explorer','Object Explorer · 业务台')+a('action-log','Action Log',S.logs.length)+'</nav>'
 }
 function renderPage(){
  const [p,...rest]=route()
- const pages={discover:pageDiscover,datasets:pageDatasets,'object-types':pageObjectTypes,'link-types':pageLinkTypes,'action-types':pageActionTypes,'shared-properties':pageShared,interfaces:pageInterfaces,groups:pageGroups,'value-types':pageValueTypes,explorer:pageExplorer,'action-log':pageActionLog}
+ const pages={discover:pageDiscover,datasets:pageDatasets,'object-types':pageObjectTypes,'link-types':pageLinkTypes,'action-types':pageActionTypes,'shared-properties':pageShared,interfaces:pageInterfaces,groups:pageGroups,'value-types':pageValueTypes,explorer:pageExplorer,'action-log':pageActionLog,functions:pageFunctions,'functions-repo':pageFnRepo}
  return (pages[p]||pageDiscover)(...rest)
 }
 const head=(title,desc,actions='',crumb='')=>'<div class="page-head"><div>'+(crumb?'<div class="crumb">'+crumb+'</div>':'')+'<h1>'+title+'</h1>'+(desc?'<p class="muted">'+desc+'</p>':'')+'</div><div class="row">'+actions+'</div></div>'
@@ -1052,7 +1085,14 @@ function atRules(at){
  const refOpts=at.parameters.map(p=>[p.id,p.name+' ('+p.type+')'])
  return '<p class="muted small-t">一次提交按顺序执行全部规则，编译成一组原子编辑：例如签约同时「创建租约」和「修改房屋」。对同一对象的多条规则会合并为一次编辑。</p>'+at.rules.map((r,ri)=>{
   const P='working.actionTypes.'+at.id+'.rules.'+ri+'.'
-  const ruleBtns='<div class="row">'+B('moveRule','↑','small',at.id+'|'+ri+'|-1',ri?'aria-label="上移"':'disabled aria-label="上移"')+B('moveRule','↓','small',at.id+'|'+ri+'|1',ri<at.rules.length-1?'aria-label="下移"':'disabled aria-label="下移"')+B('removeRule','删除规则','small danger',at.id+'|'+ri,at.rules.length>1?'':'disabled')+'</div>'
+  const ruleBtns='<div class="row">'+B('moveRule','↑','small',at.id+'|'+ri+'|-1',ri?'aria-label="上移"':'disabled aria-label="上移"')+B('moveRule','↓','small',at.id+'|'+ri+'|1',ri<at.rules.length-1?'aria-label="下移"':'disabled aria-label="下移"')+B('removeRule','删除规则','small danger',at.id+'|'+ri)+'</div>'
+  if(r.type==='function'){
+   const reg=fnRegistry()[r.fn],meta=fnVersionMeta(r.fn,r.version),rs=fnResolve(r),zero=semver(r.version)?.[0]===0
+   return '<section class="card"><div class="spread"><h3>Rule '+(ri+1)+' · Function · <a href="#/functions/'+encodeURIComponent(r.fn)+'">'+esc(r.fn)+'</a></h3>'+ruleBtns+'</div><p class="muted small-t">'+esc(RULES.function[1])+'</p>'+
+    '<div class="grid2">'+fSel(P+'version','Function version',reg?reg.versions.map(x=>[x.version,x.version+(x===reg.latest?'（最新）':'')]):[[r.version,r.version]],r.version,'data-after="fnVersion" data-arg="'+esc(at.id+'|'+ri)+'"')+'<div class="fld"><span>Auto upgrade</span>'+fChk(P+'autoUpgrade','以所选版本为最低版本，自动使用同主版本的向后兼容版本'+(zero?'（0.y.z 不支持）':''),r.autoUpgrade,zero?'disabled':'')+'</div></div>'+
+    (r.autoUpgrade&&rs?'<p class="note">当前解析到 <b>'+esc(rs.version)+'</b>。注意：开启后，有函数编辑权限但没有动作编辑权限的人也能通过发布新版本改变动作行为；编辑范围（provenance）以所选最低版本为准。</p>':'<p class="muted small-t">函数逻辑变更不会自动更新动作，需要在这里选择新版本。</p>')+
+    (meta?'<h4 style="margin-top:10px">Inputs → Parameters</h4>'+table(['函数输入','类型','动作参数'],meta.inputs.map(inp=>{const t=fnParamType(inp.type,W());return [esc(inp.name)+(inp.optional?'?':''),esc(inp.type),'<select data-bind="'+esc(P+'inputs.'+inp.name)+'" aria-label="映射 '+esc(inp.name)+'">'+options([['','未映射'],...at.parameters.filter(p=>t&&p.type===t.type&&(t.type!=='Object reference'||p.objectType===t.objectType)).map(p=>[p.id,p.name])],r.inputs?.[inp.name]||'')+'</select>']}))+'<p class="muted small-t">Edits（provenance）：'+esc(meta.edits.join('、')||'—')+'。函数编辑了未声明的对象类型时，动作会失败。</p>':'<p class="note bad">版本 '+esc(r.version)+' 不存在。</p>')+'</section>'
+  }
   if(IFACE_RULES.includes(r.type)){
    const it=W().interfaces[r.interface]
    const pOpts=type=>[['','请选择'],...at.parameters.filter(p=>p.type===type&&p.interface===r.interface).map(p=>[p.id,p.name])]
@@ -1092,7 +1132,7 @@ function atRules(at){
    return '<tr><td>'+esc(prop?.name||m.prop)+' <code>'+esc(m.prop)+'</code>'+(m.prop===rot?.primaryKey?' '+badge('PK','pk'):'')+'</td><td><select data-bind="'+esc(M+'source')+'" data-after="mapSource" data-arg="'+esc(at.id+'|'+ri+'|'+mi)+'" aria-label="来源">'+options(srcs,m.source)+'</select></td><td class="wrap" style="min-width:180px">'+val+'</td><td>'+B('removeMapping','移除','small ghost',at.id+'|'+ri+'|'+mi,r.type==='create'&&m.prop===rot?.primaryKey?'disabled':'')+'</td></tr>'}).join('')+'</tbody></table></div>'+
   (unused.length?'<div class="row" style="margin-top:10px"><label class="fld"><span>Add property</span><select id="addMapSel'+ri+'">'+options(unused.map(p=>[p.id,p.name+' ('+p.id+')']))+'</select></label>'+B('addMapping','＋ Add property','',at.id+'|'+ri)+'</div>':''))+'</section>'
  }).join('')+
- '<section class="card"><h3>Add new rule</h3><div class="row"><label class="fld"><span>规则类型</span><select id="newRuleType">'+options(Object.entries(RULES).filter(([k])=>OBJECT_RULES.includes(k)||(LINK_RULES.includes(k)&&Object.values(W().linkTypes).some(l=>l.mode==='join'))||(IFACE_RULES.includes(k)&&Object.keys(W().interfaces).length)).map(([k,[l]])=>[k,l]))+'</select></label>'+(Object.keys(W().interfaces).length?'<label class="fld"><span>Interface（接口规则）</span><select id="newRuleIface">'+options(Object.values(W().interfaces).map(i=>[i.id,i.name]))+'</select></label>':'')+'<label class="fld"><span>Object type（对象规则）</span><select id="newRuleOT">'+options(Object.values(W().objectTypes).map(o=>[o.id,o.name]),at.objectType)+'</select></label>'+(Object.values(W().linkTypes).some(l=>l.mode==='join')?'<label class="fld"><span>Link type（关联规则）</span><select id="newRuleLink">'+options(Object.values(W().linkTypes).filter(l=>l.mode==='join').map(l=>[l.id,l.a.displayName+' ↔ '+l.b.displayName]))+'</select></label>':'')+''+B('addRule','＋ Add rule','',at.id)+'</div><p class="muted small-t">Modify / Delete 规则会自动创建（或复用）一个引用该对象类型的对象参数。Create link(s) / Delete link 仅用于多对多关系；外键关系请修改外键属性。Function rule 不能与其他 Ontology rule 组合。</p></section>'
+ '<section class="card"><h3>Add new rule</h3><div class="row"><label class="fld"><span>规则类型</span><select id="newRuleType">'+options(Object.entries(RULES).filter(([k])=>(k==='function'&&Object.values(fnRegistry()).some(f=>f.kind==='edit'))||OBJECT_RULES.includes(k)||(LINK_RULES.includes(k)&&Object.values(W().linkTypes).some(l=>l.mode==='join'))||(IFACE_RULES.includes(k)&&Object.keys(W().interfaces).length)).map(([k,[l]])=>[k,l]))+'</select></label>'+(Object.values(fnRegistry()).some(f=>f.kind==='edit')?'<label class="fld"><span>Function（函数规则）</span><select id="newRuleFn">'+options(Object.values(fnRegistry()).filter(f=>f.kind==='edit').map(f=>[f.id,f.id+' · '+f.latest.version]))+'</select></label>':'')+(Object.keys(W().interfaces).length?'<label class="fld"><span>Interface（接口规则）</span><select id="newRuleIface">'+options(Object.values(W().interfaces).map(i=>[i.id,i.name]))+'</select></label>':'')+'<label class="fld"><span>Object type（对象规则）</span><select id="newRuleOT">'+options(Object.values(W().objectTypes).map(o=>[o.id,o.name]),at.objectType)+'</select></label>'+(Object.values(W().linkTypes).some(l=>l.mode==='join')?'<label class="fld"><span>Link type（关联规则）</span><select id="newRuleLink">'+options(Object.values(W().linkTypes).filter(l=>l.mode==='join').map(l=>[l.id,l.a.displayName+' ↔ '+l.b.displayName]))+'</select></label>':'')+''+B('addRule','＋ Add rule','',at.id)+'</div><p class="muted small-t">Modify / Delete 规则会自动创建（或复用）一个引用该对象类型的对象参数。Create link(s) / Delete link 仅用于多对多关系；外键关系请修改外键属性。Function rule 不能与其他 Ontology rule 组合。</p></section>'
 }
 function atParams(at){
  const P='working.actionTypes.'+at.id+'.parameters.'
@@ -1170,7 +1210,7 @@ function pageExplorer(otId,pk){
 }
 function actionsFor(otId,createOnly=false){
  const ot=C().objectTypes[otId]
- if(createOnly)return Object.values(C().actionTypes).filter(a=>(a.rules.some(r=>r.type==='create')&&a.objectType===otId&&!a.parameters.some(p=>(p.type==='Object reference'||p.type==='Interface reference')&&p.default.kind==='currentObject'))||a.rules.some(r=>r.type==='createIface'&&implementsIf(ot,r.interface)))
+ if(createOnly)return Object.values(C().actionTypes).filter(a=>(a.rules.some(r=>r.type==='create'||r.type==='function')&&a.objectType===otId&&!a.parameters.some(p=>(p.type==='Object reference'||p.type==='Interface reference')&&p.default.kind==='currentObject'))||a.rules.some(r=>r.type==='createIface'&&implementsIf(ot,r.interface)))
  return Object.values(C().actionTypes).filter(a=>a.parameters.some(p=>p.default.kind==='currentObject'&&((p.type==='Object reference'&&p.objectType===otId)||(p.type==='Interface reference'&&implementsIf(ot,p.interface)))))
 }
 function objectView(ot,obj){
@@ -1199,6 +1239,7 @@ function renderModal(){
  if(m.kind==='confirmDelete'){
   return frame('删除 '+esc(COLL[m.c]),'<p>确定要删除 <b>'+esc(resName(m.c,m.k))+'</b> 吗？删除会暂存为工作区更改，<b>Save</b> 后才生效。</p>'+(m.c==='objectTypes'?'<p class="note warn">依赖此对象类型的关系、动作将在 Review edits 中报错，需要一起处理。已有的用户编辑会被删除。</p>':'')+(m.c==='linkTypes'?'<p class="note warn">删除关系会触发重建索引，依赖它的应用可能失效。</p>':''),'<span></span><div>'+B('closeModal','取消')+B('confirmDelete','Delete','danger solid')+'</div>',true)
  }
+ if(m.kind==='fnTag')return renderFnTag(frame)
  if(m.kind==='confirm')return frame(esc(m.title),'<p>'+esc(m.text)+'</p>','<span></span><div>'+B('closeModal','取消')+B(m.act,esc(m.label),'danger solid')+'</div>',true)
  if(m.kind==='simple')return renderSimple(frame)
  if(m.kind==='action')return renderActionForm(frame)
@@ -1604,12 +1645,13 @@ function syncShared(onto=W()){
 function render(){
  syncShared()
  const a=document.activeElement
- let key=null,ss=null,se=null
+ let key=null,ss=null,se=null,sTop=null
  if(a&&a!==document.body){
   if(a.dataset?.bind&&a.type!=='radio')key='[data-bind="'+CSS.escape(a.dataset.bind)+'"]'
   else if(a.id)key='#'+CSS.escape(a.id)
   else if(a.dataset?.act)key='[data-act="'+CSS.escape(a.dataset.act)+'"][data-arg="'+CSS.escape(a.dataset.arg||'')+'"]'
   try{ss=a.selectionStart;se=a.selectionEnd}catch{}
+  sTop=a.scrollTop
  }
  $('#app').innerHTML=renderHeader()+'<div class="layout">'+renderNav()+'<main id="main">'+renderPage()+'</main></div>'
  const m=$('#modal')
@@ -1617,7 +1659,7 @@ function render(){
  else if(m.open){m.close();m.innerHTML=''}
  const t=$('#toast');t.textContent=S.ui.toast?.text||'';t.className='toast'+(S.ui.toast?.bad?' bad':'')
  schedulePersist()
- if(key){const el=(S.ui.modal?m:document).querySelector(key)||document.querySelector(key);if(el&&!el.disabled){el.focus({preventScroll:true});if(ss!=null&&el.setSelectionRange)try{el.setSelectionRange(ss,se)}catch{}}}
+ if(key){const el=(S.ui.modal?m:document).querySelector(key)||document.querySelector(key);if(el&&!el.disabled){el.focus({preventScroll:true});if(ss!=null&&el.setSelectionRange)try{el.setSelectionRange(ss,se)}catch{}if(sTop)el.scrollTop=sTop}}
 }
 let toastTimer
 function toast(text,bad=false){S.ui.toast={text,bad};clearTimeout(toastTimer);toastTimer=setTimeout(()=>{S.ui.toast=null;$('#toast').textContent=''},bad?6000:3500)}
@@ -1642,6 +1684,7 @@ const AFTER={
  joinCols(){const d=S.ui.wiz.d,ds=S.datasets[d.dataset];if(ds){d.lc=ds.fields[0]||'';d.rc=ds.fields[1]||''}},
  atInit(){initMappings(S.ui.wiz.d)},
  atName(){S.ui.wiz.d.nameTouched=true},
+ fnVersion(el){const [atId,ri]=el.dataset.arg.split('|'),at=W().actionTypes[atId],r=at.rules[+ri],meta=fnVersionMeta(r.fn,r.version);if(!meta)return;r.inputs??={};for(const inp of meta.inputs)if(!r.inputs[inp.name])r.inputs[inp.name]=fnEnsureParam(at,inp);if(semver(r.version)[0]===0)r.autoUpgrade=false},
  lcKind(el){const [id,i]=el.dataset.arg.split('|'),lc=W().interfaces[id].linkConstraints[i];lc.target=lc.targetKind==='interface'?Object.keys(W().interfaces)[0]||'':Object.keys(W().objectTypes)[0]||''},
  implReset(){S.ui.wiz.d.mapping={};S.ui.wiz.d.links={}},
  editOnlyToggle(el){const [otId,i]=el.dataset.arg.split('|'),ot=W().objectTypes[otId],p=ot.properties[i],ds=S.datasets[ot.datasource];if(p.editOnly)p.column='';else p.column=ds?.fields.find(f=>!ot.properties.some(x=>x.column===f))||''},
@@ -1737,6 +1780,8 @@ const ACT={
  removeIfaceProp(arg){const [id,i]=arg.split('|');W().interfaces[id].properties.splice(+i,1)},
  addMapping(arg){const [atId,ri]=arg.split('|');if(IFACE_RULES.includes(W().actionTypes[atId].rules[ri].type)){const at=W().actionTypes[atId],r=at.rules[ri],it=W().interfaces[r.interface],v=$('#addMapSel'+ri)?.value;if(!v)return;r.mappings.push(mkMap(v,'param',ensureIfaceParam(at,it,v)));return}const at=W().actionTypes[atId],ot=W().objectTypes[at.rules[ri].objectType||at.objectType];const v=$('#addMapSel'+ri)?.value;if(!v)return;let pr=at.parameters.find(x=>x.id===toParamId(v));if(!pr){pr=paramFor(ot,propOf(ot,v));at.parameters.push(pr)}at.rules[ri].mappings.push(mkMap(v,'param',pr.id))},
  addRule(atId){const at=W().actionTypes[atId],type=$('#newRuleType').value
+  if(type==='function'){const f=fnRegistry()[$('#newRuleFn')?.value];if(!f)throw Error('请选择已发布的 @OntologyEditFunction。');if(at.rules.length)throw Error('Function rule 不能与其他 Ontology 规则组合：请先删除现有规则。');const inputs={};for(const inp of f.latest.meta.inputs)inputs[inp.name]=fnEnsureParam(at,inp);at.rules.push({type:'function',fn:f.id,version:f.latest.version,autoUpgrade:false,inputs,mappings:[]});return}
+  if(isFnAction(at))throw Error('已有 Function rule，不能再添加其他规则。')
   if(IFACE_RULES.includes(type)){const it=W().interfaces[$('#newRuleIface')?.value];if(!it)throw Error('请选择接口。')
    if(type==='createIface'){let tp=at.parameters.find(p=>p.type==='Object type'&&p.interface===it.id);if(!tp){let id=toParamId(toCamel(it.apiName)+'Type');while(at.parameters.some(p=>p.id===id))id+='2';tp=mkParam(id,it.name+'类型','Object type',{interface:it.id});at.parameters.push(tp)}
     at.rules.push({type,interface:it.id,typeParam:tp.id,mappings:[]});return}
@@ -1771,6 +1816,12 @@ function ensureValueParam(at,ot,prop){
 function ensureIfaceParam(at,it,ipApi){
  const ip=it.properties.find(x=>x.apiName===ipApi);let id=toParamId(ipApi);if(at.parameters.some(p=>p.id===id))return id
  at.parameters.push(mkParam(id,ip.name,ip.baseType,{required:!!ip.required}));return id
+}
+function fnEnsureParam(at,inp){
+ const t=fnParamType(inp.type,W());if(!t)throw Error('函数输入 '+inp.name+' 的类型不受支持。')
+ const ex=at.parameters.find(p=>p.id===toParamId(inp.name)&&p.type===t.type&&(t.type!=='Object reference'||p.objectType===t.objectType));if(ex)return ex.id
+ let id=toParamId(inp.name);while(at.parameters.some(p=>p.id===id))id+='2'
+ at.parameters.push(mkParam(id,inp.name,t.type,{objectType:t.objectType,required:!inp.optional}));return id
 }
 function ensureRefParam(at,otId){
  const ex=at.parameters.find(p=>p.type==='Object reference'&&p.objectType===otId);if(ex)return ex.id
@@ -1866,6 +1917,460 @@ async function importCSV(file){
  S.ui.dsSel=target;toast('已替换 '+target+'（'+data.rows.length+' 行）。对象类型将使用新数据重新索引。')
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();render()})
+/* ============ Functions：代码仓库、编译、运行时、注册表 ============ */
+const FN_SCALARS={string:'String',boolean:'Boolean',Integer:'Integer',Long:'Integer',Double:'Double',Float:'Double',LocalDate:'Date',Timestamp:'Date'}
+const fnBaseOf=t=>String(t||'').trim().replace(/\[\]$/,'').replace(/^Array<(.+)>$/,'$1').trim()
+const fnIsList=t=>/\[\]$|^Array</.test(String(t||'').trim())
+const otByApi=(api,onto)=>Object.values(onto.objectTypes).find(o=>o.apiName===api)
+const otByCamel=(name,onto)=>Object.values(onto.objectTypes).find(o=>toCamel(o.apiName)===name)
+/* 函数类型 → 动作参数类型 */
+function fnParamType(t,onto){
+ const base=fnBaseOf(t),list=fnIsList(t)
+ if(FN_SCALARS[base])return {type:FN_SCALARS[base],objectType:'',list}
+ const ot=otByApi(base,onto);if(ot)return {type:'Object reference',objectType:ot.id,list}
+ return null
+}
+function sampleFnSource(){return `import { Function, OntologyEditFunction, Edits, Query, Integer, LocalDate, UserFacingError } from "@foundry/functions-api";
+import { Objects, Lease, House, Tenant } from "@foundry/ontology-api";
+
+export class LeaseFunctions {
+
+    // 批量结清：把截至某日已到期的有效租约结束，并让对应房屋恢复空置
+    @Edits(Lease, House)
+    @OntologyEditFunction()
+    public settleExpiredLeases(asOf: LocalDate): void {
+        const due = Objects.search().lease()
+            .filter(l => l.status.exactMatch("有效"))
+            .filter(l => l.end.range().lte(asOf))
+            .all();
+        if (due.length === 0) {
+            throw new UserFacingError("截至 " + asOf + " 没有已到期的有效租约。");
+        }
+        for (const lease of due) {
+            lease.status = "已结束";
+            const house = lease.house.get();
+            if (house && house.currentTenantId === lease.tenantId) {
+                house.status = "空置";
+                house.currentTenantId = undefined;
+            }
+        }
+    }
+
+    // 只读函数：统计房屋的有效租约数（可在 Live Preview 中运行）
+    @Function()
+    public activeLeaseCount(house: House): Integer {
+        return house.leases.all().filter(l => l.status === "有效").length;
+    }
+
+    // 查询函数：所有空置房屋
+    @Query({ apiName: "vacantHouses" })
+    public vacantHouses(): House[] {
+        return Objects.search().house()
+            .filter(h => Filters.not(h.currentTenantId.hasProperty()))
+            .all();
+    }
+}
+`}
+function newFnSource(){return `import { Function, OntologyEditFunction, Edits, Integer, LocalDate, UserFacingError } from "@foundry/functions-api";
+import { Objects } from "@foundry/ontology-api";
+
+export class MyFunctions {
+
+    @Function()
+    public addIntegers(a: Integer, b: Integer): Integer {
+        return a + b;
+    }
+}
+`}
+function fnStripComments(src){
+ return String(src).replace(/("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,(m,s)=>s?s:m.replace(/[^\n]/g,' '))
+}
+function matchBrace(src,i){
+ let d=0
+ for(let j=i;j<src.length;j++){
+  const c=src[j]
+  if(c==='"'||c==="'"||c==='`'){const q=c;j++;while(j<src.length&&src[j]!==q){if(src[j]==='\\')j++;j++}continue}
+  if(c==='{')d++
+  else if(c==='}'){d--;if(d===0)return j}
+ }
+ return -1
+}
+function splitTop(s){let d=0,cur='';const out=[];for(const c of String(s)){if('(<[{'.includes(c))d++;if(')>]}'.includes(c))d--;if(c===','&&d===0){out.push(cur);cur=''}else cur+=c}out.push(cur);return out.map(x=>x.trim()).filter(Boolean)}
+/* 函数体按 JavaScript 执行：去掉常见的 TypeScript 类型标注 */
+function fnJs(body){
+ return body
+  .replace(/\(([^()]*)\)(\s*:\s*[\w<>\[\]|. ]+)?(\s*=>)/g,(m,ps,ret,arrow)=>'('+ps.replace(/([A-Za-z_$][\w$]*)\??\s*:\s*[\w<>\[\]|. ]+/g,'$1')+')'+arrow)
+  .replace(/\b(const|let|var)\s+([A-Za-z_$][\w$]*)\s*:\s*[\w<>\[\]|. ]+?(\s*=)/g,'$1 $2$3')
+  .replace(/\b(const|let|var)\s+([A-Za-z_$][\w$]*)\s*:\s*[\w<>\[\]|. ]+?(\s*;)/g,'$1 $2$3')
+  .replace(/\s+as\s+[A-Za-z_][\w<>\[\]]*/g,'')
+  .replace(/([A-Za-z_$][\w$\])]*)!\./g,'$1.')
+}
+/* 编译仓库：解析导出的类、装饰器、签名，并做发布前检查 */
+function compileRepo(source,onto){
+ const errors=[],warnings=[],functions=[],classes=[]
+ const src=fnStripComments(source)
+ const re=/export\s+class\s+([A-Za-z_]\w*)\s*\{/g;let m
+ while((m=re.exec(src))){
+  const open=m.index+m[0].length-1,close=matchBrace(src,open)
+  if(close<0){errors.push('类 '+m[1]+' 缺少结束的 }。');break}
+  classes.push({name:m[1],body:src.slice(open+1,close)});re.lastIndex=close+1
+ }
+ if(!classes.length&&!errors.length)errors.push('没有找到 export class：函数必须是导出类上的 public 方法。')
+ {let rest=src,cut=0;const re2=/export\s+class\s+[A-Za-z_]\w*\s*\{/g;let k;const spans=[];while((k=re2.exec(src))){const o=k.index+k[0].length-1,c=matchBrace(src,o);if(c<0)break;spans.push([k.index,c+1]);re2.lastIndex=c+1}
+  for(const [a,b2] of spans.reverse())rest=rest.slice(0,a)+rest.slice(b2)
+  rest=rest.replace(/^\s*import\s[^;]*;?/gm,'').replace(/^\s*export\s+\*\s+from\s+[^;]*;?/gm,'').trim()
+  if(rest)errors.push('类之外有无法识别的代码：「'+rest.slice(0,40)+'」')}
+ for(const cls of classes){
+  const methods=[],b=cls.body
+  const mre=/((?:\s*@\w+\s*\([^)]*\))*)\s*(public|private|protected)?\s*(async\s+)?([A-Za-z_]\w*)\s*\(([^)]*)\)\s*(?::\s*([^{]+?))?\s*\{/g
+  let mm
+  while((mm=mre.exec(b))){
+   const open=mm.index+mm[0].length-1,close=matchBrace(b,open)
+   if(close<0){errors.push(cls.name+'.'+mm[4]+' 缺少结束的 }。');break}
+   const decos=[...mm[1].matchAll(/@(\w+)\s*\(([^)]*)\)/g)].map(d=>({name:d[1],args:d[2].trim()}))
+   const params=splitTop(mm[5]).map(p=>{const pm=p.match(/^([A-Za-z_]\w*)(\?)?\s*:\s*(.+)$/);return pm?{name:pm[1],optional:!!pm[2],type:pm[3].trim()}:{name:p.replace(/\?$/,''),optional:false,type:''}})
+   methods.push({name:mm[4],access:mm[2]||'public',async:!!mm[3],params,ret:(mm[6]||'').trim(),body:b.slice(open+1,close),decos})
+   mre.lastIndex=close+1
+  }
+  const js='class '+cls.name+'{'+methods.map(x=>(x.async?'async ':'')+x.name+'('+x.params.map(p=>p.name).join(',')+'){'+fnJs(x.body)+'}').join('\n')+'}'
+  try{new Function('Objects','Filters','UserFacingError','LocalDate','Timestamp','"use strict";'+js+';return '+cls.name)}catch(e){errors.push(cls.name+'：语法错误 — '+e.message);continue}
+  for(const x of methods){
+   const names=x.decos.map(d=>d.name)
+   const kind=names.includes('OntologyEditFunction')?'edit':names.includes('Query')?'query':names.includes('Function')?'function':''
+   if(!kind){if(names.includes('Edits'))warnings.push(cls.name+'.'+x.name+'：有 @Edits 但没有 @OntologyEditFunction，不会发布。');continue}
+   const id=cls.name+'.'+x.name
+   if(x.access!=='public'){errors.push(id+'：带装饰器的方法必须是 public。');continue}
+   if(names.includes('Query')&&names.includes('Function'))errors.push(id+'：@Query 只能单独使用，不能和 @Function 一起用。')
+   if(!x.ret)errors.push(id+'：必须显式声明返回类型。')
+   const inputs=[]
+   for(const p of x.params){
+    if(!p.type){errors.push(id+'：输入 '+p.name+' 必须显式声明类型。');continue}
+    if(!fnParamType(p.type,onto))errors.push(id+'：输入 '+p.name+' 的类型 '+p.type+' 不受支持（支持 string、boolean、Integer、Long、Double、Float、LocalDate、Timestamp、对象类型及其数组）。')
+    inputs.push({name:p.name,type:p.type,optional:p.optional})
+   }
+   let apiName='',edits=[],inferred=false
+   if(kind==='edit'){
+    if(x.ret.replace(/^Promise<(.+)>$/,'$1')!=='void')errors.push(id+'：@OntologyEditFunction 的返回类型必须是 void。')
+    const ed=x.decos.find(d=>d.name==='Edits')
+    if(ed){edits=ed.args.replace(/[\[\]\s]/g,'').split(',').filter(Boolean);for(const e of edits)if(!otByApi(e,onto))errors.push(id+'：@Edits 中的 '+e+' 不是已保存的对象类型。')}
+    else{inferred=true;const found=new Set([...x.body.matchAll(/Objects\.(?:create|search)\(\)\.(\w+)\(/g)].map(q=>otByCamel(q[1],onto)?.apiName).filter(Boolean));for(const p of x.params){const t=otByApi(fnBaseOf(p.type),onto);if(t)found.add(t.apiName)}edits=[...found];warnings.push(id+'：没有 @Edits，编辑范围按静态分析推断为 '+(edits.join('、')||'（无）')+'（尽力而为，建议显式声明）。')}
+   }
+   if(kind==='query'){
+    apiName=(x.decos.find(d=>d.name==='Query').args.match(/apiName\s*:\s*["'`]([^"'`]*)["'`]/)||[])[1]||''
+    if(!/^[a-z][A-Za-z0-9]{0,98}$/.test(apiName))errors.push(id+'：@Query 的 apiName 须为 lowerCamelCase、不以数字开头、少于 100 个字符。')
+    else if(functions.some(f=>f.apiName===apiName))errors.push(id+'：apiName '+apiName+' 重复。')
+   }
+   if(kind!=='edit'&&x.ret!=='void'&&!fnParamType(x.ret.replace(/^Promise<(.+)>$/,'$1'),onto)&&!/^(void|string|boolean)$/.test(x.ret))warnings.push(id+'：返回类型 '+x.ret+' 在沙盒中按原样显示。')
+   functions.push({id,cls:cls.name,method:x.name,kind,apiName,inputs,output:x.ret,edits,inferred,js,async:x.async})
+  }
+ }
+ if(!functions.length&&!errors.length)warnings.push('没有带 @Function / @OntologyEditFunction / @Query 的 public 方法，发布后不会有函数。')
+ return {errors,warnings,functions}
+}
+/* ---- 运行时 ---- */
+class UserFacingError extends Error{constructor(msg){super(msg);this.name='UserFacingError'}}
+class LocalDate extends String{
+ static now(){return new LocalDate(today())}
+ static fromISOString(s){if(!typeOk('Date',String(s)))throw new Error('无效日期 '+s);return new LocalDate(String(s))}
+ plusDays(n){const d=new Date(String(this)+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+Number(n));return new LocalDate(d.toISOString().slice(0,10))}
+ minusDays(n){return this.plusDays(-Number(n))}
+ isBefore(o){return String(this)<String(o)}
+ isAfter(o){return String(this)>String(o)}
+ equals(o){return String(this)===String(o)}
+ toISOString(){return String(this)}
+}
+function makeRuntime(onto,{edit=false}={}){
+ const store=new Map(),linkEdits=[],handles=new Map(),baseCache={}
+ const key=(ot,pk)=>ot.id+'|'+pk
+ const baseList=ot=>baseCache[ot.id]??=objectsOf(ot.id,onto)
+ const baseObj=(ot,pk)=>baseList(ot).find(o=>String(o[ot.primaryKey])===String(pk))
+ const current=(ot,pk)=>{const e=store.get(key(ot,pk));if(e)return e.kind==='deleted'?undefined:e.cur;return baseObj(ot,pk)}
+ const allObjects=ot=>{const out=[];for(const o of baseList(ot)){const c=current(ot,o[ot.primaryKey]);if(c)out.push(c)}for(const e of store.values())if(e.ot===ot&&e.kind==='created')out.push(e.cur);return out}
+ const needEdit=()=>{if(!edit)throw new Error('只有 @OntologyEditFunction 可以修改对象；当前函数只能读取。')}
+ const ensure=(ot,pk)=>{
+  const k=key(ot,pk),e=store.get(k)
+  if(e){if(e.kind==='deleted')throw new Error(ot.name+' '+pk+' 已在本次执行中删除。');return e}
+  const b=baseObj(ot,pk);if(!b)throw new Error('找不到 '+ot.name+' '+pk+'。')
+  const n={ot,pk:String(pk),kind:'modified',before:b,cur:{...b}};store.set(k,n);return n
+ }
+ const toVal=(p,v)=>{if(v===''||v==null)return undefined;if(p.baseType==='Integer'||p.baseType==='Double')return Number(v);if(p.baseType==='Boolean')return /^true$/i.test(v);if(p.baseType==='Date')return new LocalDate(v);return String(v)}
+ const fromVal=(p,v)=>{if(v===undefined||v===null)return '';if(v&&v.__handle)throw new Error('属性 '+p.apiName+' 不能直接赋值为对象，请赋值主键或使用关系的 set()。');if(Array.isArray(v))throw new Error('沙盒属性不支持数组值。');return String(v)}
+ const setProp=(ot,pk,p,v)=>{
+  needEdit()
+  if(p.id===ot.primaryKey)throw new Error('不能修改已有对象的主键（'+ot.name+'.'+p.apiName+'）。')
+  if(p.derived)throw new Error('派生属性 '+p.apiName+' 是只读的。')
+  ensure(ot,pk).cur[p.id]=fromVal(p,v)
+ }
+ function linkAccessor(ot,pk,l,s){
+  const o=other(s),toOT=onto.objectTypes[l[o].objectType],many=cardOf(l,o)==='many'
+  const list=()=>{
+   if(l.mode==='fk'){
+    if(s==='a'){const fk=current(ot,pk)?.[l.fk.property];const t=fk?current(toOT,fk):undefined;return t?[t]:[]}
+    return allObjects(toOT).filter(x=>String(x[l.fk.property])===String(pk))
+   }
+   if(l.mode==='join'){
+    const pairs=joinPairs(l).map(p=>p.slice());for(const e of linkEdits)if(e.link===l.id){const i=pairs.findIndex(p=>p[0]===e.a&&p[1]===e.b);if(e.type==='createLink'&&i<0)pairs.push([e.a,e.b]);if(e.type==='deleteLink'&&i>=0)pairs.splice(i,1)}
+    const [f,t]=s==='a'?[0,1]:[1,0];return pairs.filter(p=>p[f]===String(pk)).map(p=>current(toOT,p[t])).filter(Boolean)
+   }
+   const b=baseObj(ot,pk);return b?linkedObjects(l,s,b,onto):[]
+  }
+  const H=x=>handle(toOT,x[toOT.primaryKey])
+  const join=(x,type)=>{needEdit();const [a,b]=s==='a'?[String(pk),String(x.__pk)]:[String(x.__pk),String(pk)];const i=linkEdits.findIndex(e=>e.link===l.id&&e.a===a&&e.b===b);if(i>=0)linkEdits.splice(i,1);else linkEdits.push({type,link:l.id,a,b})}
+  const check=x=>{if(!x||!x.__handle||x.__ot!==toOT.id)throw new Error('关系 '+l[o].apiName+' 需要 '+toOT.name+' 对象。')}
+  if(!many)return {
+   get:()=>{const r=list()[0];return r?H(r):undefined},getAsync(){return Promise.resolve(this.get())},
+   set(x){check(x);if(l.mode==='fk'&&s==='a')return setProp(ot,pk,propOf(ot,l.fk.property),x.__pk);throw new Error('只能在持有外键的一侧使用 set()。')},
+   clear(){if(l.mode==='fk'&&s==='a')return setProp(ot,pk,propOf(ot,l.fk.property),'');throw new Error('只能在持有外键的一侧使用 clear()。')}
+  }
+  return {
+   all:()=>list().map(H),allAsync(){return Promise.resolve(this.all())},
+   add(x){check(x);if(l.mode==='fk')return setProp(toOT,x.__pk,propOf(toOT,l.fk.property),pk);if(l.mode==='join')return join(x,'createLink');throw new Error('对象支撑的关系不能直接 add，请创建中间对象。')},
+   remove(x){check(x);if(l.mode==='fk'){if(String(current(toOT,x.__pk)?.[l.fk.property])===String(pk))setProp(toOT,x.__pk,propOf(toOT,l.fk.property),'');return}if(l.mode==='join')return join(x,'deleteLink');throw new Error('对象支撑的关系不能直接 remove。')}
+  }
+ }
+ const linkedHandles=(ot,pk,l,s)=>{const acc=linkAccessor(ot,pk,l,s);return cardOf(l,other(s))==='many'?acc.all():[acc.get()].filter(Boolean)}
+ function handle(ot,pk){
+  const k=key(ot,pk);if(handles.has(k))return handles.get(k)
+  const h=new Proxy({},{
+   get(_,name){
+    if(typeof name==='symbol'||name==='then')return undefined
+    if(name==='__handle')return true
+    if(name==='__ot')return ot.id
+    if(name==='__pk')return String(pk)
+    if(name==='$primaryKey')return String(pk)
+    if(name==='$objectType')return ot.apiName
+    if(name==='toString'||name==='toJSON')return ()=>ot.name+'('+pk+')'
+    if(name==='delete')return ()=>{needEdit();const e=store.get(k);if(e&&e.kind==='created'){store.delete(k);return}const b=e?e.before:baseObj(ot,pk);if(!b)throw new Error('找不到 '+ot.name+' '+pk+'。');store.set(k,{ot,pk:String(pk),kind:'deleted',before:b,cur:null})}
+    const p=ot.properties.find(x=>x.apiName===name)
+    if(p){const c=current(ot,pk);if(!c)throw new Error(ot.name+' '+pk+' 不存在或已删除。');return toVal(p,c[p.id])}
+    for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return linkAccessor(ot,pk,l,s)}
+    return undefined
+   },
+   set(_,name,v){
+    const p=ot.properties.find(x=>x.apiName===name)
+    if(!p)throw new Error(ot.name+' 没有属性 '+String(name)+'。')
+    setProp(ot,pk,p,v);return true
+   }
+  })
+  handles.set(k,h);return h
+ }
+ /* 过滤条件 */
+ const P=test=>({test,__pred:true})
+ const num=v=>v===''||v==null?NaN:Number(v)
+ const cmp=(a,b)=>{const x=num(a),y=num(b);return Number.isFinite(x)&&Number.isFinite(y)?x-y:String(a).localeCompare(String(b))}
+ const rangePred=(id,bounds=[])=>{const p=P(o=>{const v=o[id];if(v===''||v==null)return false;return bounds.every(([op,b])=>{const c=cmp(v,String(b));return op==='lt'?c<0:op==='lte'?c<=0:op==='gt'?c>0:c>=0})});for(const op of ['lt','lte','gt','gte'])p[op]=b=>rangePred(id,[...bounds,[op,b]]);return p}
+ const predBuilder=ot=>new Proxy({},{get(_,name){
+  if(typeof name==='symbol')return undefined
+  const p=ot.properties.find(x=>x.apiName===name)
+  if(p){const id=p.id;return {
+   exactMatch:(...vals)=>vals.length?P(o=>vals.some(v=>String(o[id])===String(v))):P(()=>true),
+   range:()=>rangePred(id),
+   hasProperty:()=>P(o=>o[id]!==''&&o[id]!=null),
+   isTrue:()=>P(o=>/^true$/i.test(o[id])),isFalse:()=>P(o=>/^false$/i.test(o[id])),
+   phrase:s=>P(o=>String(o[id]).includes(String(s))),
+   phrasePrefix:s=>P(o=>String(o[id]).startsWith(String(s))),
+   matchAnyToken:s=>P(o=>String(s).split(/\s+/).some(t=>t&&String(o[id]).includes(t))),
+   matchAllTokens:s=>P(o=>String(s).split(/\s+/).every(t=>!t||String(o[id]).includes(t)))
+  }}
+  for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return {isPresent:()=>P(o=>linkedHandles(ot,o[ot.primaryKey],l,s).length>0)}}
+  throw new Error(ot.name+' 没有属性 '+name+'（过滤只能用属性 API name）。')
+ }})
+ const fieldOf=(ot,fn)=>{const f=fn(new Proxy({},{get(_,name){const p=ot.properties.find(x=>x.apiName===name);if(!p)throw new Error(ot.name+' 没有属性 '+String(name)+'。');return {__field:p.id,asc:()=>({__order:p.id,dir:1})}}}));if(!f||(!f.__field&&!f.__order))throw new Error('需要返回一个属性，例如 x => x.monthlyRent。');return f}
+ const Filters={and:(...ps)=>P(o=>ps.every(p=>p.test(o))),or:(...ps)=>P(o=>ps.some(p=>p.test(o))),not:p=>P(o=>!p.test(o))}
+ function objectSet(ot,state={}){
+  const st={pred:null,order:[],limit:null,hops:0,only:null,...state}
+  const rows=()=>{
+   if(st.hops>3)throw new Error('一个函数里最多 3 次 search around。')
+   let r=baseList(ot).filter(o=>(!st.only||st.only.has(String(o[ot.primaryKey])))&&(!st.pred||st.pred.test(o)))
+   if(st.order.length)r=r.slice().sort((a,b)=>{for(const o of st.order){const c=cmp(a[o.__order],b[o.__order])*o.dir;if(c)return c}return 0})
+   if(st.limit!=null)r=r.slice(0,st.limit)
+   return r
+  }
+  const api={
+   filter(fn){const p=fn(predBuilder(ot));if(!p||!p.__pred)throw new Error('filter() 需要返回过滤条件，例如 x => x.status.exactMatch("有效")；不能用 && / ||，请用 Filters.and / Filters.or。');return objectSet(ot,{...st,pred:st.pred?Filters.and(st.pred,p):p})},
+   orderBy(fn){const o=fieldOf(ot,fn);if(!o.__order)throw new Error('orderBy 需要 x => x.属性.asc()。');return objectSet(ot,{...st,order:[...st.order,o]})},
+   take(n){if(!st.order.length)throw new Error('take() 之前需要先 orderBy()。');return objectSet(ot,{...st,limit:Math.min(Number(n),10000)})},
+   all(){const r=rows();if(r.length>100000)throw new Error('all() 最多加载 100,000 个对象。');return r.map(o=>handle(ot,o[ot.primaryKey]))},
+   allAsync(){return Promise.resolve(api.all())},
+   count(){return rows().length},
+   sum(fn){const f=fieldOf(ot,fn).__field;return rows().reduce((s,o)=>s+(Number(o[f])||0),0)},
+   average(fn){const f=fieldOf(ot,fn).__field,v=rows().map(o=>Number(o[f])).filter(Number.isFinite);return v.length?v.reduce((a,b)=>a+b,0)/v.length:undefined},
+   min(fn){const f=fieldOf(ot,fn).__field,v=rows().map(o=>o[f]).filter(x=>x!=='');return v.length?v.sort(cmp)[0]:undefined},
+   max(fn){const f=fieldOf(ot,fn).__field,v=rows().map(o=>o[f]).filter(x=>x!=='');return v.length?v.sort(cmp).at(-1):undefined}
+  }
+  return new Proxy(api,{get(t,name){
+   if(name in t)return t[name]
+   if(typeof name==='string'&&name.startsWith('searchAround')){
+    for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id),o=other(s);if('searchAround'+toPascal(l[o].apiName)===name){return ()=>{const toOT=onto.objectTypes[l[o].objectType],keys=new Set();for(const x of rows())for(const y of linkedHandles(ot,x[ot.primaryKey],l,s))keys.add(String(y.__pk));return objectSet(toOT,{hops:st.hops+1,only:keys})}}}
+    throw new Error(ot.name+' 没有 '+name+'()。')
+   }
+   return undefined
+  }})
+ }
+ const Objects={
+  search:()=>new Proxy({},{get(_,name){const ot=otByCamel(name,onto);if(!ot)throw new Error('Objects.search() 没有对象类型 '+String(name)+'（用对象类型 API name 的小驼峰形式）。');return (...objs)=>objs.length?objectSet(ot,{only:new Set(objs.flat().map(x=>String(x.__pk)))}):objectSet(ot)}}),
+  create:()=>new Proxy({},{get(_,name){const ot=otByCamel(name,onto);if(!ot)throw new Error('Objects.create() 没有对象类型 '+String(name)+'。');return pk=>{
+   needEdit()
+   if(pk===undefined||pk===null||pk==='')throw new Error('创建 '+ot.name+' 需要主键。')
+   if(current(ot,pk))throw new Error(ot.name+' 主键 '+pk+' 已存在。')
+   const cur={};for(const p of ot.properties)cur[p.id]='';cur[ot.primaryKey]=String(pk)
+   store.set(key(ot,pk),{ot,pk:String(pk),kind:'created',before:null,cur});return handle(ot,pk)}}})
+ }
+ const collect=()=>{
+  const edits=[]
+  for(const e of store.values()){
+   if(e.kind==='created')edits.push({type:'create',ot:e.ot.id,pk:e.pk,before:null,after:{...e.cur}})
+   else if(e.kind==='deleted')edits.push({type:'delete',ot:e.ot.id,pk:e.pk,before:e.before,after:null})
+   else if(JSON.stringify(e.before)!==JSON.stringify(e.cur))edits.push({type:'modify',ot:e.ot.id,pk:e.pk,before:e.before,after:{...e.cur}})
+  }
+  for(const e of linkEdits)edits.push({...e})
+  return edits
+ }
+ return {Objects,Filters,handle,collect,LocalDate,UserFacingError,Timestamp:LocalDate}
+}
+function fnArg(inp,raw,onto,rt){
+ const t=fnParamType(inp.type,onto)
+ const one=v=>{
+  if(v===''||v==null)return undefined
+  if(t.type==='Object reference'){const ot=onto.objectTypes[t.objectType];if(!findObj(ot.id,v,onto))throw new UserFacingError('参数 '+inp.name+' 引用的 '+ot.name+' '+v+' 不存在。');return rt.handle(ot,v)}
+  if(t.type==='Integer'||t.type==='Double')return Number(v)
+  if(t.type==='Boolean')return /^true$/i.test(v)
+  if(t.type==='Date')return new LocalDate(v)
+  return String(v)
+ }
+ if(t.list){const arr=Array.isArray(raw)?raw:splitList(raw);return arr.map(one).filter(x=>x!==undefined)}
+ const v=one(raw)
+ if(v===undefined&&!inp.optional)throw new UserFacingError('参数 '+inp.name+' 为必填。')
+ return v
+}
+function fnShow(v){
+ if(v===undefined)return 'undefined'
+ if(v===null)return 'null'
+ if(Array.isArray(v))return '['+v.map(fnShow).join(', ')+']'
+ if(v&&v.__handle)return String(v)
+ if(v instanceof LocalDate)return String(v)
+ if(typeof v==='object')try{return JSON.stringify(v)}catch{return String(v)}
+ return String(v)
+}
+/* 执行一个已编译的函数；edit=true 时收集编辑但不写入 */
+function runFunction(meta,rawArgs,onto,{edit=false}={}){
+ const t0=performance.now()
+ const rt=makeRuntime(onto,{edit:edit&&meta.kind==='edit'})
+ try{
+  const Cls=new Function('Objects','Filters','UserFacingError','LocalDate','Timestamp','"use strict";'+meta.js+';return '+meta.cls)(rt.Objects,rt.Filters,UserFacingError,LocalDate,LocalDate)
+  const args=meta.inputs.map(inp=>fnArg(inp,rawArgs[inp.name],onto,rt))
+  let value=new Cls()[meta.method](...args)
+  if(value&&typeof value.then==='function')return {ok:false,error:'沙盒不支持异步函数的同步执行，请去掉 async / await。',ms:performance.now()-t0,edits:[]}
+  return {ok:true,value,display:fnShow(value),edits:meta.kind==='edit'?rt.collect():[],ms:performance.now()-t0}
+ }catch(e){
+  return {ok:false,userFacing:e instanceof UserFacingError,error:e.message||String(e),edits:[],ms:performance.now()-t0}
+ }
+}
+/* ---- 注册表（来自已发布的 tag） ---- */
+function fnRegistry(){
+ const map={}
+ for(const tag of S.fnRepo.tags)for(const f of tag.functions){(map[f.id]??={id:f.id,versions:[]}).versions.push({version:tag.version,meta:f,time:tag.time})}
+ for(const f of Object.values(map)){f.versions.sort((a,b)=>cmpVer(b.version,a.version));f.latest=f.versions[0];f.kind=f.latest.meta.kind}
+ return map
+}
+const fnVersionMeta=(id,version)=>S.fnRepo.tags.find(t=>t.version===version)?.functions.find(f=>f.id===id)
+function fnResolve(rule){
+ const exact=fnVersionMeta(rule.fn,rule.version)
+ if(!exact||!rule.autoUpgrade)return exact?{meta:exact,version:rule.version}:null
+ const v=semver(rule.version);if(!v||v[0]===0)return {meta:exact,version:rule.version}
+ const cand=(fnRegistry()[rule.fn]?.versions||[]).filter(x=>{const s=semver(x.version);return s[0]===v[0]&&!s[3]&&cmpVer(x.version,rule.version)>=0})
+ return cand.length?{meta:cand[0].meta,version:cand[0].version}:{meta:exact,version:rule.version}
+}
+const semver=v=>{const m=String(v).match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/);return m?[+m[1],+m[2],+m[3],m[4]||'']:null}
+function cmpVer(a,b){const x=semver(a),y=semver(b);for(let i=0;i<3;i++)if(x[i]!==y[i])return x[i]-y[i];if(x[3]===y[3])return 0;if(!x[3])return 1;if(!y[3])return -1;return x[3]<y[3]?-1:1}
+function suggestVer(kind){const l=S.fnRepo.tags.map(t=>t.version).sort((a,b)=>cmpVer(b,a))[0];if(!l)return '1.0.0';const [a,b,c]=semver(l);return kind==='major'?(a+1)+'.0.0':kind==='minor'?a+'.'+(b+1)+'.0':a+'.'+b+'.'+(c+1)}
+/* 发布前的向后兼容检查 */
+function compatCheck(prevFns,nextFns){
+ const out=[]
+ for(const p of prevFns){
+  const n=nextFns.find(f=>f.id===p.id)
+  if(!n){out.push('删除了函数 '+p.id);continue}
+  const pn=p.inputs.map(i=>i.name),nn=n.inputs.map(i=>i.name)
+  for(const i of p.inputs){const j=n.inputs.find(x=>x.name===i.name);if(!j)out.push(p.id+'：删除了输入 '+i.name);else if(j.type!==i.type)out.push(p.id+'：输入 '+i.name+' 的类型从 '+i.type+' 改为 '+j.type)}
+  for(const j of n.inputs)if(!pn.includes(j.name)&&!j.optional)out.push(p.id+'：新增必填输入 '+j.name)
+  const common=pn.filter(x=>nn.includes(x));if(common.join()!==nn.filter(x=>pn.includes(x)).join())out.push(p.id+'：调整了输入顺序')
+  if(p.output!==n.output)out.push(p.id+'：返回类型从 '+p.output+' 改为 '+n.output)
+ }
+ return out
+}
+function fnUsage(id){return Object.values(W().actionTypes).filter(a=>a.rules.some(r=>r.type==='function'&&r.fn===id))}
+function fnRecord(id,res){const m=(S.fnMetrics??={})[id]??={success:0,failure:0,ms:[]};res.ok?m.success++:m.failure++;m.ms.push(Math.round(res.ms*10)/10);if(m.ms.length>200)m.ms.shift()}
+const p95=a=>{if(!a?.length)return '—';const s=a.slice().sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor(s.length*0.95))]+' ms'}
+
+/* ---- 页面：Code Repositories（函数仓库） ---- */
+function pageFnRepo(){
+ const R=S.fnRepo,dirty=R.source!==R.committed
+ const chk=S.ui.fnCheck
+ const fns=chk?.functions||[]
+ const lp=S.ui.fnLive||{}
+ const sel=fns.find(f=>f.id===lp.fn)||fns[0]
+ const inputs=sel?sel.inputs.map(inp=>{const t=fnParamType(inp.type,C());const bind='ui.fnLive.args.'+inp.name;const v=lp.args?.[inp.name]??''
+  if(t?.type==='Object reference'&&!t.list){const ot=C().objectTypes[t.objectType];return fSel(bind,esc(inp.name)+' <small>'+esc(inp.type)+'</small>',[['','请选择'],...objectsOf(ot.id).map(o=>[o[ot.primaryKey],titleOf(ot.id,o)+' · '+o[ot.primaryKey]])],v)}
+  return fInp(bind,esc(inp.name)+' <small>'+esc(inp.type)+(t?.list?' · 逗号分隔':'')+'</small>',v,t?.type==='Date'&&!t.list?'type="date"':'')}).join(''):''
+ const res=S.ui.fnLiveResult
+ return head('Code Repositories · 函数仓库','在仓库里编写 TypeScript 函数（functions-typescript/src/index.ts）。Commit 后通过 Tag version → Tag and release 发布；发布版本不可修改，动作引用固定版本。',
+  B('fnCommit','Commit','',' ',dirty?'':'disabled')+B('fnTag','Tag version','primary','',(!R.committed||dirty)?'disabled title="先 Commit"':''))+
+ '<div class="split"><section class="card"><div class="spread"><h3>functions-typescript/src/index.ts</h3><span class="muted small-t">'+(dirty?'未提交的修改':'已提交')+'</span></div>'+
+ '<textarea id="fnSource" data-bind="fnRepo.source" spellcheck="false" style="min-height:460px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;tab-size:4" aria-label="函数源代码">'+esc(R.source)+'</textarea>'+
+ '<p class="muted small-t">沙盒按 JavaScript 执行函数体（会去掉常见的类型标注）。对象属性用属性 API name，关系用关系 API name；日期是 LocalDate（字符串形式 YYYY-MM-DD，比较请用 &lt; &gt; 或 .equals()）。不支持 async / await。</p></section>'+
+ '<div><section class="card"><div class="spread"><h3>Checks</h3>'+B('fnCheck','运行检查','small')+'</div>'+
+ (chk?(chk.errors.length?'<ul class="crit">'+chk.errors.map(e=>'<li class="fail">'+esc(e)+'</li>').join('')+'</ul>':'<p class="note ok">编译通过，发现 '+fns.length+' 个函数。</p>')+(chk.warnings.length?'<ul class="crit">'+chk.warnings.map(e=>'<li style="background:var(--orange-l)">'+esc(e)+'</li>').join('')+'</ul>':'')+table(['函数','类型','输入','返回','@Edits'],fns.map(f=>['<code>'+esc(f.id)+'</code>',badge({edit:'OntologyEditFunction',function:'Function',query:'Query · '+f.apiName}[f.kind],f.kind==='edit'?'mod':''),esc(f.inputs.map(i=>i.name+(i.optional?'?':'')+': '+i.type).join(', ')),esc(f.output),esc(f.edits.join(', '))])):'<p class="muted small-t">点「运行检查」编译当前代码。</p>')+'</section>'+
+ '<section class="card"><h3>Functions · Live Preview</h3>'+(sel?fSel('ui.fnLive.fn','函数',fns.map(f=>[f.id,f.id]),sel.id)+'<div class="grid2" style="margin-top:8px">'+inputs+'</div><div style="margin-top:8px">'+B('fnRun','Run','primary')+'</div>'+
+  (res?(res.ok?'<p class="note ok">返回值：<code>'+esc(res.display)+'</code> · '+res.ms.toFixed(1)+' ms</p>'+(res.edits.length?'<h4>Proposed edits（Live Preview 不会写入数据）</h4>'+table(['编辑','对象','变更'],res.edits.map(e=>[badge(e.type),esc(e.link?e.a+' ↔ '+e.b:otName(e.ot,C())+' '+e.pk),esc(e.link?'':Object.keys(e.after||e.before).filter(k=>(e.before?.[k]??'')!==(e.after?.[k]??'')).map(k=>k+': '+(e.before?.[k]??'')+' → '+(e.after?.[k]??'')).join('；'))])):''):'<p class="note bad">'+(res.userFacing?'UserFacingError：':'执行失败：')+esc(res.error)+'</p>'):''):'<p class="muted small-t">先运行检查。</p>')+'</section>'+
+ '<section class="card"><h3>Tags</h3>'+table(['Version','发布时间','函数'],R.tags.slice().sort((a,b)=>cmpVer(b.version,a.version)).map(t=>['<code>'+esc(t.version)+'</code>'+(semver(t.version)[0]===0?' '+badge('0.y.z 不稳定','experimental'):''),esc(t.time.slice(0,16).replace('T',' ')),t.functions.map(f=>'<a href="#/functions/'+encodeURIComponent(f.id)+'">'+esc(f.id)+'</a>').join('<br>')]),'还没有发布')+'</section></div></div>'
+}
+/* ---- 页面：Ontology Manager · Functions ---- */
+function pageFunctions(id){
+ const reg=fnRegistry()
+ if(id&&reg[decodeURIComponent(id)]){
+  const f=reg[decodeURIComponent(id)],v=S.ui.fnVer&&f.versions.find(x=>x.version===S.ui.fnVer)||f.latest,m=v.meta,met=S.fnMetrics?.[f.id]
+  return '<div class="crumb"><a href="#/functions">Functions</a> / '+esc(f.id)+'</div>'+head(esc(f.id)+' '+badge({edit:'OntologyEditFunction',function:'Function',query:'Query'}[f.kind],f.kind==='edit'?'mod':''),'',fSel('ui.fnVer','Version',f.versions.map(x=>[x.version,x.version+(x===f.latest?'（最新）':'')]),v.version)+'<a href="#/functions-repo"><button type="button">Open in Code Repository</button></a>')+
+  '<div class="split"><section class="card"><h3>Overview</h3><dl class="kv"><dt>Inputs</dt><dd>'+(m.inputs.map(i=>'<code>'+esc(i.name+(i.optional?'?':'')+': '+i.type)+'</code>').join(' ')||'无')+'</dd><dt>Output</dt><dd><code>'+esc(m.output)+'</code></dd>'+(m.kind==='edit'?'<dt>Edits（provenance）</dt><dd>'+esc(m.edits.join('、')||'—')+(m.inferred?'（静态分析推断）':'')+'</dd>':'')+(m.apiName?'<dt>API name</dt><dd><code>'+esc(m.apiName)+'</code></dd>':'')+'<dt>发布时间</dt><dd>'+esc(v.time.slice(0,16).replace('T',' '))+'</dd></dl></section>'+
+  '<section class="card"><h3>Usage History</h3>'+(fnUsage(f.id).length?'<ul class="res-list">'+fnUsage(f.id).map(a=>{const r=a.rules.find(x=>x.type==='function');return '<li><a href="#/action-types/'+esc(a.id)+'/rules">'+esc(a.name)+'</a> · v'+esc(r.version)+(r.autoUpgrade?'（Auto upgrade）':'')+'</li>'}).join('')+'</ul>':'<p class="muted small-t">没有动作使用该函数。</p>')+'<h3 style="margin-top:12px">Observability</h3><dl class="kv"><dt>成功</dt><dd>'+(met?.success||0)+'</dd><dt>失败</dt><dd>'+(met?.failure||0)+'</dd><dt>P95 耗时</dt><dd>'+p95(met?.ms)+'</dd></dl><p class="muted small-t">统计通过动作执行的次数（Live Preview 不计入）。</p></section></div>'
+ }
+ const list=Object.values(reg)
+ return head('Functions','已发布的函数。函数在代码仓库中编写和发布，Ontology Manager 中只能查看；函数驱动的动作在 Action type 的 Rules 中添加 Function rule。','<a href="#/functions-repo"><button type="button" class="primary">打开函数仓库</button></a>')+
+ '<section class="card">'+table(['函数','类型','最新版本','输入','返回','被动作使用'],list.map(f=>['<a href="#/functions/'+encodeURIComponent(f.id)+'">'+esc(f.id)+'</a>',badge({edit:'OntologyEditFunction',function:'Function',query:'Query'}[f.kind],f.kind==='edit'?'mod':''),'<code>'+esc(f.latest.version)+'</code>',esc(f.latest.meta.inputs.map(i=>i.name+': '+i.type).join(', ')),esc(f.latest.meta.output),fnUsage(f.id).length]),'还没有发布的函数。到「函数仓库」编写并发布。')+'</section>'
+}
+/* ---- Tag version 对话框 ---- */
+function renderFnTag(frame){
+ const m=S.ui.modal,R=S.fnRepo,chk=compileRepo(R.committed,C())
+ const prev=R.tags.slice().sort((a,b)=>cmpVer(b.version,a.version))[0]
+ const issues=prev?compatCheck(prev.functions,chk.functions):[]
+ const v=m.version,sv=semver(v)
+ let note=''
+ if(!sv)note='<p class="note bad">版本号须为 semver：X.Y.Z，可带预发布后缀，例如 1.2.3-rc1。</p>'
+ else if(prev&&cmpVer(v,prev.version)<=0)note='<p class="note bad">版本必须大于已发布的 '+esc(prev.version)+'；已发布的版本不可修改。</p>'
+ else if(issues.length&&sv[0]===semver(prev.version)[0]&&sv[0]!==0)note='<p class="note warn">检测到可能的破坏性变更，建议升级主版本号（major）。</p>'
+ return frame('Tag version','<p class="muted">发布会包含仓库里的全部函数。</p>'+fInp('ui.modal.version','Tag name（版本号）',v)+'<div class="row" style="margin-top:6px">'+['patch','minor','major'].map(k=>B('fnBump',k,'small',k)).join('')+'</div>'+note+
+  (chk.errors.length?'<p class="note bad">已提交的代码有编译错误，不能发布：'+esc(chk.errors[0])+'</p>':'')+
+  '<h4 style="margin-top:12px">Backward-compatibility checks</h4>'+(prev?(issues.length?'<ul class="crit">'+issues.map(i=>'<li style="background:var(--orange-l)">'+esc(i)+'</li>').join('')+'</ul>':'<p class="note ok">与 '+esc(prev.version)+' 相比没有发现破坏性变更。</p>'):'<p class="muted small-t">首次发布。</p>')+'<p class="muted small-t">检查并不完备。0.y.z 版本表示初始开发阶段，可能随时变化，且不支持 Auto upgrade。</p>',
+  '<span></span><div>'+B('closeModal','Cancel')+B('fnRelease','Tag and release','primary','',!sv||chk.errors.length||(prev&&cmpVer(v,prev.version)<=0)?'disabled':'')+'</div>',true)
+}
+Object.assign(ACT,{
+ fnCheck(){S.ui.fnCheck=compileRepo(S.fnRepo.source,C());S.ui.fnLiveResult=null},
+ fnCommit(){const chk=compileRepo(S.fnRepo.source,C());S.ui.fnCheck=chk;S.fnRepo.committed=S.fnRepo.source;toast(chk.errors.length?'已提交，但存在 '+chk.errors.length+' 个编译错误，修复后才能发布。':'已提交到 master。可以 Tag version 发布。',!!chk.errors.length)},
+ fnTag(){S.ui.modal={kind:'fnTag',version:suggestVer('minor')};S.ui.msg=null},
+ fnBump(k){S.ui.modal.version=suggestVer(k)},
+ fnRelease(){
+  const chk=compileRepo(S.fnRepo.committed,C());if(chk.errors.length)throw Error(chk.errors[0])
+  const v=S.ui.modal.version;if(!semver(v))throw Error('版本号无效。')
+  if(S.fnRepo.tags.some(t=>t.version===v))throw Error('版本 '+v+' 已存在，版本不可修改。')
+  S.fnRepo.tags.push({version:v,time:new Date().toISOString(),functions:clone(chk.functions)})
+  closeModal();toast('已发布 '+v+'（'+chk.functions.length+' 个函数）。引用旧版本的动作不会自动更新。')
+ },
+ fnRun(){
+  const chk=S.ui.fnCheck||(S.ui.fnCheck=compileRepo(S.fnRepo.source,C()));if(chk.errors.length)throw Error('代码有编译错误，先修复。')
+  const lp=S.ui.fnLive??={};const meta=chk.functions.find(f=>f.id===lp.fn)||chk.functions[0];if(!meta)throw Error('没有可运行的函数。')
+  S.ui.fnLiveResult=runFunction(meta,lp.args||{},C(),{edit:true})
+ }
+})
+
 /* ============ 本地持久化（localStorage） ============ */
 const STORE_KEY='rental-ontology:v2'
 let persistTimer=null,storeWarned=false

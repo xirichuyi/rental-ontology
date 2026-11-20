@@ -285,6 +285,7 @@ const implementsIf=(ot,ifaceId)=>!!ot?.interfaces.some(x=>x.iface===ifaceId)
 const ifaceImpls=(ifaceId,onto=W())=>Object.values(onto.objectTypes).filter(o=>implementsIf(o,ifaceId))
 const ifaceLocal=(ot,ifaceId,ip)=>ot?.interfaces.find(x=>x.iface===ifaceId)?.mapping[ip]||''
 const isIfaceAction=at=>at.rules.some(r=>IFACE_RULES.includes(r.type))
+const ifaceActionOff=(ot,atId,ifaceId)=>!!ot?.interfaces.find(x=>x.iface===ifaceId)?.disabledActions?.includes(atId)
 const isFnAction=at=>at.rules.some(r=>r.type==='function')
 const actionTarget=(at,onto=W())=>{if(isFnAction(at))return '函数 · '+at.rules[0].fn;const ifs=[...new Set(at.rules.filter(r=>IFACE_RULES.includes(r.type)).map(r=>r.interface))];return ifs.length?'接口 · '+ifs.map(i=>onto.interfaces[i]?.name||i).join('、'):otName(at.objectType,onto)}
 /* 取对象参数（Object reference / Interface reference）上的属性 */
@@ -483,6 +484,7 @@ function validateOnto(onto=W()){
     else{const op=at.parameters.find(p=>p.id===r.objectParam);if(!op||op.type!=='Interface reference'||op.interface!==it.id)E(c,k,RULES[r.type][0]+' 需要一个指向该接口的 interface reference 参数。')}
     for(const m of r.mappings){
      if(!it.properties.some(x=>x.apiName===m.prop))E(c,k,'接口 '+it.name+' 没有属性 '+m.prop+'。')
+     if(r.type==='modifyIface')for(const impl of ifaceImpls(it.id,onto))if(ifaceLocal(impl,it.id,m.prop)===impl.primaryKey)E(c,k,'接口属性 '+m.prop+' 映射到 '+impl.name+' 的主键，Modify object(s) of interface 不能修改主键。')
      if((m.source==='param'||m.source==='objprop')&&!refOK(m.value))E(c,k,'接口属性 '+m.prop+' 映射的参数不存在。')
     }
     continue
@@ -605,6 +607,7 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
    if(r.type==='createIface'){
     const rot=onto.objectTypes[vals[r.typeParam]]
     if(!implementsIf(rot,it.id)){failures.push('请选择实现了「'+it.name+'」的对象类型。');continue}
+    if(ifaceActionOff(rot,at.id,it.id)){failures.push(rot.name+' 已在 Interface action control 中禁用此动作。');continue}
     if(!r.mappings.some(m=>ifaceLocal(rot,it.id,m.prop)===rot.primaryKey)){failures.push(rot.name+' 的主键 '+rot.primaryKey+' 没有通过接口属性映射，无法用接口动作创建。');continue}
     const after={};for(const p of rot.properties)after[p.id]=''
     for(const m of r.mappings){const local=ifaceLocal(rot,it.id,m.prop);if(local)after[local]=String(mapValue(m,rot)??'')}
@@ -614,6 +617,7 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
    const x=paramObject(at,vals,r.objectParam,onto)
    if(!x){failures.push('未找到要'+(r.type==='deleteIface'?'删除':'修改')+'的对象。');continue}
    const rot=x.ot,pk=String(x.obj[rot.primaryKey])
+   if(ifaceActionOff(rot,at.id,it.id)){failures.push(rot.name+' 已在 Interface action control 中禁用此动作。');continue}
    if(r.type==='deleteIface'){edits.push({type:'delete',ot:rot.id,pk,before:x.obj,after:null});continue}
    const prior=edits.find(e=>e.ot===rot.id&&String(e.pk)===pk),before=prior?.after||x.obj,after={...before}
    let bad=false
@@ -1024,7 +1028,7 @@ function otInterfaces(ot){
  const P='working.objectTypes.'+ot.id+'.'
  const avail=Object.values(W().interfaces).filter(i=>!ot.interfaces.some(x=>x.iface===i.id))
  return '<section class="card"><div class="spread"><h3>Implemented interfaces</h3><div class="row">'+(avail.length?B('newImpl','＋ Implement new interface','primary','ot:'+ot.id):'<span class="muted small-t">'+(Object.keys(W().interfaces).length?'已实现全部接口。':'还没有接口。')+'<a href="#/interfaces">创建接口</a></span>')+'</div></div>'+
- (ot.interfaces.length?ot.interfaces.map((impl,ii)=>{const it=W().interfaces[impl.iface];if(!it)return '<p class="note bad">接口 '+esc(impl.iface)+' 不存在。</p>';return '<div class="cond"><div class="cond-head"><b>'+esc(it.name)+'</b> <code>'+esc(it.apiName)+'</code>'+B('removeImpl','移除','small danger',ot.id+'|'+ii)+'</div>'+table(['接口属性','类型','要求','映射到对象属性'],it.properties.map(ip=>[esc(ip.name)+' <code>'+esc(ip.apiName)+'</code>',esc(ip.baseType),ip.required?badge('required','pk'):badge('optional'),'<select data-bind="'+esc(P+'interfaces.'+ii+'.mapping.'+ip.apiName)+'" aria-label="映射 '+esc(ip.name)+'">'+options([['','未映射'],...ot.properties.filter(p=>p.baseType===ip.baseType).map(p=>[p.id,p.name+' ('+p.id+')'])],impl.mapping[ip.apiName]||'')+'</select>']))+((it.linkConstraints||[]).length?'<h4 style="margin-top:10px">Link type constraints</h4>'+table(['约束','目标','Cardinality','要求','映射到 Link type'],it.linkConstraints.map(lc=>[esc(lc.apiName),esc(lc.targetKind==='interface'?'接口 · '+(W().interfaces[lc.target]?.name||lc.target):otName(lc.target)),lc.cardinality,lc.required?badge('required','pk'):badge('optional'),'<select data-bind="'+esc(P+'interfaces.'+ii+'.links.'+lc.apiName)+'" aria-label="映射 '+esc(lc.apiName)+'">'+options([['','未映射'],...linkOptionsFor(ot,lc).map(l=>[l.id,l.a.displayName+' ↔ '+l.b.displayName])],impl.links?.[lc.apiName]||'')+'</select>'])):'')+'</div>'}).join(''):'<div class="empty">尚未实现接口。实现后，required 属性必须映射到同类型的属性。</div>')+'</section>'
+ (ot.interfaces.length?ot.interfaces.map((impl,ii)=>{const it=W().interfaces[impl.iface];if(!it)return '<p class="note bad">接口 '+esc(impl.iface)+' 不存在。</p>';return '<div class="cond"><div class="cond-head"><b>'+esc(it.name)+'</b> <code>'+esc(it.apiName)+'</code>'+B('removeImpl','移除','small danger',ot.id+'|'+ii)+'</div>'+table(['接口属性','类型','要求','映射到对象属性'],it.properties.map(ip=>[esc(ip.name)+' <code>'+esc(ip.apiName)+'</code>',esc(ip.baseType),ip.required?badge('required','pk'):badge('optional'),'<select data-bind="'+esc(P+'interfaces.'+ii+'.mapping.'+ip.apiName)+'" aria-label="映射 '+esc(ip.name)+'">'+options([['','未映射'],...ot.properties.filter(p=>p.baseType===ip.baseType).map(p=>[p.id,p.name+' ('+p.id+')'])],impl.mapping[ip.apiName]||'')+'</select>']))+(()=>{const acts=Object.values(W().actionTypes).filter(a=>a.rules.some(r=>IFACE_RULES.includes(r.type)&&r.interface===it.id));return '<h4 style="margin-top:10px">Interface action control</h4>'+(acts.length?'<p class="muted small-t">控制本对象类型是否继承接口上的动作。取消勾选后，'+esc(ot.name)+' 的对象不会出现、也不能执行该动作。</p>'+acts.map(a=>'<label class="chk"><input type="checkbox" data-change="toggleIfaceAction" data-arg="'+esc(ot.id+'|'+ii+'|'+a.id)+'" '+(impl.disabledActions?.includes(a.id)?'':'checked')+'> '+esc(a.name)+' <span class="muted small-t">'+esc(a.rules.filter(r=>IFACE_RULES.includes(r.type)).map(r=>RULES[r.type][0]).join('、'))+'</span></label>').join(''):'<p class="muted small-t">接口上还没有动作。</p>')})()+((it.linkConstraints||[]).length?'<h4 style="margin-top:10px">Link type constraints</h4>'+table(['约束','目标','Cardinality','要求','映射到 Link type'],it.linkConstraints.map(lc=>[esc(lc.apiName),esc(lc.targetKind==='interface'?'接口 · '+(W().interfaces[lc.target]?.name||lc.target):otName(lc.target)),lc.cardinality,lc.required?badge('required','pk'):badge('optional'),'<select data-bind="'+esc(P+'interfaces.'+ii+'.links.'+lc.apiName)+'" aria-label="映射 '+esc(lc.apiName)+'">'+options([['','未映射'],...linkOptionsFor(ot,lc).map(l=>[l.id,l.a.displayName+' ↔ '+l.b.displayName])],impl.links?.[lc.apiName]||'')+'</select>'])):'')+'</div>'}).join(''):'<div class="empty">尚未实现接口。实现后，required 属性必须映射到同类型的属性。</div>')+'</section>'
 }
 
 /* ============ Link types ============ */
@@ -1210,8 +1214,8 @@ function pageExplorer(otId,pk){
 }
 function actionsFor(otId,createOnly=false){
  const ot=C().objectTypes[otId]
- if(createOnly)return Object.values(C().actionTypes).filter(a=>(a.rules.some(r=>r.type==='create'||r.type==='function')&&a.objectType===otId&&!a.parameters.some(p=>(p.type==='Object reference'||p.type==='Interface reference')&&p.default.kind==='currentObject'))||a.rules.some(r=>r.type==='createIface'&&implementsIf(ot,r.interface)))
- return Object.values(C().actionTypes).filter(a=>a.parameters.some(p=>p.default.kind==='currentObject'&&((p.type==='Object reference'&&p.objectType===otId)||(p.type==='Interface reference'&&implementsIf(ot,p.interface)))))
+ if(createOnly)return Object.values(C().actionTypes).filter(a=>(a.rules.some(r=>r.type==='create'||r.type==='function')&&a.objectType===otId&&!a.parameters.some(p=>(p.type==='Object reference'||p.type==='Interface reference')&&p.default.kind==='currentObject'))||a.rules.some(r=>r.type==='createIface'&&implementsIf(ot,r.interface)&&!ifaceActionOff(ot,a.id,r.interface)))
+ return Object.values(C().actionTypes).filter(a=>a.parameters.some(p=>p.default.kind==='currentObject'&&((p.type==='Object reference'&&p.objectType===otId)||(p.type==='Interface reference'&&implementsIf(ot,p.interface)&&!ifaceActionOff(ot,a.id,p.interface)))))
 }
 function objectView(ot,obj){
  const pk=String(obj[ot.primaryKey])
@@ -1248,8 +1252,8 @@ function renderModal(){
 function wizSteps(names,step){return '<ol class="wiz-steps">'+names.map((n,i)=>'<li'+(i===step?' aria-current="step"':'')+(i<step?' class="done"':'')+'><span class="n">'+(i<step?'✓':i+1)+'</span>'+esc(n)+'</li>').join('')+'</ol>'}
 function renderWizard(frame){
  const w=S.ui.wiz,def=WIZ[w.kind]
- const last=w.step===def.steps.length-1
- return frame(def.title,wizSteps(def.steps,w.step)+'<div class="wiz-main"><div class="muted small-t">步骤 '+(w.step+1)+' / '+def.steps.length+'</div><h3>'+esc(def.steps[w.step])+'</h3>'+def.render(w.d,w.step)+'</div>',
+ const steps=typeof def.steps==='function'?def.steps(w.d):def.steps,last=w.step===steps.length-1
+ return frame(def.title,wizSteps(steps,w.step)+'<div class="wiz-main"><div class="muted small-t">步骤 '+(w.step+1)+' / '+steps.length+'</div><h3>'+esc(steps[w.step])+'</h3>'+def.render(w.d,w.step)+'</div>',
   '<span class="muted small-t">'+(def.doc?'<a href="'+def.doc+'" target="_blank" rel="noopener noreferrer">查看官方文档 ↗</a>':'')+'</span><div>'+B('closeModal','Cancel')+B('wizBack','Back','',' ',w.step?'':'disabled')+B('wizNext',last?def.finishLabel:'Next','primary')+'</div>',false,true)
 }
 
@@ -1441,13 +1445,29 @@ function initMappings(d){
  if(!d.apiTouched)d.apiName=verb+ot.apiName
  if(!d.nameTouched)d.name={create:'创建',modify:'修改',delete:'删除'}[d.rule]+ot.name
 }
-WIZ.actionType={title:'New action type',steps:['Action type','Mapping','Metadata'],finishLabel:'Create',doc:'https://www.palantir.com/docs/foundry/action-types/getting-started/',
- init(arg){const ots=Object.keys(W().objectTypes);const d={objectType:arg&&W().objectTypes[arg]?arg:ots[0]||'',rule:'modify',mappings:[],name:'',apiName:'',description:'',location:PROJECTS[0]};initMappings(d);return d},
+WIZ.actionType={title:'New action type',steps:d=>d.target==='interface'?['Action type','Properties','Metadata','Submission criteria']:['Action type','Mapping','Metadata'],finishLabel:'Create',doc:'https://www.palantir.com/docs/foundry/action-types/getting-started/',
+ init(arg){const ots=Object.keys(W().objectTypes);const d={target:'object',iface:Object.keys(W().interfaces)[0]||'',irule:'modifyIface',imaps:[],groups:['managers','agents'],objectType:arg&&W().objectTypes[arg]?arg:ots[0]||'',rule:'modify',mappings:[],name:'',apiName:'',description:'',location:PROJECTS[0]};initMappings(d);return d},
  render(d,step){
   const P='ui.wiz.d.',ot=W().objectTypes[d.objectType]
+  const tabs='<div class="row" role="radiogroup" aria-label="动作作用对象" style="margin-bottom:10px">'+[['object','Object'],['interface','Interfaces']].map(([k,l])=>'<label class="chk opt-card" style="flex:1;margin:0"><input type="radio" name="atTarget" data-bind="'+P+'target" value="'+k+'" data-after="atTarget" '+(d.target===k?'checked':'')+(k==='interface'&&!Object.keys(W().interfaces).length?' disabled':'')+'><span><b>'+l+'</b><small>'+(k==='object'?'作用于一个对象类型':'作用于实现了某接口的所有对象类型')+'</small></span></label>').join('')+'</div>'
+  if(d.target==='interface'){
+   const it=W().interfaces[d.iface]
+   if(step===0)return tabs+'<p class="muted">在 Interfaces 下选择接口和规则类型。接口动作对所有实现类型生效，只能写接口属性；按文档暂不支持 Action log。</p>'+fSel(P+'iface','Interface',Object.values(W().interfaces).map(i=>[i.id,i.name]),d.iface,'data-after="atIfaceReset"')+
+    '<h4 style="margin-top:12px">Interface actions</h4>'+IFACE_RULES.map(k=>'<label class="opt-card"><input type="radio" name="atIRule" data-bind="'+P+'irule" value="'+k+'" data-after="atIfaceReset" '+(d.irule===k?'checked':'')+'><span><b>'+RULES[k][0]+'</b><small>'+RULES[k][1]+'</small></span></label>').join('')+
+    '<p class="muted small-t">实现类型：'+(it?ifaceImpls(it.id).map(o=>esc(o.name)).join('、')||'暂无':'—')+'</p>'
+   if(step===1){
+    if(d.irule==='deleteIface')return '<p class="note">Delete object(s) of interface：自动创建一个 interface reference 参数，提交时删除所选对象。</p>'
+    const unused=(it?.properties||[]).filter(p=>!d.imaps.some(m=>m.prop===p.apiName))
+    return '<p class="muted">选择要写入的接口属性。默认 From parameter，会自动生成同名参数。'+(d.irule==='createIface'?'会自动生成 Object type 参数，用来选择创建哪种实现类型；每个实现类型的主键都必须映射到某个接口属性。':'会自动生成 interface reference 参数。主键不能修改。')+'</p>'+
+     table(['Interface property','Value source',''],d.imaps.map((m,i)=>{const p=it.properties.find(x=>x.apiName===m.prop);return [esc(p?.name||m.prop)+' <code>'+esc(m.prop)+'</code>','<select data-bind="'+P+'imaps.'+i+'.source" aria-label="来源">'+options(SOURCES.filter(([s])=>s!=='objprop'),m.source)+'</select>'+(m.source==='static'?'<input style="margin-top:4px" data-bind="'+P+'imaps.'+i+'.value" value="'+esc(m.value||'')+'" aria-label="静态值">':''),B('wizRemoveIMap','移除','small ghost',String(i))]}),'尚未选择接口属性')+
+     (unused.length?'<div class="row" style="margin-top:10px"><label class="fld"><span>Add property</span><select id="wizAddIMapSel">'+options(unused.map(p=>[p.apiName,p.name+' ('+p.apiName+')']))+'</select></label>'+B('wizAddIMap','＋ Add property')+'</div>':'')
+   }
+   if(step===2)return fInp(P+'name','Action type name',d.name,'data-after="atName"')+fArea(P+'description','Description',d.description)
+   return '<p class="muted">选择可以执行该动作的用户组（生成一个 Current user 提交条件）。提交条件对所有实现类型统一生效。</p><div class="row">'+USER_GROUPS.map(([g,l])=>'<label class="chk"><input type="checkbox" data-change="wizToggleGroupCrit" data-arg="'+g+'" '+(d.groups.includes(g)?'checked':'')+'> '+esc(l)+'</label>').join('')+'</div><p class="note">点击 <b>Create</b> 后进入详情页，可继续调整参数和提交条件。保存到 Ontology 后，实现该接口的对象会在 Object Explorer 中出现此动作。</p>'
+  }
   if(step===0){
    const m2m=joinsOf(d.objectType).length>0
-   return '<p class="muted">Object 标签：选择对象类型，再选择要做的变更。向导会配置动作的第一条规则。</p>'+fSel(P+'objectType','Object type',Object.values(W().objectTypes).map(o=>[o.id,o.name]),d.objectType,'data-after="atInit"')+
+   return tabs+'<p class="muted">Object 标签：选择对象类型，再选择要做的变更。向导会配置动作的第一条规则。</p>'+fSel(P+'objectType','Object type',Object.values(W().objectTypes).map(o=>[o.id,o.name]),d.objectType,'data-after="atInit"')+
    '<h4 style="margin-top:12px">Object actions</h4>'+Object.entries(RULES).filter(([k])=>OBJECT_RULES.includes(k)).map(([k,[l,desc]])=>'<label class="opt-card"><input type="radio" name="atRule" data-bind="'+P+'rule" value="'+k+'" data-after="atInit" '+(d.rule===k?'checked':'')+'><span><b>'+l+'</b><small>'+desc+'</small></span></label>').join('')+
    '<h4 style="margin-top:12px">Link actions</h4>'+(m2m?LINK_RULES.map(k=>'<label class="opt-card"><input type="radio" name="atRule" data-bind="'+P+'rule" value="'+k+'" data-after="atInit" '+(d.rule===k?'checked':'')+'><span><b>'+RULES[k][0]+'</b><small>'+RULES[k][1]+'</small></span></label>').join('')+(LINK_RULES.includes(d.rule)?fSel(P+'linkType','Link type',joinsOf(d.objectType).map(l=>[l.id,l.a.displayName+' ↔ '+l.b.displayName]),d.linkType,'data-after="atInit"'):''):'<label class="opt-card disabled"><input type="radio" disabled><span><b>Create link(s) / Delete link</b><small>仅用于 Join table 多对多关系；'+esc(ot?.name||'')+' 还没有这类关系。外键关系请用 Modify object(s) 修改外键属性。</small></span></label>')
   }
@@ -1463,6 +1483,14 @@ WIZ.actionType={title:'New action type',steps:['Action type','Mapping','Metadata
   return fSel(P+'location','保存位置（Project）',projOpts,d.location)+'<p class="note">点击 <b>Create</b> 后进入 Action type 详情：可继续配置 Parameters、Security & Submission criteria 和 Action log。动作需 Save 到 Ontology 后才能在 Object Explorer 中使用。</p>'
  },
  next(d,step){
+  if(d.target==='interface'){
+   const it=W().interfaces[d.iface]
+   if(step===0&&!it)throw Error('请选择接口。')
+   if(step===1&&d.irule!=='deleteIface'){if(!d.imaps.length)throw Error('至少选择一个接口属性。');if(d.imaps.some(m=>m.source==='static'&&!String(m.value||'').trim()))throw Error('请填写静态值。')}
+   if(step===2){if(!d.name)throw Error('请输入 Action type name。');let api=toCamel(d.irule.replace('Iface','')+' '+it.apiName)||'action',n=2;const base=api;while(Object.values(W().actionTypes).some(a=>a.apiName===api))api=base+n++;d.apiName=api}
+   if(step===3&&!d.groups.length)throw Error('至少选择一个用户组。')
+   return
+  }
   const ot=W().objectTypes[d.objectType]
   if(step===0&&!ot)throw Error('请先创建对象类型。')
   if(step===1&&d.rule!=='delete'&&!LINK_RULES.includes(d.rule)){
@@ -1478,6 +1506,15 @@ WIZ.actionType={title:'New action type',steps:['Action type','Mapping','Metadata
   }
  },
  finish(d){
+  if(d.target==='interface'){
+   const it=W().interfaces[d.iface];let id=toKebab(d.apiName);while(W().actionTypes[id]||C().actionTypes[id])id+='-2'
+   const at=mkAT({id,apiName:d.apiName,name:d.name,description:d.description,objectType:'',parameters:[],rules:[],criteria:[{kind:'user',groups:[...d.groups],message:'当前用户不能执行此动作。'}],actionLog:{enabled:false,summary:''}})
+   const rule={type:d.irule,interface:it.id,mappings:[]}
+   if(d.irule==='createIface'){const tp=mkParam(toParamId(toCamel(it.apiName)+'Type'),it.name+'类型','Object type',{interface:it.id});at.parameters.push(tp);rule.typeParam=tp.id}
+   else{const rp=mkParam(toParamId(toCamel(it.apiName)||'iface'),it.name,'Interface reference',{interface:it.id,default:{kind:'currentObject',value:''}});at.parameters.push(rp);rule.objectParam=rp.id}
+   for(const m of d.imaps)rule.mappings.push(m.source==='param'?mkMap(m.prop,'param',ensureIfaceParam(at,it,m.prop)):mkMap(m.prop,m.source,m.value||''))
+   at.rules.push(rule);W().actionTypes[id]=at;return 'action-types/'+id
+  }
   const ot=W().objectTypes[d.objectType]
   if(LINK_RULES.includes(d.rule)){
    const l=W().linkTypes[d.linkType];let id=toKebab(d.apiName);while(W().actionTypes[id]||C().actionTypes[id])id+='-2'
@@ -1614,8 +1651,8 @@ function renderActionForm(frame){
  const fields=at.parameters.filter(p=>!p.hidden).map(p=>{
   const bind='ui.modal.vals.'+p.id,label=esc(p.name)+(p.required?' *':'')
   if(p.type==='Object reference')return fSel(bind,label+' <small>'+esc(otName(p.objectType,onto))+'</small>',[['','请选择'],...objectsOf(p.objectType,onto).map(o=>{const t=onto.objectTypes[p.objectType];const ti=titleOf(p.objectType,o,onto),k=o[t.primaryKey];return [k,(ti&&ti!==k?ti+' · ':'')+k+(o.status?' · '+o.status:'')]})],m.vals[p.id])
-  if(p.type==='Interface reference')return fSel(bind,label+' <small>接口 · '+esc(onto.interfaces[p.interface]?.name||'')+'</small>',[['','请选择'],...ifaceImpls(p.interface,onto).flatMap(t=>objectsOf(t.id,onto).map(o=>{const k=o[t.primaryKey],ti=titleOf(t.id,o,onto);return [irefOf(t.id,k),t.name+' · '+(ti&&ti!==k?ti+' · ':'')+k]}))],m.vals[p.id])
-  if(p.type==='Object type')return fSel(bind,label+' <small>实现了「'+esc(onto.interfaces[p.interface]?.name||'')+'」的对象类型</small>',[['','请选择'],...ifaceImpls(p.interface,onto).map(t=>[t.id,t.name])],m.vals[p.id])
+  if(p.type==='Interface reference')return fSel(bind,label+' <small>接口 · '+esc(onto.interfaces[p.interface]?.name||'')+'</small>',[['','请选择'],...ifaceImpls(p.interface,onto).filter(t=>!ifaceActionOff(t,at.id,p.interface)).flatMap(t=>objectsOf(t.id,onto).map(o=>{const k=o[t.primaryKey],ti=titleOf(t.id,o,onto);return [irefOf(t.id,k),t.name+' · '+(ti&&ti!==k?ti+' · ':'')+k]}))],m.vals[p.id])
+  if(p.type==='Object type')return fSel(bind,label+' <small>实现了「'+esc(onto.interfaces[p.interface]?.name||'')+'」的对象类型</small>',[['','请选择'],...ifaceImpls(p.interface,onto).filter(t=>!ifaceActionOff(t,at.id,p.interface)).map(t=>[t.id,t.name])],m.vals[p.id])
   if(p.constraint==='choice')return fSel(bind,label,[['','请选择'],...splitList(p.options)],m.vals[p.id])
   if(p.type==='Boolean')return fSel(bind,label,[['',''],['true','true'],['false','false']],m.vals[p.id])
   return fInp(bind,label,m.vals[p.id],p.type==='Date'?'type="date"':(p.type==='Integer'||p.type==='Double')?'inputmode="decimal"':'')
@@ -1684,6 +1721,8 @@ const AFTER={
  joinCols(){const d=S.ui.wiz.d,ds=S.datasets[d.dataset];if(ds){d.lc=ds.fields[0]||'';d.rc=ds.fields[1]||''}},
  atInit(){initMappings(S.ui.wiz.d)},
  atName(){S.ui.wiz.d.nameTouched=true},
+ atTarget(){const d=S.ui.wiz.d;if(d.target==='interface')AFTER.atIfaceReset();else{d.nameTouched=false;initMappings(d)}},
+ atIfaceReset(){const d=S.ui.wiz.d,it=W().interfaces[d.iface];const pkLike=ap=>ifaceImpls(it.id).some(o=>ifaceLocal(o,it.id,ap)===o.primaryKey);d.imaps=d.irule==='deleteIface'||!it?[]:it.properties.filter(p=>d.irule==='createIface'||(p.required&&!pkLike(p.apiName))).slice(0,d.irule==='createIface'?99:1).map(p=>({prop:p.apiName,source:'param',value:''}));if(!d.nameTouched)d.name={createIface:'登记',modifyIface:'更新',deleteIface:'删除'}[d.irule]+(it?.name||'')},
  fnVersion(el){const [atId,ri]=el.dataset.arg.split('|'),at=W().actionTypes[atId],r=at.rules[+ri],meta=fnVersionMeta(r.fn,r.version);if(!meta)return;r.inputs??={};for(const inp of meta.inputs)if(!r.inputs[inp.name])r.inputs[inp.name]=fnEnsureParam(at,inp);if(semver(r.version)[0]===0)r.autoUpgrade=false},
  lcKind(el){const [id,i]=el.dataset.arg.split('|'),lc=W().interfaces[id].linkConstraints[i];lc.target=lc.targetKind==='interface'?Object.keys(W().interfaces)[0]||'':Object.keys(W().objectTypes)[0]||''},
  implReset(){S.ui.wiz.d.mapping={};S.ui.wiz.d.links={}},
@@ -1733,7 +1772,7 @@ const ACT={
   const w=S.ui.wiz,def=WIZ[w.kind]
   def.next(w.d,w.step)
   S.ui.msg=null
-  if(w.step<def.steps.length-1){w.step++;return}
+  if(w.step<(typeof def.steps==='function'?def.steps(w.d):def.steps).length-1){w.step++;return}
   const dest=def.finish(w.d)
   closeModal();go(dest)
   toast('已创建，尚未保存。点击右上角 Save → Review edits 保存到 Ontology。')
@@ -1742,6 +1781,8 @@ const ACT={
  wizRemoveProp(i){const d=S.ui.wiz.d;const [p]=d.props.splice(+i,1);if(d.pk===p.id)d.pk=d.props[0]?.id||'';if(d.title===p.id)d.title=d.props[0]?.id||''},
  wizAddMap(){const d=S.ui.wiz.d;const v=$('#wizAddMapSel')?.value;if(v)d.mappings.push({prop:v,source:'param',value:''})},
  wizRemoveMap(i){S.ui.wiz.d.mappings.splice(+i,1)},
+ wizAddIMap(){const d=S.ui.wiz.d,v=$('#wizAddIMapSel')?.value;if(v)d.imaps.push({prop:v,source:'param',value:''})},
+ wizRemoveIMap(i){S.ui.wiz.d.imaps.splice(+i,1)},
  wizAddIfaceProp(){const d=S.ui.wiz.d;d.properties.push({apiName:'property'+(d.properties.length+1),name:'',baseType:'String',required:false})},
  wizRemoveIfaceProp(i){S.ui.wiz.d.properties.splice(+i,1)},
  genJoinTable(){const d=S.ui.wiz.d,A=W().objectTypes[d.left],Bt=W().objectTypes[d.right];if(!A||!Bt||A===Bt)throw Error('请先选择两个不同的对象类型。');let name=A.apiName+Bt.apiName+'Join';while(S.datasets[name])name+='2';const f=[A.id+'_'+A.primaryKey,Bt.id+'_'+Bt.primaryKey];S.datasets[name]={fields:f,rows:[],path:'/租赁沙盒/datasets/'+name,rid:'ri.foundry.main.dataset.'+hex(8)};d.dataset=name;d.lc=f[0];d.rc=f[1];S.ui.msg={text:'已生成空的 Join table 数据集 '+esc(name)+'，schema 与两端主键匹配。',ok:true}},
@@ -1893,10 +1934,12 @@ const CHANGE={
  setUser(t){S.user=t.value;if(S.ui.modal?.kind==='action')S.ui.modal.result=null;toast('当前用户：'+USERS[S.user].name)},
  exploreType(t){S.ui.exQ='';go('explorer/'+t.value)},
  toggleGroup(t){const [otId,g]=t.dataset.arg.split('|');const ot=W().objectTypes[otId];ot.groups=t.checked?[...new Set([...ot.groups,g])]:ot.groups.filter(x=>x!==g)},
+ wizToggleGroupCrit(t){const d=S.ui.wiz.d,g=t.dataset.arg;d.groups=t.checked?[...new Set([...d.groups,g])]:d.groups.filter(x=>x!==g)},
  wizToggleGroup(t){const d=S.ui.wiz.d,g=t.dataset.arg;d.groups=t.checked?[...new Set([...d.groups,g])]:d.groups.filter(x=>x!==g)},
  attachShared(t){const [otId,i]=t.dataset.arg.split('|'),p=W().objectTypes[otId].properties[+i],sp=W().sharedProps[t.value];if(!sp)return
   if(sp.baseType!==p.baseType)throw Error('共享属性的 Base type（'+sp.baseType+'）与该属性（'+p.baseType+'）不一致。Base type 必须与列类型匹配才能使用。')
   p.shared=sp.id;toast('已关联共享属性「'+sp.name+'」。Save 后生效。')},
+ toggleIfaceAction(t){const [otId,ii,atId]=t.dataset.arg.split('|'),impl=W().objectTypes[otId].interfaces[+ii];impl.disabledActions??=[];impl.disabledActions=t.checked?impl.disabledActions.filter(x=>x!==atId):[...new Set([...impl.disabledActions,atId])]},
  toggleCritGroup(t){const [atId,i,g]=t.dataset.arg.split('|');const c=W().actionTypes[atId].criteria[i];c.groups=t.checked?[...new Set([...c.groups,g])]:c.groups.filter(x=>x!==g)}
 }
 async function importCSV(file){

@@ -1,0 +1,950 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>租约工作台 · Ontology Lab</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f1f4f8;color:#19283b;font:15px/1.6 Inter,"Microsoft YaHei",sans-serif}header{padding:14px 24px;background:#18273b;color:white;display:flex;justify-content:space-between;align-items:center}header b{font-size:20px}header small{color:#bdd5e5;margin-left:14px}main{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:90vh}nav{padding:20px 12px;background:#e5ecf3;border-right:1px solid #cfdce8}nav button{display:block;width:100%;text-align:left;margin-bottom:7px}nav button[aria-current]{background:#d1ece5;color:#064b41;border-color:#76baad}article{padding:24px;max-width:1350px;width:100%}h1,h2,h3,p{margin:0 0 10px}section{background:white;border:1px solid #d6e0ea;border-radius:10px;padding:17px;margin:12px 0}button,input,select{font:inherit;border:1px solid #aebfce;border-radius:6px;padding:8px;background:white;color:inherit;min-height:42px}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #30887b;outline-offset:2px}.primary{background:#096b5e;color:white;border-color:#096b5e}.row{display:flex;align-items:end;gap:10px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.note{background:#e8f3f2;border-left:4px solid #388b80;padding:10px 12px;margin:10px 0}.muted{color:#4d6076}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;text-align:left}td,th{padding:8px;border-bottom:1px solid #e1e8ef;white-space:nowrap}th{background:#edf3f7}label{display:grid;gap:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#172638;color:#d8eee8;padding:14px;border-radius:7px}#message{font-weight:bold;color:#165c51;margin-top:12px}#message.bad{color:#973326}button:disabled{opacity:.55;cursor:default}@media(max-width:730px){main,.grid{grid-template-columns:1fr}nav{display:flex;flex-wrap:wrap;gap:6px}nav button{width:auto}article{padding:12px}}
+</style>
+<header><div><b>租约工作台</b><small>Ontology Lab · 本地沙盒</small></div><button id="reset">重置案例</button></header>
+<main><nav id="nav" aria-label="工作台页面"></nav><article><div id="screen"></div><p id="message" role="status"></p></article></main>
+<script>
+const $=id=>document.getElementById(id)
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+const schemas={Tenant:['id','name','age','gender'],House:['id','name','building_age','area','orientation'],Lease:['id','house_id','tenant_id','start','end','status']}
+const seed={Tenant:[['T01','张三','30','男'],['T02','李四','29','男']],House:[['H01','海淀区学区房','12','82','南'],['H02','朝阳区公寓','8','65','东']],Lease:[]}
+const ops={sign:'签订租约',transfer:'转让剩余租期',expire:'到期结清'}
+const fresh=()=>({data:Object.fromEntries(Object.entries(schemas).map(([k,fields])=>[k,{fields,rows:structuredClone(seed[k])}])),objects:{},links:{},actions:{},leases:[],logs:[],nextId:1})
+let state=fresh(),page=0,type='Tenant',target='Tenant',op='sign',selectedHouse=''
+const tabs=['Datasets 数据集','Object Types 对象','Link Types 关系','Action Types 动作','租赁业务台','Action Log 日志']
+const table=(heads,rows)=>'<div class="scroll"><table><thead><tr>'+heads.map(v=>'<th>'+esc(v)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'
+const select=(id,label,options,value)=>'<label>'+label+'<select id="'+id+'">'+options.map(([v,t])=>'<option value="'+esc(v)+'" '+(v===value?'selected':'')+'>'+esc(t)+'</option>').join('')+'</select></label>'
+const opts=a=>a.map(x=>[x,x])
+const input=(id,label,value,kind='text')=>'<label>'+label+'<input id="'+id+'" type="'+kind+'" value="'+esc(value)+'" required></label>'
+const btn=(id,label)=>'<button class="primary" id="'+id+'" type="button">'+label+'</button>'
+const leases=()=>state.leases
+function datasetPage(){
+ const d=state.data[type]
+ return '<h1>Datasets</h1><p>导入带表头的 CSV，再将源列映射到对象属性。也可直接使用张三、李四和海淀区学区房的样例。</p><section><div class="row">'+select('type','目标数据集',opts(Object.keys(schemas)),type)+'<label>上传 CSV<input id="csv" type="file" accept=".csv,text/csv"></label>'+btn('starter','加载整套样例配置')+'</div></section><section><h3>'+type+' · '+d.rows.length+' 行</h3>'+table(d.fields,d.rows)+'</section>'
+}
+function objectPage(){
+ const d=state.data[type], existing=state.objects[type]
+ return '<h1>Object Types</h1><p>租客与房屋各自有属性。租约使用独立主键，承载起止日期和承租人变更。</p><section><div class="row">'+select('type','对象类型与底层数据源',opts(Object.keys(schemas)),type)+'</div><h3>属性映射</h3><div class="grid">'+schemas[type].map((key,i)=>select('map'+i,key+(key==='id'?' · 唯一主键':key==='name'?' · 显示标题':''),opts(d.fields),existing?.mapping[i]??key)).join('')+'</div><p class="muted">保存时检查主键非空且唯一。租客与房屋的当前签约状态由有效租约推导。</p>'+btn('saveObject','保存对象类型')+'</section><section><h3>已定义对象</h3>'+table(['类型','主键','属性映射'],Object.entries(state.objects).map(([k,v])=>[k,'id',v.mapping.join(' / ')]))+'</section>'
+}
+function linkPage(){
+ return '<h1>Link Types</h1><p>使用两条外键关系把租约连到房屋与租客。房屋和租客可以各自拥有多条历史租约。</p><section><div class="row">'+select('target','关系目标',opts(['Tenant','House']),target)+select('fk','Lease 外键',opts(['tenant_id','house_id']),target==='Tenant'?'tenant_id':'house_id')+'<label>目标主键<code>'+target+'.id</code></label></div><div class="note">租约 <b>N</b> → <b>1</b> '+target+'。转让时更新 Lease.tenant_id。到期解除当前占用关系，并保留已结束租约及其引用。</div>'+btn('saveLink','保存 Link Type')+'</section><section>'+table(['关系','外键','主键'],Object.entries(state.links).map(([k,v])=>['Lease → '+k,v,k+'.id']))+'</section>'
+}
+function actionPage(){
+ const rule={sign:'Create Object · Lease',transfer:'Modify Object · Lease.tenant_id',expire:'Modify Object · Lease.status'}[op]
+ const params={sign:'房屋、租客、开始日、结束日',transfer:'租约、接手租客、交接日',expire:'租约、结清日'}[op]
+ return '<h1>Action Types</h1><p>选择要发布的动作，再配置参数规则与校验函数。</p><section><div class="row">'+select('op','动作规则',Object.entries(ops),op)+input('actionName','显示名称',ops[op])+select('guard','校验函数',[['standard','内置租约校验'],['custom','自定义条件表达式']],'standard')+'</div><div id="exprBox" hidden>'+input('expr','附加条件，例如 remainingDays >= 365','remainingDays >= 365')+'<p class="muted">可用变量 remainingDays、durationDays、tenantAge，支持 &gt;=、&lt;=、==、&gt;、&lt;。</p></div>'+table(['配置','值'],[['规则',rule],['参数',params],['返回','租约变更和审计记录']])+btn('saveAction','保存 Action Type')+'</section><section>'+table(['动作','名称','附加函数条件'],Object.entries(state.actions).map(([k,a])=>[ops[k],a.name,a.expr||'内置校验']))+'</section>'
+}
+function mappedObject(k,definition,source,row){
+ const props=objectProperties(definition,k)
+ const values=Object.fromEntries(props.map(prop=>[prop.name,row[source.fields.indexOf(prop.source)]]))
+ return {...values,id:values[definition.primary??'id']}
+}
+const rowsFor=k=>{
+ const definition=state.objects[k],source=state.data[k]
+ return definition?source.rows.map(row=>mappedObject(k,definition,source,row)):[]
+}
+function rentPage(){
+ const tenants=rowsFor('Tenant'),houses=rowsFor('House')
+ const active=leases().filter(l=>l.status==='有效')
+ const house=houses.find(item=>item.id===selectedHouse)
+ const houseLeases=house?leases().filter(l=>l.house_id===house.id):[]
+ const current=houseLeases.find(l=>l.status==='有效')
+ const tenantName=id=>tenants.find(t=>t.id===id)?.name??id
+ const houseName=id=>houses.find(h=>h.id===id)?.name??id
+ const houseSelect=select('house','房屋对象',[['','请选择要办理业务的房屋'],...houses.map(h=>[h.id,h.id+' · '+h.name+' · '+(active.some(l=>l.house_id===h.id)?'已签约':'可租')])],house?.id??'')
+ const tenantOptions=tenants.filter(t=>op==='sign'||t.id!==current?.tenant_id).map(t=>[t.id,t.name])
+ const defaultDate=op==='sign'?'2023-01-01':op==='expire'?current?.end??'':current?.id==='L001'&&current.start==='2023-01-01'&&current.end==='2026-01-01'?'2025-01-01':current?.lastEvent??current?.start??''
+ const ready=Boolean(house)&&(op==='sign'?!current:Boolean(current))&&Boolean(state.actions[op])
+ const reason=!house?'请先选择房屋对象。':op==='sign'&&current?'这套房已有有效租约。请选择另一套房，或办理转租。':op!=='sign'&&!current?'所选房屋没有有效租约。请先签约，再办理转租或到期结清。':!state.actions[op]?'请先到 Action Types 保存这一动作。':''
+ const leaseControl='<label>有效租约<input id="lease" value="'+esc(current?.id??'')+'" readonly placeholder="未找到有效租约"></label>'
+ const actionInputs=op==='sign'
+  ?select('tenant','租客',[['','请选择租客'],...tenantOptions],'')+input('date','起租日',defaultDate,'date')+input('end','到期日','2026-01-01','date')
+  :leaseControl+(op==='transfer'?select('tenant','接手租客',[['','请选择接手租客'],...tenantOptions],''):'')+input('date',op==='transfer'?'交接日':'结清日',defaultDate,'date')
+ const context=current?'<div class="house-context"><div><small>有效租约</small><strong>'+esc(current.id)+'</strong></div><div><small>当前承租人</small><strong>'+esc(tenantName(current.tenant_id))+'</strong></div><div><small>原租期</small><strong>'+esc(current.start)+' 至 '+esc(current.end)+'</strong></div></div>':''
+ const summary='<section class="house-picker"><div class="house-picker-top"><div><h3>选择办理业务的房屋</h3><p class="muted">签约、转租和结清都以所选房屋为范围。</p></div>'+houseSelect+'</div>'+context+'</section>'
+ const buttons='<div class="row"><button id="preview" type="button" '+(ready?'':'disabled')+'>试运行</button><button class="primary" id="apply" type="button" '+(ready?'':'disabled')+'>执行动作</button></div>'
+ return '<h1>租赁业务台</h1>'+summary+
+ '<section><h3>执行租约动作</h3><div class="row">'+select('op','动作',Object.entries(ops),op)+actionInputs+'</div><p class="muted">当前定义 '+esc(state.actions[op]?.name||'尚未配置')+'</p>'+(reason?'<p class="note">'+reason+'</p>':'')+buttons+'<div id="result"></div></section>'+
+ '<section><h3>'+(house?esc(house.name)+' · 租约与关系':'租约与关系')+'</h3>'+(houseLeases.length?table(['租约','房屋','承租人','起租日','到期日','状态'],houseLeases.map(l=>[l.id,houseName(l.house_id),tenantName(l.tenant_id),l.start,l.end,l.status])):'<p class="muted">'+(house?'这套房还没有租约记录。':'选择房屋后查看该房源的租赁历史。')+'</p>')+'</section>'+
+ '<div class="grid"><section><h3>房屋状态</h3>'+table(['房屋','房龄','面积','朝向','状态'],houses.map(h=>[h.name,h.building_age,h.area,h.orientation,active.some(l=>l.house_id===h.id)?'已签约':'可租']))+'</section><section><h3>租客状态</h3>'+table(['姓名','年龄','性别','状态'],tenants.map(t=>[t.name,t.age,t.gender,active.some(l=>l.tenant_id===t.id)?'签约中':'无有效租约']))+'</section></div>'
+}
+function render(){
+ $('nav').innerHTML=tabs.map((t,i)=>'<button data-page="'+i+'" '+(i===page?'aria-current="page"':'')+'>'+t+'</button>').join('')
+ $('screen').innerHTML=[datasetPage,objectPage,linkPage,actionPage,rentPage,()=>'<h1>Action Log</h1><section>'+table(['动作','租约','日期','原租客','新租客','状态'],state.logs)+'</section>'][page]()
+}
+function notice(message,bad=false){$('message').textContent=message;$('message').className=bad?'bad':''}
+function parseCSV(text){
+ const out=[];let row=[],value='',quoted=false
+ text=text.replace(/^\uFEFF/,'')
+ for(let i=0;i<=text.length;i++){
+  const c=text[i]
+  if(c==='"'){if(quoted&&text[i+1]==='"'){value+='"';i++}else quoted=!quoted;continue}
+  if(!quoted&&(c===','||c==='\n'||c===undefined)){row.push(value.trim());value='';if(c!==','){if(row.some(Boolean))out.push(row);row=[]}continue}
+  if(c!=='\r'&&c!==undefined)value+=c
+ }
+ if(quoted||!out.length||new Set(out[0]).size!==out[0].length||out[0].some(x=>!x)||out.slice(1).some(r=>r.length!==out[0].length))throw Error('CSV 需要唯一表头，且每行列数必须一致。')
+ return {fields:out[0],rows:out.slice(1)}
+}
+function configure(){
+ state=fresh();selectedHouse=''
+ for(const [k,fields] of Object.entries(schemas))state.objects[k]={mapping:fields}
+ state.links={Tenant:'tenant_id',House:'house_id'}
+ for(const [k,name] of Object.entries(ops))state.actions[k]={name,expr:''}
+ page=4;op='sign'
+}
+function checkExpression(expr,ctx){
+ if(!expr)return true
+ const m=expr.match(/^(remainingDays|durationDays|tenantAge)\s*(>=|<=|==|>|<)\s*(-?\d+)$/)
+ if(!m)throw Error('条件格式无效。例如 remainingDays >= 365。')
+ const a=ctx[m[1]],b=Number(m[3])
+ return {'>=':a>=b,'<=':a<=b,'==':a===b,'>':a>b,'<':a<b}[m[2]]
+}
+const days=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/86400000)
+function plan(kind,input){
+ const action=state.actions[kind]
+ if(!action||!state.links.House||!state.links.Tenant||!state.objects.Lease)throw Error('请先配置对象、两条关系以及当前动作。')
+ const {date,end,house,tenant,id}=input
+ const tenants=rowsFor('Tenant'),houses=rowsFor('House')
+ const t=tenants.find(r=>r.id===tenant)
+ if(!date||!Number.isFinite(Date.parse(date)))throw Error('请选择有效日期。')
+ if(!houses.some(h=>h.id===house))throw Error('请先选择有效的房屋对象。')
+ const before=leases().find(l=>l.id===id&&l.house_id===house&&l.status==='有效')
+ let after
+ if(kind==='sign'){
+  if(!t||!houses.some(h=>h.id===house)||!(days(date,end)>0))throw Error('请选择房屋和租客，并使结束日晚于开始日。')
+  if(leases().some(l=>l.house_id===house&&l.status==='有效'))throw Error('这套房已有有效租约。')
+  let n=state.nextId
+  while(leases().some(l=>l.id==='L'+String(n).padStart(3,'0')))n++
+  after={id:'L'+String(n).padStart(3,'0'),house_id:house,tenant_id:tenant,start:date,end,status:'有效',lastEvent:date}
+ }else{
+  if(!before)throw Error('所选房屋不存在该有效租约。')
+  if(date<(before.lastEvent||before.start))throw Error('操作日期不能早于租约的上一次变更。')
+  if(kind==='transfer'){
+   if(!t||tenant===before.tenant_id||date>=before.end)throw Error('请选择另一位租客，且交接日必须早于到期日。')
+   after={...before,tenant_id:tenant,lastEvent:date}
+  }else{
+   if(date<before.end)throw Error('尚未到期，无法结清。')
+   after={...before,status:'已结束',lastEvent:date}
+  }
+ }
+ if(!checkExpression(action.expr,{remainingDays:days(date,after.end),durationDays:days(after.start,after.end),tenantAge:Number((t??tenants.find(r=>r.id===after.tenant_id))?.age)}))throw Error('自定义校验函数未通过。')
+ return {before,after,action}
+}
+$('nav').onclick=e=>{const b=e.target.closest('[data-page]');if(b){page=Number(b.dataset.page);notice('');render()}}
+$('reset').onclick=()=>{state=fresh();selectedHouse='';page=0;type='Tenant';target='Tenant';op='sign';notice('已重置。');render()}
+$('screen').onchange=async e=>{
+ const id=e.target.id
+ if(id==='type'||id==='target'||id==='op'){if(id==='type')type=e.target.value;if(id==='target')target=e.target.value;if(id==='op')op=e.target.value;render()}
+ if(id==='guard')$('exprBox').hidden=e.target.value!=='custom'
+ if(id==='csv'&&e.target.files[0])try{
+  if(Object.keys(state.objects).length||leases().length)throw Error('当前模型已在使用。重置后可导入新的数据集。')
+  const key=type,file=e.target.files[0]
+  state.data[key]=parseCSV(await file.text());render();notice('已导入 '+file.name)
+ }catch(err){notice(err.message,true)}
+}
+$('screen').onclick=e=>{
+ const id=e.target.id
+ try{
+  if(id==='starter'){if(Object.keys(state.objects).length||leases().length)throw Error('当前工作区已有配置。请先重置，再加载样例。');configure();render();notice('样例配置已加载。');return}
+  if(id==='saveObject'){
+   if(leases().length)throw Error('已有租约时请保留现有对象映射。')
+   const d=state.data[type],mapping=schemas[type].map((_,i)=>$('map'+i).value)
+   const keys=d.rows.map(r=>r[d.fields.indexOf(mapping[0])])
+   if(keys.some(x=>!x)||new Set(keys).size!==keys.length)throw Error('主键必须非空且唯一。')
+   if(new Set(mapping).size!==mapping.length)throw Error('请为不同属性选择不同的源列。')
+   if(type==='Lease'&&d.rows.length){
+    const tenants=rowsFor('Tenant'),houses=rowsFor('House')
+    const imported=d.rows.map(r=>Object.fromEntries(schemas.Lease.map((k,i)=>[k,r[d.fields.indexOf(mapping[i])]])))
+    const occupied=new Set()
+    for(const l of imported){
+     if(!tenants.some(t=>t.id===l.tenant_id)||!houses.some(h=>h.id===l.house_id)||!(days(l.start,l.end)>0)||!['有效','已结束'].includes(l.status))throw Error('导入租约须引用已有租客和房屋，并包含有效日期与状态。')
+     if(l.status==='有效'&&occupied.has(l.house_id))throw Error('同一房屋只能有一条有效租约。')
+     if(l.status==='有效')occupied.add(l.house_id)
+    }
+    state.leases=imported
+   }
+   state.objects[type]={mapping};render();notice('已保存 '+type)
+  }
+  if(id==='saveLink'){
+   if(!state.objects.Lease||!state.objects[target])throw Error('先保存 Lease 和目标对象类型。')
+   if($('fk').value!==(target==='Tenant'?'tenant_id':'house_id'))throw Error('请用与目标对象相对应的外键。')
+   state.links[target]=$('fk').value;render();notice('已保存关系。')
+  }
+  if(id==='saveAction'){
+   const name=$('actionName').value.trim(),expr=$('guard').value==='custom'?$('expr').value.trim():''
+   if(!name)throw Error('请输入动作名称。')
+   if($('guard').value==='custom'&&!expr)throw Error('请输入附加条件。')
+   checkExpression(expr,{})
+   state.actions[op]={name,expr};render();notice('已保存 '+name)
+  }
+  if(id==='preview'||id==='apply'){
+   const input=Object.fromEntries(['date','end','house','tenant','lease'].map(k=>[k==='lease'?'id':k,$(k)?.value]))
+   const {before,after,action}=plan(op,input)
+   if(id==='preview'){$('result').innerHTML='<pre>'+esc(JSON.stringify({变更前:before??null,变更后:after},null,2))+'</pre>';notice('试运行通过。');return}
+   if(before)state.leases[state.leases.indexOf(before)]=after
+   else {state.leases.push(after);state.nextId++}
+   state.logs.unshift([action.name,after.id,input.date,before?.tenant_id??'—',after.tenant_id,after.status])
+   render();notice('已执行 '+action.name+' · '+after.id)
+  }
+ }catch(err){notice(err.message,true)}
+}
+render()
+</script><style>
+.link-steps{display:flex;gap:8px;flex-wrap:wrap;padding:0;list-style:none}.link-steps li{padding:7px 10px;border-radius:6px;background:#e8edf3}.link-steps li[aria-current]{background:#d3ece5;color:#124d43;font-weight:700}.choice{display:flex;align-items:start;gap:10px;border:1px solid #d6e0ea;padding:10px;border-radius:7px;margin:6px 0}.choice input{min-height:auto;margin-top:5px}.choice small{display:block;color:#4d6076}.flow-controls{display:flex;justify-content:space-between;gap:8px;margin-top:16px}
+</style>
+<script>
+const modes={
+ fk:['Object type foreign keys','用一个对象的外键匹配另一个对象的主键。','一对一 / 一对多'],
+ join:['Join table dataset','由数据集中的两列主键决定哪些对象相连。','多对多'],
+ back:['Backing object type','由中间对象连接两端，并提供租期等关系属性。','带属性的多对多']
+}
+const projects=['租赁沙盒 / Ontology','租赁运营 / 业务模型','共享模型 / 参考关系']
+const newLink=()=>({
+ step:0,mode:'fk',source:'Lease',end:'Tenant',field:'tenant_id',left:'Tenant',right:'House',cardinality:'many',
+ forward:'承租人',reverse:'租约列表',api:'tenant',reverseApi:'leases',location:projects[0],
+ join:null,lc:'',rc:'',leftEdge:'',rightEdge:'',middle:'Lease'
+})
+let linkDraft=newLink()
+let linkOpen=false
+let published=[]
+let pending=null
+const linkNames=['Relationship type','Link resources','Link type names','Save location']
+const linkDescriptions=[
+ '选择用什么数据定义对象实例之间的关系。',
+ '选择两端的对象类型，再配置字段或数据源。',
+ '从每一端出发分别命名。同一个 Link Type 可双向查询。',
+ '选择存放关系定义的项目。提交后再保存到 Ontology。'
+]
+const objLabel=k=>state.objects[k]?.name||k
+const keyTitle=k=>objLabel(k)+'.'+(state.objects[k]?.primary??'id')
+const fkSource=d=>d.source??'Lease'
+const pair=d=>d.mode==='fk'?[fkSource(d),d.end]:[d.left,d.right]
+const currentTenantKey=houseId=>leases().find(lease=>lease.house_id===houseId&&lease.status==='有效')?.tenant_id??''
+const fkFields={Lease:{Tenant:'tenant_id',House:'house_id'},House:{Tenant:'current_tenant_id'}}
+const fkOptions=d=>Object.values(fkFields[fkSource(d)])
+function edgeOptions(end){
+ if(!state.links[end])return [['','尚未发布 Lease → '+end]]
+ const definition=published.find(x=>x.mode==='fk'&&fkSource(x)==='Lease'&&x.end===end)
+ return [[state.links[end],objLabel('Lease')+' → '+objLabel(end)+' · '+(definition?.forward??state.links[end])]]
+}
+function linkRows(d){
+ if(d.mode==='fk'){
+  const refs=rowsFor(d.end)
+  const records=fkSource(d)==='House'
+   ?rowsFor('House').map(h=>({...h,current_tenant_id:currentTenantKey(h.id)}))
+   :leases()
+  const keys=new Set(refs.map(ref=>ref.id))
+  return records.map(row=>[row.id,row[d.field]||'—',!row[d.field]?'无当前关联':keys.has(row[d.field])?'已匹配':'无匹配'])
+ }
+ if(d.mode==='back')return leases().map(l=>[l[d.leftEdge],l[d.rightEdge],l.id,l.start,l.end,l.status])
+ if(!d.join)return []
+ const li=d.join.fields.indexOf(d.lc),ri=d.join.fields.indexOf(d.rc)
+ const leftKeys=new Set(rowsFor(d.left).map(row=>row.id)),rightKeys=new Set(rowsFor(d.right).map(row=>row.id))
+ return d.join.rows.map(r=>[r[li],r[ri],leftKeys.has(r[li])&&rightKeys.has(r[ri])?'已匹配':'无匹配'])
+}
+function linkPreview(d){
+ const rows=linkRows(d)
+ const headers=d.mode==='fk'?[keyTitle(fkSource(d)),d.field,keyTitle(d.end)+' 匹配状态']:
+  d.mode==='join'?[keyTitle(d.left),keyTitle(d.right),'匹配状态']:[keyTitle(d.left),keyTitle(d.right),'Lease.id','起租','到期','状态']
+ if(!rows.length)return '<p class="muted">尚无关系实例。签约或载入配对数据后，此处会显示实际匹配。</p>'
+ const status=d.mode==='back'?rows.length+' 条中间对象记录':rows.filter(row=>row[2]==='已匹配').length+' / '+rows.length+' 行已匹配'
+ return '<p class="match-summary">'+status+'</p>'+table(headers,rows)
+}
+function validateLink(d){
+ if(d.mode==='fk'){
+  const source=fkSource(d)
+  if(!state.objects[source]||!state.objects[d.end])throw Error('请先创建 '+source+' 和 '+d.end+' 对象类型。')
+  if(d.field!==fkFields[source][d.end])throw Error('请选择对应的外键。'+source+' → '+d.end+' 使用 '+fkFields[source][d.end]+'。')
+  if(source==='House'&&(!state.links.House||!state.links.Tenant))throw Error('先发布 Lease → House 和 Lease → Tenant，房屋才能沿有效租约获取当前租客。')
+  return
+ }
+ if(d.left===d.right||!state.objects[d.left]||!state.objects[d.right])throw Error('请选择两个不同且已创建的对象类型。')
+ if(d.mode==='back'&&(!state.objects.Lease||!d.leftEdge||!d.rightEdge||d.leftEdge!==state.links[d.left]||d.rightEdge!==state.links[d.right]))throw Error('请选择中间对象的两条已发布关系。请先发布 Lease → Tenant 和 Lease → House。')
+ if(d.mode==='join'&&(!d.join||!d.join.fields.includes(d.lc)||!d.join.fields.includes(d.rc)||d.lc===d.rc))throw Error('请选择配对表，并为两端映射不同的列。')
+ if(d.mode==='join'&&linkRows(d).some(row=>row[2]!=='已匹配'))throw Error('配对表中存在无法匹配的主键。请先修正数据或字段映射。')
+}
+const node=(label,sub)=>'<span class="link-node"><strong>'+esc(label)+'</strong><small>'+esc(sub)+'</small></span>'
+function topology(d,overview=false){
+ const [left,right]=pair(d)
+ const leftName=objLabel(left),rightName=objLabel(right)
+ const wire='<span class="link-wire" aria-hidden="true"></span>'
+ if(d.mode==='fk')return '<div class="link-topology" aria-label="外键指向主键">'+node(leftName,overview?'外键侧':d.field)+wire+node(rightName,(state.objects[right]?.primary??'id')+' · 主键')+'</div>'
+ const center=d.mode==='back'?node(objLabel('Lease'),'中间对象') : node(d.join?.name||'Join table','两端主键配对')
+ return '<div class="link-topology" aria-label="通过中间资源连接两端">'+node(leftName,(state.objects[left]?.primary??'id')+' · 主键')+wire+center+wire+node(rightName,(state.objects[right]?.primary??'id')+' · 主键')+'</div>'
+}
+function linkChoices(d){
+ return '<fieldset class="link-choices"><legend class="visually-hidden">关系方式</legend>'+Object.entries(modes).map(([id,[label,desc,cardinality]])=>{
+  const selected=d.mode===id
+  return '<div class="relationship-option'+(selected?' selected':'')+'"><label><input type="radio" name="linkMode" value="'+id+'" '+(selected?'checked':'')+'><span><strong>'+label+'</strong><small>'+desc+'</small></span><span class="relation-badge">'+cardinality+'</span></label>'+(selected?topology(d,true):'')+'</div>'
+ }).join('')+'</fieldset>'
+}
+const endOptions=()=>['Tenant','House'].map(k=>[k,objLabel(k)+(state.objects[k]?'':'（尚未创建）')])
+const pkField=k=>'<div class="link-key"><small>自动使用对象主键</small><code>'+esc(keyTitle(k))+'</code><span class="relation-badge">PK</span></div>'
+function linkResources(d){
+ let controls=''
+ if(d.mode==='fk'){
+  const source=fkSource(d)
+  const sourceOptions=['Lease','House'].map(k=>[k,objLabel(k)+(state.objects[k]?'':'（尚未创建）')])
+  const targets=endOptions().filter(([key])=>Boolean(fkFields[source][key]))
+  controls='<div class="grid link-endpoints"><div>'+select('linkSource','外键侧对象',sourceOptions,source)+select('field','外键属性',opts(fkOptions(d)),d.field)+'</div><div>'+select('end','主键侧对象',targets,d.end)+pkField(d.end)+'</div></div>'
+  controls+=source==='House'?'<p class="note">House.current_tenant_id 从有效租约派生。转租时更新租约上的承租人，到期后这里显示无当前关联。一个租客可对应多套房屋。</p>':'<p class="muted">一份租约只引用一条相应对象。一个租客或一套房屋可以关联多份租约。</p>'
+ }else{
+  const backing=d.mode==='back'
+  controls='<div class="grid link-endpoints'+(backing?' three':'')+'"><div>'+select('left','左侧对象',endOptions(),d.left)+(backing?'':pkField(d.left))+'</div>'+(backing?'<div>'+select('linkMiddle','中间对象',[['Lease',objLabel('Lease')]],'Lease')+'</div>':'')+'<div>'+select('right','右侧对象',endOptions(),d.right)+(backing?'':pkField(d.right))+'</div></div>'
+  if(backing)controls+='<div class="grid">'+select('leftEdge','从中间对象到左侧的已发布关系',edgeOptions(d.left),d.leftEdge)+select('rightEdge','从中间对象到右侧的已发布关系',edgeOptions(d.right),d.rightEdge)+'</div>'
+  else controls+='<div class="dataset-pick"><div><strong>'+esc(d.join?.name||'选择 Join table dataset')+'</strong><p class="muted">'+(d.join?d.join.rows.length+' 行 · 两列分别映射到对象主键':'可上传 CSV、载入样例或生成空配对表。')+'</p></div><label class="file-pick">'+(d.join?'替换 CSV':'选择 CSV')+'<input id="joinFile" type="file" accept=".csv,text/csv"></label><button type="button" id="joinSample">载入样例</button><button type="button" id="joinEmpty">生成空表</button></div>'+(d.join?'<div class="grid">'+select('lc','映射到 '+esc(keyTitle(d.left)),opts(d.join.fields),d.lc)+select('rc','映射到 '+esc(keyTitle(d.right)),opts(d.join.fields),d.rc)+'</div>':'')
+ }
+ return '<div class="link-canvas">'+topology(d)+controls+'</div><div class="match-panel"><h3>实例匹配预览</h3>'+linkPreview(d)+'</div>'
+}
+function cardinalities(d){
+ return d.mode==='fk'?['一条',d.cardinality==='one'?'一条':'多条']:['多个','多个']
+}
+function linkDirection(d,reverse){
+ const [left,right]=pair(d), from=reverse?right:left,to=reverse?left:right
+ const apiId=reverse?'reverseApi':'api'
+ const api=reverse?d.reverseApi:d.api
+ const quantity=cardinalities(d)[Number(reverse)]
+ const suffix=(quantity==='一条'?'.get()':'.all()')
+ return '<div class="direction"><div class="direction-head"><strong>'+esc(objLabel(from))+' <span aria-hidden="true">→</span> '+esc(objLabel(to))+'</strong><span class="relation-badge" '+(reverse?'id="reverseQuantity"':'')+'>'+quantity+'</span></div>'+input(reverse?'reverse':'forward','显示名称',reverse?d.reverse:d.forward)+input(apiId,'API 名称',api)+'<code class="api-preview" id="'+apiId+'Preview">'+esc(from[0].toLowerCase()+from.slice(1)+'.'+api+suffix)+'</code></div>'
+}
+function linkNaming(d){
+ return '<div class="direction-grid">'+linkDirection(d,false)+linkDirection(d,true)+'</div>'+(d.mode==='fk'?select('cardinality','反向基数',[['many',fkSource(d)==='House'?'一个租客可以关联多套房屋':'一个目标可以关联多份租约'],['one','一对一（声明）']],d.cardinality)+'<p class="muted">一对一声明表达业务预期。源数据的唯一性需要另外保证。</p>':'')
+}
+function linkLocation(d){
+ return '<div class="project-pick">'+select('location','存放 Link Type 的项目',opts(projects),d.location)+'<button id="browseProjects" type="button" aria-expanded="false" aria-controls="projectList">浏览项目</button></div><div class="project-list" id="projectList" hidden>'+projects.map(p=>'<button type="button" data-project="'+esc(p)+'">'+esc(p)+'</button>').join('')+'</div><details class="link-permissions"><summary>权限说明</summary><p>项目位置用于组织关系定义。真实 Foundry 环境按项目和对象数据源配置访问权限，本地演示使用模拟权限。</p></details><div class="link-review">'+topology(d)+'<p>'+esc(d.forward)+' ↔ '+esc(d.reverse)+'</p></div>'
+}
+function linkCatalog(){
+ const existing=Object.entries(state.links).filter(([k])=>!published.some(x=>x.mode==='fk'&&fkSource(x)==='Lease'&&x.end===k)).map(([k,field])=>['Lease → '+k,'外键',field,'租赁沙盒 / Ontology'])
+ const rows=[...existing,...published.map(x=>[x.forward+' ↔ '+x.reverse,modes[x.mode][0],x.api+' / '+x.reverseApi,x.location])]
+ return '<section class="link-library"><div class="library-top"><div><h1>Link Types</h1><p class="muted">定义租客、房屋与租约的关系，并查看发布后的实例。</p></div>'+btn('newLinkType',linkDraft.step?'继续配置 Link Type':'新建 Link Type')+'</div>'+(rows.length?table(['关系','方式','键 / API','项目'],rows):'<p class="empty-library">暂无已发布关系。创建两个对象类型后，可从「新建 Link Type」开始。</p>')+published.map(x=>'<details class="saved-link"><summary>'+esc(x.forward)+' ↔ '+esc(x.reverse)+' · 实例查询</summary>'+linkPreview(x)+'</details>').join('')+'</section>'
+}
+linkPage=function(){
+ const d=linkDraft
+ const stages=[linkChoices,linkResources,linkNaming,linkLocation]
+ const staged=pending?'<section class="pending-link"><div><strong>待保存 '+esc(pending.forward)+'</strong><p class="muted">'+esc(pending.location)+' · '+esc(modes[pending.mode][0])+'</p></div><div class="pending-buttons"><button id="editPendingLink" type="button">继续编辑</button>'+btn('publishLink','保存到 Ontology')+'</div></section>':''
+ const dialog=linkOpen?'<dialog id="linkWizard" aria-labelledby="linkWizardTitle"><div class="link-dialog-head"><h2 id="linkWizardTitle">新建 Link Type</h2><button id="closeLinkWizard" type="button" aria-label="关闭向导">×</button></div><div class="link-dialog-body"><ol class="task-steps">'+linkNames.map((name,i)=>'<li '+(d.step===i?'aria-current="step"':'')+'><span>'+(i<d.step?'✓':i+1)+'</span>'+name+'</li>').join('')+'</ol><div class="link-work-area"><div class="step-title">步骤 '+(d.step+1)+' / 4</div><h3>'+linkNames[d.step]+'</h3><p class="muted">'+linkDescriptions[d.step]+'</p>'+stages[d.step](d)+'</div></div><div class="wizard-message" id="linkMessage" role="status"></div><div class="link-dialog-foot"><a href="https://www.palantir.com/docs/foundry/object-link-types/create-link-type/" target="_blank" rel="noopener noreferrer">查看官方文档</a><div><button id="linkBack" type="button" '+(d.step===0?'disabled':'')+'>上一步</button>'+btn('linkNext',d.step===3?'提交':'下一步')+'</div></div></dialog>':''
+ return (linkOpen?'<div id="linkDialogHost">'+dialog+'</div>':'')+staged+linkCatalog()
+}
+function saveCurrentInputs(d){
+ for(const k of ['forward','reverse','api','reverseApi','location'])if($(k))d[k]=$(k).value.trim()
+}
+function syncEdges(d){
+ d.leftEdge=state.links[d.left]??''
+ d.rightEdge=state.links[d.right]??''
+}
+function validateNames(d){
+ if(!d.forward||!d.reverse||![d.api,d.reverseApi].every(n=>/^[a-z][A-Za-z0-9]{0,99}$/.test(n)))throw Error('请填写双向名称。API 名为 1–100 个字母或数字，以小写字母开头。')
+ const used=published.filter(x=>!(x.mode==='fk'&&d.mode==='fk'&&fkSource(x)===fkSource(d)&&x.end===d.end))
+ const [left,right]=pair(d)
+ const names=[[left,d.api],[right,d.reverseApi]]
+ if(used.some(x=>pair(x).some((end,index)=>names.some(([type,name])=>type===end&&name===[x.api,x.reverseApi][index]))))throw Error('同一个对象类型下的 API 名必须唯一。')
+}
+function previewApi(d){
+ const apiEnds=pair(d)
+ for(const [i,key] of ['api','reverseApi'].entries()){
+  const quantity=cardinalities(d)[i]
+  const prefix=apiEnds[i][0].toLowerCase()+apiEnds[i].slice(1)
+  $(key+'Preview').textContent=prefix+'.'+$(key).value+(quantity==='一条'?'.get()':'.all()')
+ }
+ $('reverseQuantity').textContent=cardinalities(d)[1]
+}
+const linkChange=$('screen').onchange,linkClick=$('screen').onclick,linkInput=$('screen').oninput
+const preLinkRender=render,preLinkNotice=notice
+notice=function(message,bad=false){
+ preLinkNotice(message,bad)
+ if($('linkMessage')){$('linkMessage').textContent=message;$('linkMessage').className=bad?'wizard-message bad':'wizard-message'}
+}
+function closeLink(){
+ saveCurrentInputs(linkDraft)
+ linkOpen=false;render();$('newLinkType')?.focus()
+}
+render=function(){
+ const focusId=typeof document.activeElement?.id==='string'?document.activeElement.id:''
+ const radio=document.activeElement?.name==='linkMode'?document.activeElement.value:''
+ preLinkRender()
+ const dialog=$('linkWizard')
+ if(dialog){
+  dialog.addEventListener('cancel',event=>{event.preventDefault();closeLink()})
+  dialog.showModal()
+  const focus=focusId&&dialog.querySelector('#'+CSS.escape(focusId))
+  if(focus&&!focus.disabled)focus.focus()
+  else if(radio)dialog.querySelector('input[value="'+radio+'"]')?.focus()
+ }
+}
+$('screen').oninput=event=>{
+ if(page===2&&linkOpen&&['api','reverseApi'].includes(event.target.id))previewApi(linkDraft)
+ else linkInput?.(event)
+}
+$('screen').onchange=async event=>{
+ const d=linkDraft,e=event.target
+ if(page!==2){await linkChange(event);return}
+ if(e.name==='linkMode'){
+  const mode=e.value
+  if(mode===d.mode)return
+  Object.assign(d,newLink(),{mode})
+  if(mode==='join')Object.assign(d,{forward:'配对房屋',reverse:'配对租客',api:'matchedHouses',reverseApi:'matchedTenants'})
+  if(mode==='back')Object.assign(d,{forward:'历史租赁房屋',reverse:'历史承租人',api:'leasedHouses',reverseApi:'leaseTenants'})
+  syncEdges(d);render();return
+ }
+ if(e.id==='joinFile'&&e.files[0]){
+  try{
+   const file=e.files[0],data=parseCSV(await file.text())
+   if(d!==linkDraft||!linkOpen||d.mode!=='join')return
+   d.join={...data,name:file.name};[d.lc,d.rc]=d.join.fields;render()
+  }catch(err){notice(err.message,true)}
+  return
+ }
+ if(e.id==='linkSource'){
+  const source=e.value
+  Object.assign(d,{source,end:'Tenant',field:fkFields[source].Tenant,forward:source==='House'?'当前租客':'承租人',reverse:source==='House'?'当前租住房屋':'租约列表',api:source==='House'?'currentTenant':'tenant',reverseApi:source==='House'?'rentedHouses':'leases'})
+  render();notice('');return
+ }
+ if(['end','field','left','right','cardinality','lc','rc','leftEdge','rightEdge'].includes(e.id)){
+  d[e.id]=e.value
+  if(e.id==='end'&&fkSource(d)==='Lease')Object.assign(d,d.end==='House'?{field:'house_id',forward:'签约房屋',api:'house'}:{field:'tenant_id',forward:'承租人',api:'tenant'})
+  if(['left','right'].includes(e.id)&&d.mode==='back')syncEdges(d)
+  if(e.id==='cardinality'){previewApi(d);return}
+  render()
+ }
+}
+function loadJoinData(d,empty){
+ const fields=['tenant_id','house_id']
+ const tenants=rowsFor('Tenant').slice(0,2),houses=rowsFor('House').slice(0,2)
+ const rows=empty||!tenants.length||!houses.length?[]:tenants.map(t=>[t.id,houses[0].id])
+ if(rows.length&&houses.length>1)rows.push([tenants[0].id,houses[1].id])
+ d.join={name:empty?'空配对表':'租客与房屋样例配对',fields,rows}
+ ;[d.lc,d.rc]=d.left==='Tenant'?fields:[...fields].reverse()
+}
+$('screen').onclick=event=>{
+ if(page!==2){linkClick(event);return}
+ const d=linkDraft,id=event.target.id
+ const project=event.target.dataset.project
+ try{
+  if(project){$('location').value=project;d.location=project;$('projectList').hidden=true;$('browseProjects').setAttribute('aria-expanded','false');$('browseProjects').focus();return}
+  if(id==='newLinkType'){linkOpen=true;render();notice('');return}
+  if(id==='closeLinkWizard'){closeLink();return}
+  if(id==='editPendingLink'&&pending){linkDraft=pending;pending=null;linkOpen=true;render();notice('');return}
+  if(id==='browseProjects'){
+   const menu=$('projectList')
+   menu.hidden=!menu.hidden
+   $('browseProjects').setAttribute('aria-expanded',String(!menu.hidden))
+   if(!menu.hidden)menu.querySelector('button').focus()
+   return
+  }
+  if(id==='joinSample'||id==='joinEmpty'){loadJoinData(d,id==='joinEmpty');render();return}
+  if(id==='linkBack'&&d.step>0){saveCurrentInputs(d);d.step--;render();notice('');return}
+  if(id==='linkNext'){
+   saveCurrentInputs(d)
+   if(d.step===1)validateLink(d)
+   if(d.step===2)validateNames(d)
+   if(d.step<3){d.step++;render();notice('');return}
+   if(pending)throw Error('请先保存或编辑当前待保存的关系。')
+   if(!projects.includes(d.location))throw Error('请选择保存项目。')
+   pending=structuredClone(d);linkDraft=newLink();linkOpen=false
+   render();notice('Link Type 已提交。点击「保存到 Ontology」使其生效。');$('publishLink')?.focus()
+  }
+  if(id==='publishLink'&&pending){
+   validateLink(pending);validateNames(pending)
+   if(pending.mode==='fk'&&fkSource(pending)==='Lease')state.links[pending.end]=pending.field
+   const index=published.findIndex(item=>item.mode==='fk'&&pending.mode==='fk'&&fkSource(item)===fkSource(pending)&&item.end===pending.end)
+   if(index<0)published.push(pending);else published[index]=pending
+   pending=null;render();notice('Link Type 已保存到 Ontology。')
+  }
+ }catch(err){notice(err.message,true)}
+}
+const resetLinks=$('reset').onclick
+$('reset').onclick=()=>{linkDraft=newLink();published=[];pending=null;linkOpen=false;resetLinks()}
+</script><script>
+let meta={}, catalog={shared:[],value:[],interface:[],group:[]}, objectStep=0
+const objectSteps=['Datasource','Metadata','Properties','Actions','Save location']
+const catalogKinds={shared:'Shared Property',value:'Value Type',interface:'Interface',group:'Object Type Group'}
+const propertyTypes=['String','Integer','Double','Boolean','Date']
+const suggestedTypes={age:'Integer',building_age:'Integer',area:'Double',start:'Date',end:'Date'}
+function defaultMeta(k){
+ const saved=state.objects[k], data=state.data[k]
+ const coreMapping=saved?.mapping??schemas[k].map(field=>data.fields.includes(field)?field:'')
+ const extras=saved?.extras??data.fields.filter(field=>!coreMapping.includes(field)&&/^[A-Za-z][A-Za-z0-9_]*$/.test(field)&&!schemas[k].includes(field)).map(field=>({name:field,source:field,kind:'String'}))
+ return {
+  name:k,api:k,title:k==='Lease'?'id':'name',primary:'id',description:'',location:'租赁沙盒 / Ontology',group:'',interface:'',shared:'',value:'',actions:false,
+  ...saved,mapping:[...coreMapping],types:{...saved?.types},extras:structuredClone(extras)
+ }
+}
+function objectProperties(d,k){
+ const core=schemas[k].map((name,index)=>({name,source:d.mapping[index],kind:d.types?.[name]??suggestedTypes[name]??'String',core:true}))
+ return [...core,...(d.extras??[])]
+}
+function propertyValueMatches(kind,value){
+ const v=String(value??'')
+ if(!v)return true
+ if(kind==='Integer')return /^-?\d+$/.test(v)&&Number.isSafeInteger(Number(v))
+ if(kind==='Double')return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(v)&&Number.isFinite(Number(v))
+ if(kind==='Boolean')return /^(true|false)$/i.test(v)
+ if(kind==='Date'){
+  const date=new Date(v+'T00:00:00Z')
+  return /^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(date.valueOf())&&date.toISOString().slice(0,10)===v
+ }
+ return true
+}
+function propertyTable(d){
+ const props=objectProperties(d,type),sources=[['','选择源列'],...opts(state.data[type].fields)]
+ const nameOptions=opts([...new Set(props.map(prop=>prop.name).filter(Boolean))])
+ const primaryOptions=type==='Lease'?[['id','id · 租约编号']]:nameOptions
+ const rows=props.map(({name,source,kind,core},i)=>{
+  const propName=core?'<code>'+esc(name)+'</code>':input('extraName'+(i-schemas[type].length),'对象属性名称',name)
+  return '<tr><td>'+select('map'+i,'数据集列',sources,source)+'</td><td class="map-arrow" aria-hidden="true">→</td><td>'+propName+'</td><td>'+select('kind'+i,'属性类型',opts(propertyTypes),kind)+'</td><td id="propertyRole'+i+'" class="property-role"></td><td>'+(core?'<span class="property-fixed">业务字段</span>':'<button type="button" data-remove-property="'+(i-schemas[type].length)+'" aria-label="移除属性 '+esc(name)+'">移除</button>')+'</td></tr>'
+ }).join('')
+ return '<div class="property-intro"><div class="property-interface"><div><h3>Apply interface</h3><p>选择接口，为对象指定必须提供的属性。</p></div>'+select('objInterface','实现接口',[['','未配置'],...catalog.interface.map(x=>[x.name,x.name])],d.interface)+'</div><div class="property-toolbar"><div><h3>属性映射</h3><p>源列提供值，属性名称和类型供 Ontology 使用。</p></div>'+btn('addObjectProperty','＋ Add property')+'</div><div class="scroll property-table"><table><thead><tr><th>Source · 源列</th><th aria-label="映射方向"></th><th>Property · 对象属性</th><th>属性类型</th><th>用途</th><th>操作</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="grid property-keys">'+select('objPrimary','Primary key · 主键',primaryOptions,d.primary)+select('objTitle','Title · 显示标题',nameOptions,d.title)+'</div>'+(type==='Lease'?'<p class="muted">租约动作以 id 识别合同。可将其他源列映射到 id，合同身份由这列唯一确定。</p>':'')+'<div class="property-preview" id="objectKeyPreview" aria-live="polite"></div><details class="property-bindings"><summary>共享属性与值类型</summary><div class="grid">'+select('objShared','绑定共享属性',[['','未配置'],...catalog.shared.map(x=>[x.name,x.name])],d.shared)+select('objValue','绑定值类型',[['','未配置'],...catalog.value.map(x=>[x.name,x.name])],d.value)+'</div></details></div>'
+}
+function refreshPropertyPreview(){
+ const d=preserveObject(),props=objectProperties(d,type),data=state.data[type]
+ for(const [i,prop] of props.entries()){
+  const badges=[]
+  if(prop.name&&prop.name===d.primary)badges.push('<span class="property-badge">主键</span>')
+  if(prop.name&&prop.name===d.title)badges.push('<span class="property-badge title-badge">标题</span>')
+  $('propertyRole'+i).innerHTML=badges.join('')
+ }
+ const primary=props.find(prop=>prop.name===d.primary),title=props.find(prop=>prop.name===d.title)
+ const read=(row,prop)=>row[data.fields.indexOf(prop?.source)]??''
+ const allKeys=data.rows.map(row=>read(row,primary))
+ const duplicate=allKeys.length-new Set(allKeys).size
+ const empty=allKeys.filter(key=>!key).length
+ $('objectKeyPreview').innerHTML='<h3>对象标识预览</h3><p class="muted">'+allKeys.length+' 行 · '+duplicate+' 个重复值 · '+empty+' 个空值</p>'+table(['主键值','显示标题'],data.rows.slice(0,3).map(row=>[read(row,primary),read(row,title)]))
+}
+function validateObjectProperties(k,d){
+ const {fields,rows}=state.data[k],props=objectProperties(d,k)
+ if(props.some(p=>!/^[A-Za-z][A-Za-z0-9_]*$/.test(p.name)||['__proto__','constructor','prototype'].includes(p.name))||new Set(props.map(p=>p.name)).size!==props.length)throw Error('属性名须唯一，以字母开头，仅包含字母、数字和下划线。')
+ if(props.some(p=>!fields.includes(p.source))||new Set(props.map(p=>p.source)).size!==props.length)throw Error('请为每个属性选择不同且有效的源列。')
+ for(const prop of props){
+  const index=fields.indexOf(prop.source)
+  if(rows.some(row=>!propertyValueMatches(prop.kind,row[index])))throw Error('源列 '+prop.source+' 含有不符合 '+prop.kind+' 的值。')
+ }
+ const primary=props.find(p=>p.name===d.primary)
+ if(!primary||!props.some(p=>p.name===d.title))throw Error('请选择现有属性作为主键与标题。')
+ const keys=rows.map(row=>row[fields.indexOf(primary.source)])
+ if(keys.some(key=>!key)||new Set(keys).size!==keys.length)throw Error('主键必须非空且唯一。')
+ checkCatalog('interface',d.interface,k);checkCatalog('shared',d.shared,k)
+ const value=checkCatalog('value',d.value,k)
+ if(value){
+  const source=props.find(p=>p.name===value.field).source
+  if(rows.some(row=>!new RegExp(value.pattern).test(row[fields.indexOf(source)])))throw Error('源数据含有不符合值类型约束的记录。')
+ }
+}
+const originalObjectClick=$('screen').onclick,originalObjectChange=$('screen').onchange,originalReset=$('reset').onclick
+function catalogPage(){
+ return '<h1>Ontology 资源</h1><section><div class="row">'+select('catalogKind','资源类型',Object.entries(catalogKinds),'shared')+input('catalogName','名称','')+select('catalogField','属性名',opts([...new Set(Object.values(schemas).flat())]),'name')+input('catalogPattern','Value Type 正则约束','')+btn('addCatalog','创建资源')+'</div><p class="muted">共享属性可绑定对象属性。接口要求对象提供指定属性。值类型在保存对象与执行租约变更时验证格式。分组用于归类对象。</p></section>'+Object.entries(catalog).map(([key,items])=>'<section><h3>'+catalogKinds[key]+'</h3>'+table(['名称','属性约定','约束'],items.map(item=>[item.name,item.field,item.pattern]))+'</section>').join('')
+}
+tabs.push('Ontology 资源')
+const originalRender=render
+render=function(){
+ if(page!==6){originalRender();return}
+ $('nav').innerHTML=tabs.map((t,i)=>'<button data-page="'+i+'" '+(i===page?'aria-current="page"':'')+'>'+t+'</button>').join('')
+ $('screen').innerHTML=catalogPage()
+}
+const originalObjects=objectPage
+objectPage=function(){
+ const draft=meta[type]??defaultMeta(type), data=state.data[type]
+ const resourceOptions=kind=>[['','未配置'],...catalog[kind].map(x=>[x.name,x.name])]
+ const stages=[
+  select('type','底层数据源',opts(Object.keys(schemas)),type)+table(data.fields,data.rows),
+  '<div class="grid">'+input('objName','对象显示名称',draft.name)+input('objApi','对象 API 名称',draft.api)+input('objDesc','业务描述',draft.description)+select('objGroup','对象分组',resourceOptions('group'),draft.group)+'</div>',
+  propertyTable(draft)+(type==='House'?'<div class="note"><strong>派生属性</strong> · current_tenant_id<br>取这套房的有效租约上 tenant_id。供 House → Tenant 当前租客关系使用。</div>':''),
+  '<label class="choice"><input id="objActions" type="checkbox" '+(draft.actions?'checked':'')+' '+(type==='Lease'?'':'disabled')+'>为 Lease 生成租约动作（签约、转让、结清）</label>',
+  input('objLocation','保存项目',draft.location)+table(['对象','API 名','主键','显示标题','分组'],[[draft.name,draft.api,draft.primary,draft.title,draft.group||'—']])
+ ]
+ return '<h1>Object Types</h1><ol class="link-steps">'+objectSteps.map((title,i)=>'<li '+(i===objectStep?'aria-current="step"':'')+'>'+(i+1)+' '+title+'</li>').join('')+'</ol><section><h2>'+objectSteps[objectStep]+'</h2>'+stages[objectStep]+'<div class="flow-controls"><button id="objectBack" '+(objectStep===0?'disabled':'')+'>上一步</button>'+btn('objectNext',objectStep===4?'保存到 Ontology':'下一步')+'</div></section><section><h3>已保存对象</h3>'+table(['类型','显示名称','主键','标题属性','分组'],Object.keys(state.objects).map(k=>{const o=state.objects[k];return [k,o.name??k,o.primary??'id',o.title??defaultMeta(k).title,o.group||'—']}))+'</section>'
+}
+function preserveObject(){
+ const d=meta[type]??=defaultMeta(type)
+ for(const [key,id] of Object.entries({name:'objName',api:'objApi',description:'objDesc',title:'objTitle',primary:'objPrimary',group:'objGroup',interface:'objInterface',shared:'objShared',value:'objValue',location:'objLocation'}))if($(id))d[key]=$(id).value.trim()
+ if($('map0')){
+  d.mapping=schemas[type].map((_,i)=>$('map'+i).value)
+  d.types=Object.fromEntries(schemas[type].map((field,i)=>[field,$('kind'+i).value]))
+  d.extras=d.extras.map((_,i)=>({name:$('extraName'+i).value.trim(),source:$('map'+(i+schemas[type].length)).value,kind:$('kind'+(i+schemas[type].length)).value}))
+ }
+ if($('objActions'))d.actions=$('objActions').checked
+ return d
+}
+function checkCatalog(kind,name,typeKey){
+ const entry=catalog[kind].find(x=>x.name===name)
+ if(entry&&!schemas[typeKey].includes(entry.field))throw Error('当前对象缺少资源所需属性 '+entry.field+'。')
+ return entry
+}
+const priorPlan=plan
+plan=function(kind,input){
+ const result=priorPlan(kind,input)
+ const entry=checkCatalog('value',state.objects.Lease?.value,'Lease')
+ if(entry&&!new RegExp(entry.pattern).test(String(result.after[entry.field])))throw Error('租约变更违反值类型 '+entry.name+'。')
+ return result
+}
+$('screen').onclick=e=>{
+ const id=e.target.id
+ try{
+  if(id==='addCatalog'){
+   const kind=$('catalogKind').value,name=$('catalogName').value.trim(),field=$('catalogField').value,pattern=$('catalogPattern').value.trim()
+   if(!name||catalog[kind].some(x=>x.name===name))throw Error('请输入唯一名称。')
+   if(kind==='value'){if(!pattern)throw Error('值类型需要格式约束。');new RegExp(pattern)}
+   catalog[kind].push({name,field:kind==='group'?'':field,pattern:kind==='value'?pattern:''});render();notice('已创建 '+name);return
+  }
+  if(page===1&&objectStep===2&&(id==='addObjectProperty'||e.target.dataset.removeProperty!==undefined)){
+   const d=preserveObject(),props=objectProperties(d,type)
+   if(id==='addObjectProperty'){
+    const source=state.data[type].fields.find(field=>!props.some(prop=>prop.source===field))??''
+
+    let name=/^[A-Za-z][A-Za-z0-9_]*$/.test(source)?source:'property'
+    const base=name
+    for(let i=2;props.some(prop=>prop.name===name);i++)name=base+'_'+i
+    d.extras.push({name,source,kind:'String'})
+   }else{
+    const removed=d.extras.splice(Number(e.target.dataset.removeProperty),1)[0]
+    if(removed.name===d.primary)d.primary='id'
+    if(removed.name===d.title)d.title='id'
+   }
+   render();notice('');return
+  }
+  if(id!=='objectNext'&&id!=='objectBack'){originalObjectClick(e);return}
+  const d=preserveObject()
+  if(id==='objectBack'){objectStep--;render();return}
+  if(objectStep===1&&(!d.name||! /^[A-Za-z][A-Za-z0-9]*$/.test(d.api)))throw Error('请输入显示名称和有效 API 名。')
+  if(objectStep===2)validateObjectProperties(type,d)
+  if(objectStep<4){objectStep++;render();return}
+  if(!d.location)throw Error('请填写项目。')
+  const prior=state.objects[type]
+  if(leases().length&&(!prior||JSON.stringify(prior.mapping)!==JSON.stringify(d.mapping)||(prior.primary??'id')!==d.primary||((d.primary!=='id'&&d.extras.some(x=>x.name===d.primary))&&JSON.stringify(prior.extras?.find(x=>x.name===d.primary))!==JSON.stringify(d.extras.find(x=>x.name===d.primary)))))throw Error('存在租约时无法重新映射对象。')
+  if(type==='Lease'&&!leases().length&&state.data.Lease.rows.length){
+   const source=state.data.Lease
+   const imported=source.rows.map(row=>mappedObject('Lease',d,source,row))
+   const active=imported.filter(l=>l.status==='有效')
+   if(imported.some(l=>!rowsFor('Tenant').some(t=>t.id===l.tenant_id)||!rowsFor('House').some(h=>h.id===l.house_id)||!(days(l.start,l.end)>0)||!['有效','已结束'].includes(l.status))||new Set(active.map(l=>l.house_id)).size!==active.length)throw Error('租约数据的外键、日期、状态或房屋占用有误。')
+   state.leases=imported
+  }
+  state.objects[type]=structuredClone(d)
+  if(type==='Lease'&&d.actions)for(const [k,name] of Object.entries(ops))state.actions[k]??={name,expr:''}
+  objectStep=0;render();notice('对象类型已保存。')
+ }catch(error){notice(error.message,true)}
+}
+$('screen').onchange=event=>{if(page===1&&event.target.id==='type')objectStep=0;return originalObjectChange(event)}
+$('reset').onclick=()=>{meta={};catalog={shared:[],value:[],interface:[],group:[]};objectStep=0;originalReset()}
+render()
+</script><script>
+let functions=[],actor='manager',configOp='sign'
+const roles=[['manager','运营经理'],['agent','租赁专员'],['viewer','只读访客']]
+const functionRef=f=>f.name+'@'+f.version
+const coreActionPage=actionPage
+const coreScreenClick=$('screen').onclick
+const coreScreenChange=$('screen').onchange
+const coreReset=$('reset').onclick
+const basePlan=plan
+const baseRentPage=rentPage
+tabs.push('Functions 函数')
+actionPage=function(){
+ const a=state.actions[op]
+ return coreActionPage().replace('<div id="exprBox"','<div class="grid">'+select('actionRole','提交角色',[['any','所有演示角色'],...roles],a?.role??'any')+select('actionFunction','绑定已发布校验函数',[['','未绑定'],...functions.map(f=>[functionRef(f),functionRef(f)])],a?.functionRef??'')+'</div><div id="exprBox"')
+}
+rentPage=function(){
+ return baseRentPage().replace('<h1>租赁业务台</h1>','<h1>租赁业务台</h1><section>'+select('actor','模拟提交人角色',roles,actor)+'</section>')
+}
+const coreRender=render
+render=function(){
+ if(page!==7){coreRender();return}
+ $('nav').innerHTML=tabs.map((t,i)=>'<button data-page="'+i+'" '+(i===page?'aria-current="page"':'')+'>'+t+'</button>').join('')
+ $('screen').innerHTML='<h1>Functions</h1><p>发布可复用的本地校验表达式。Action 绑定指定版本，试运行和正式执行使用同一版本。</p><section><div class="row">'+input('functionName','函数名称','minimumRemainingTerm')+input('functionExpr','校验表达式','remainingDays >= 365')+btn('publishFunction','发布新版本')+'</div><p class="muted">输入变量可选 remainingDays、durationDays 或 tenantAge。表达式返回布尔值。</p></section><section>'+table(['名称','版本','条件'],functions.map(f=>[f.name,f.version,f.expr]))+'</section>'
+}
+plan=function(kind,input){
+ const definition=state.actions[kind]
+ if(definition?.role&&definition.role!=='any'&&definition.role!==actor)throw Error('当前角色不满足此 Action 的提交条件。')
+ const result=basePlan(kind,input)
+ if(definition?.functionRef){
+  const fn=functions.find(f=>functionRef(f)===definition.functionRef)
+  const lease=result.after,tenant=rowsFor('Tenant').find(t=>t.id===lease.tenant_id)
+  if(!fn||!checkExpression(fn.expr,{remainingDays:days(input.date,lease.end),durationDays:days(lease.start,lease.end),tenantAge:Number(tenant?.age)}))throw Error('校验函数 '+definition.functionRef+' 未通过。')
+ }
+ return result
+}
+$('screen').onclick=e=>{
+ const id=e.target.id
+ try{
+  if(id==='publishFunction'){
+   const name=$('functionName').value.trim(),expr=$('functionExpr').value.trim()
+   if(!/^[a-z][A-Za-z0-9]*$/.test(name)||!expr)throw Error('请填写以小写字母开头的函数名称和校验表达式。')
+   checkExpression(expr,{})
+   const version=1+functions.filter(f=>f.name===name).length
+   functions.push({name,version,expr});render();notice('已发布 '+name+'@'+version);return
+  }
+  if(id==='saveAction'){
+   const role=$('actionRole').value,ref=$('actionFunction').value,name=$('actionName').value.trim()
+   const expr=$('guard').value==='custom'?$('expr').value.trim():''
+   if(!name||($('guard').value==='custom'&&!expr))throw Error('请填写动作名称与所选校验条件。')
+   checkExpression(expr,{})
+   state.actions[op]={name,expr,role,functionRef:ref}
+   render();notice('已保存 '+name);return
+  }
+  coreScreenClick(e)
+ }catch(error){notice(error.message,true)}
+}
+$('screen').onchange=e=>{
+ if(e.target.id==='actor'){actor=e.target.value;render();notice('');return}
+ return coreScreenChange(e)
+}
+$('reset').onclick=()=>{functions=[];actor='manager';coreReset()}
+render()
+</script><style>
+.feature{background:#e1f3ee;border-color:#8fcabb}.feature h2{color:#124e43}.feature ol{padding-left:22px}.feature button{margin-top:8px}.test-cases{display:flex;flex-wrap:wrap;gap:8px}.test-cases button{background:#f2f8f7}
+</style>
+<script>
+let guidedTransfer=false
+const baseDataset=datasetPage, baseBusiness=rentPage, baseClick=$('screen').onclick, baseReset=$('reset').onclick
+datasetPage=function(){
+ return baseDataset().replace('</p><section>','</p><section class="feature"><h2>实操案例 · 张三转租给李四</h2><p>已备好有效租约 L001、转让 Action 和版本固定的校验函数。</p><div class="row"><span>运营经理可提交 · 剩余租期至少 365 天</span>'+btn('launchTransfer','打开转租实操')+'</div></section><section>')
+}
+rentPage=function(){
+ const html=baseBusiness()
+ if(!guidedTransfer||op!=='transfer'||!leases().some(l=>l.id==='L001'&&l.status==='有效'&&l.tenant_id==='T01'&&l.house_id===selectedHouse))return html
+ return html.replace('<div id="result"></div>','<section class="feature"><h3>规则验证</h3><p>当前租约 L001。从张三转给李四，先试运行，再执行。</p><div class="test-cases"><button id="tryViewer">验证只读角色</button><button id="tryShort">验证剩余 364 天</button><button id="tryAllowed">验证剩余 365 天</button></div></section><div id="result"></div>')
+}
+$('screen').onclick=event=>{
+ const id=event.target.id
+ if(id==='launchTransfer'){
+  if(Object.keys(state.objects).length||leases().length||functions.length){notice('现有配置仍在使用。点「重置案例」后可加载转租实操。',true);return}
+  configure()
+  const input={house:'H01',tenant:'T01',date:'2023-01-01',end:'2026-01-01'}
+  const {after,action}=plan('sign',input)
+  state.leases.push(after);state.nextId++
+  state.logs.unshift([action.name,after.id,input.date,'—',after.tenant_id,after.status])
+  functions.push({name:'minimumRemainingTerm',version:1,expr:'remainingDays >= 365'})
+  state.actions.transfer.role='manager'
+  state.actions.transfer.functionRef='minimumRemainingTerm@1'
+  guidedTransfer=true;selectedHouse=after.house_id;op='transfer';actor='manager';render()
+  $('tenant').value='T02'
+  notice('已加载 L001。选择一项规则验证，或直接试运行。')
+  return
+ }
+ if(['tryViewer','tryShort','tryAllowed'].includes(id)){
+  const demoLease=leases().find(l=>l.id==='L001'&&l.status==='有效'&&l.tenant_id==='T01')
+  if(!demoLease){notice('转租实操只适用于张三正在承租的 L001。',true);return}
+  selectedHouse=demoLease.house_id;actor=id==='tryViewer'?'viewer':'manager'
+  render()
+  $('tenant').value='T02'
+  $('date').value=id==='tryShort'?'2025-01-02':'2025-01-01'
+  $('preview').click()
+  return
+ }
+ baseClick(event)
+}
+$('reset').onclick=()=>{guidedTransfer=false;baseReset()}
+render()
+</script><script>
+const actionStages=['Action type','Mapping','Metadata','Submission criteria','Save location']
+let actionStep=0, actionDraft=null
+const savedActionPage=actionPage
+const wizardClick=$('screen').onclick
+const wizardChange=$('screen').onchange
+const wizardReset=$('reset').onclick
+const allFields={sign:[['房屋','house_id'],['租客','tenant_id'],['起租日','start'],['到期日','end']],transfer:[['接手租客','tenant_id']],expire:[['结清状态','status']]}
+function loadActionDraft(){
+ const a=state.actions[op]
+ return {name:a?.name??ops[op],role:a?.role??'any',functionRef:a?.functionRef??'',expr:a?.expr??'',location:a?.location??'租赁沙盒 / Ontology',mapping:a?.mapping??{},description:a?.description??''}
+}
+actionPage=function(){
+ const d=actionDraft??=loadActionDraft()
+ const choices=allFields[op].map(([label,field])=>[label,field,d.mapping[field]??'parameter'])
+ const mapping=choices.map(([label,field,source])=>{
+  if(field==='tenant_id')return '<div class="row">'+select('mapping_'+field,field+' 来源',[['parameter',label+'参数'],['fixed','静态租客 ID']],source)+select('fixedTenant','静态租客',rowsFor('Tenant').map(t=>[t.id,t.name]),d.mapping.fixedTenant)+'</div>'
+  return '<p><code>'+field+'</code> ← '+(field==='status'?'静态值：已结束':esc(label)+'参数')+'</p>'
+ }).join('')
+ const stages=[
+  select('op','租约规则',Object.entries(ops),op)+'<div class="note">目标对象 Lease · '+(op==='sign'?'Create Object':'Modify Object')+(op==='expire'?' · 更新租约状态':op==='transfer'?' · 更新承租人外键':' · 创建历史可追踪的租约')+'</div>',
+  '<p>选择哪些值来自表单参数，哪些值由动作固定写入。动作执行前会校验所选租客。</p>'+mapping,
+  '<div class="grid">'+input('actionName','显示名称',d.name)+input('actionDescription','业务说明',d.description)+'</div>',
+  '<div class="grid">'+select('actionRole','允许提交的角色',[['any','所有演示角色'],...roles],d.role)+select('actionFunction','已发布的校验函数版本',[['','未绑定'],...functions.map(f=>[functionRef(f),functionRef(f)])],d.functionRef)+input('actionExpr','附加条件表达式（可留空）',d.expr)+'</div><div class="note">始终检查租期、房源占用和租客有效性。试运行和执行采用相同校验。</div>',
+  input('actionLocation','保存项目',d.location)+table(['名称','动作规则','提交角色','函数'],[[d.name,ops[op],d.role,d.functionRef||'—']])
+ ]
+ return '<h1>Action Types</h1><ol class="link-steps">'+actionStages.map((name,i)=>'<li '+(i===actionStep?'aria-current="step"':'')+'>'+(i+1)+' '+name+'</li>').join('')+'</ol><section><h2>'+actionStages[actionStep]+'</h2>'+stages[actionStep]+'<div class="flow-controls"><button id="actionBack" '+(actionStep===0?'disabled':'')+'>上一步</button>'+btn('actionNext',actionStep===4?'保存 Action Type':'下一步')+'</div></section><section><h3>已保存动作</h3>'+table(['规则','名称','项目','校验函数'],Object.entries(state.actions).map(([k,a])=>[ops[k],a.name,a.location||'租赁沙盒 / Ontology',a.functionRef||'—']))+'</section>'
+}
+function captureAction(){
+ const d=actionDraft
+ const fields={actionName:'name',actionDescription:'description',actionRole:'role',actionFunction:'functionRef',actionExpr:'expr',actionLocation:'location'}
+ for(const [id,key] of Object.entries(fields))if($(id))d[key]=$(id).value.trim()
+ if($('mapping_tenant_id')){
+  d.mapping={tenant_id:$('mapping_tenant_id').value,fixedTenant:$('fixedTenant').value}
+  if(d.mapping.tenant_id==='fixed'&&!d.mapping.fixedTenant)throw Error('请选择一个已创建的租客。')
+ }
+ return d
+}
+const withCriteria=plan
+plan=function(kind,input){
+ const mapping=state.actions[kind]?.mapping
+ const effective=mapping?.tenant_id==='fixed'?{...input,tenant:mapping.fixedTenant}:input
+ return withCriteria(kind,effective)
+}
+$('screen').onclick=e=>{
+ const id=e.target.id
+ if(page!==3||!['actionBack','actionNext'].includes(id)){wizardClick(e);return}
+ try{
+  const d=captureAction()
+  if(id==='actionBack'){actionStep=Math.max(0,actionStep-1);render();return}
+  if(actionStep===0&&(!state.objects.Lease||!state.links.Tenant||!state.links.House))throw Error('先创建 Lease 对象并发布两条外键关系。')
+  if(actionStep===2&&!d.name)throw Error('请输入动作名称。')
+  if(actionStep===3)checkExpression(d.expr,{})
+  if(actionStep<4){actionStep++;render();notice('');return}
+  if(!d.location)throw Error('请输入保存项目。')
+  state.actions[op]=structuredClone(d);actionStep=0;actionDraft=null
+  render();notice('已保存 '+d.name+'。可进入租赁业务台试运行。')
+ }catch(err){notice(err.message,true)}
+}
+$('screen').onchange=e=>{
+ if(page===3&&e.target.id==='op'){
+  op=e.target.value;actionStep=0;actionDraft=null;render();return
+ }
+ return wizardChange(e)
+}
+const wizardNav=$('nav').onclick
+$('nav').onclick=e=>{
+ if(e.target.closest('[data-page]')){actionStep=0;actionDraft=null}
+ wizardNav(e)
+}
+$('reset').onclick=()=>{actionStep=0;actionDraft=null;wizardReset()}
+const businessWithRules=rentPage
+rentPage=function(){
+ const html=businessWithRules(),mapping=state.actions[op]?.mapping
+ if(mapping?.tenant_id!=='fixed')return html
+ const tenant=rowsFor('Tenant').find(t=>t.id===mapping.fixedTenant)
+ return html.replace(/<label>(租客|接手租客)<select id="tenant"[\s\S]*?<\/select><\/label>/,'<label>承租人（静态配置）<input id="tenant" value="'+esc(mapping.fixedTenant)+'" readonly></label>').replace('当前定义 ','静态承租人 '+esc(tenant?.name||mapping.fixedTenant)+' · 当前定义 ')
+}
+render()
+</script><style>
+:root{--line:#cbdbe3;--accent:#17695f;--selected:#d7eee7}
+body{background:#edf3f6;color:#192e3a}
+header{min-height:58px;background:#182d3b;padding:9px 24px}
+header button{background:#284554;border-color:#557586;color:white}
+nav{background:#dce7ed;padding:18px 10px}
+nav button{background:transparent;border-color:transparent}
+nav button[aria-current]{background:#f9ffff;border-color:#b7cfce;box-shadow:inset 3px 0 var(--accent)}
+article{padding:22px clamp(14px,3vw,36px)}
+#screen:has(>.link-steps){display:grid;grid-template-columns:minmax(175px,220px) minmax(0,1fr)}
+#screen:has(>.link-steps)>h1{grid-column:1/-1;background:#233f50;color:white;margin:0;padding:13px 18px;border-radius:8px 8px 0 0;font-size:21px}
+#screen:has(>.link-steps)>section{grid-column:1/-1;margin:14px 0 0}
+#screen:has(>.link-steps)>.link-steps+section{grid-column:2;display:flex;flex-direction:column;margin:0;min-height:375px;border-radius:0 0 8px 0;padding:20px 22px}
+.link-steps{display:flex;flex-direction:column;gap:0;margin:0;padding:10px 0;background:#e2edf2;border:1px solid var(--line);border-top:0;border-right:0;border-radius:0 0 0 8px}
+.link-steps li{padding:12px 14px;background:transparent;border-radius:0;border-bottom:1px solid #cfdee5;font-size:14px}
+.link-steps li[aria-current]{box-shadow:inset 3px 0 var(--accent);background:var(--selected)}
+#screen .choice{border-radius:6px;background:#f7fafb}
+#screen .choice:has(input:checked){background:#e6f5f1;border-color:#80b9ad}
+#screen .flow-controls{margin-top:auto;padding-top:15px;border-top:1px solid #e0e9ee;justify-content:flex-end}
+.flow-controls button{min-width:85px}.flow-controls .primary{min-width:115px}
+#screen:has(>.link-steps) .grid{row-gap:14px;margin-bottom:14px}
+#screen:has(>.link-steps) label{margin-bottom:9px}
+#screen:has(>.link-steps) h2{font-size:21px}
+@media(max-width:730px){#screen:has(>.link-steps){grid-template-columns:1fr}#screen:has(>.link-steps)>.link-steps+section{grid-column:1;border-radius:0 0 8px 8px;padding:14px}.link-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border-radius:0;border-right:1px solid var(--line)}.link-steps li{padding:7px;font-size:12px}}
+</style><style>
+.link-library{border-radius:12px;padding:23px}.library-top,.pending-link{display:flex;align-items:center;justify-content:space-between;gap:18px}.library-top h1{margin-bottom:2px}.library-top button,.pending-buttons button{white-space:nowrap}.empty-library{padding:24px 15px;margin:15px 0 0;background:#f2f7f8;border:1px dashed #b3cbd2;border-radius:8px;color:#456274}.pending-link{background:#e4f5ed;border-color:#91bfae}.pending-link p{margin:0}.pending-buttons{display:flex;gap:8px;flex-wrap:wrap}.saved-link{padding:8px 0;border-bottom:1px solid #e2ebee}.saved-link summary,.link-permissions summary{cursor:pointer;font-weight:650}.saved-link div.scroll{margin:8px 0}
+#linkWizard{width:min(1080px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 30px);padding:0;border:1px solid #96aeb9;border-radius:15px;box-shadow:0 25px 80px #1329315c;color:#18323d;background:#fdffff;overflow:hidden}
+#linkWizard[open]{display:flex;flex-direction:column}#linkWizard::backdrop{background:#132d3bec;opacity:.73}
+.link-dialog-head,.link-dialog-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-bottom:1px solid #cfdee4;background:#173745;color:#f0fffd}
+.link-dialog-head h2{font-size:18px;margin:0}.link-dialog-head button{color:#e5f7f4;background:#264b58;border-color:#507582;font-size:21px;line-height:1;min-height:44px;min-width:44px}
+.link-dialog-body{display:grid;grid-template-columns:220px minmax(0,1fr);flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.task-steps{padding:16px 8px;margin:0;border-right:1px solid #d2e1e4;background:#eaf3f4;list-style:none}
+.task-steps li{display:flex;align-items:center;gap:9px;padding:10px 8px;margin-bottom:4px;border-radius:8px;color:#2b4e5a;font-size:14px}
+.task-steps li span{display:grid;place-items:center;flex:none;width:25px;height:25px;border-radius:7px;background:#d3e5e7;color:#254e59;font-size:12px;font-weight:700}
+.task-steps li[aria-current]{background:#cceae1;font-weight:750;color:#134c43}
+.task-steps li[aria-current] span{background:#156c5d;color:white}
+.link-work-area{padding:20px 24px 24px;min-width:0}
+.step-title{color:#367265;font-size:12px;font-weight:700;letter-spacing:.04em}
+.link-work-area h3{font-size:21px;margin:1px 0 3px}.match-panel h3{font-size:16px;margin:0}
+.link-choices{padding:0;border:0;margin:12px 0 0}
+.relationship-option{border:1px solid #d3e2e6;border-radius:10px;background:#fbfefe;margin-bottom:8px;padding:0}
+.relationship-option.selected{background:#edf8f4;border-color:#90c2b4}
+.relationship-option label{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;cursor:pointer;padding:12px 11px;margin:0}
+.relationship-option label input{min-height:0;width:17px;height:17px;margin-top:4px;accent-color:#156c5d}
+.relationship-option strong,.relationship-option small{display:block}
+.relationship-option small{font-size:13px;color:#456372}
+.relation-badge{background:#dcefe9;color:#165549;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:750;white-space:nowrap}
+.link-topology{display:flex;align-items:center;justify-content:center;gap:5px;min-height:76px;margin:0;background:#e7f1f3;background-image:radial-gradient(#b4cbd1 1px,transparent 1px);background-size:13px 13px;padding:10px;border-radius:8px}
+.relationship-option>.link-topology{margin:0 11px 10px}
+.link-node{display:block;flex:0 1 164px;min-width:0;padding:6px 8px;background:#fff;border:1px solid #9abfc1;border-radius:7px;text-align:center;overflow-wrap:anywhere}
+.link-node strong,.link-node small{display:block}.link-node small{font-size:11px;color:#3b6270}
+.link-wire{position:relative;width:44px;flex:0 1 44px;min-width:12px;height:2px;background:#478b87}
+.link-wire::before,.link-wire::after{position:absolute;top:-2px;content:"";width:6px;height:6px;border-radius:50%;background:#478b87}.link-wire::before{left:0}.link-wire::after{right:0}
+.link-canvas,.direction,.link-review{border:1px solid #c9dfe4;border-radius:9px;padding:11px;background:#f5fafb}
+.link-endpoints{margin-top:12px}.link-endpoints.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.link-work-area label{min-width:0;font-size:13px;font-weight:600}
+.link-work-area input,.link-work-area select{min-width:0;width:100%;font-size:14px}.link-work-area select{padding:8px}
+.link-key{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 7px;margin-top:5px;background:#e9f2f4;border:1px solid #c2d8df;border-radius:6px}.link-key small{width:100%;color:#496977}.link-key code{overflow-wrap:anywhere}
+.dataset-pick{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0;padding:10px;background:#e9f4f4;border-radius:7px}
+.dataset-pick>div{flex:auto}.dataset-pick p{margin:0}.file-pick{display:block;max-width:100%}
+.file-pick input{display:block;width:min(100%,245px);background:#fff;margin-top:4px}
+.match-panel{margin-top:13px}.match-summary{color:#275f53;margin-bottom:5px;font-size:13px}
+.direction-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:12px 0}
+.direction-head{display:flex;justify-content:space-between;align-items:center;gap:5px;margin-bottom:6px}.direction label{margin-bottom:8px}
+.api-preview{display:block;overflow-wrap:anywhere;color:#145a50;background:#e0f0ea;padding:5px 8px;border-radius:5px}
+.project-pick{display:flex;align-items:end;gap:8px;margin:14px 0 9px}.project-pick label{flex:1}
+.project-list{padding:9px;border:1px solid #c9dfe4;border-radius:7px;background:#f5fafb}
+.project-list button{display:block;width:100%;text-align:left;margin:3px 0}
+.link-permissions{padding:10px;background:#e9f2f4;border-radius:7px;margin:9px 0}.link-permissions p{margin:6px 0 0}
+.link-review p{margin:7px 0 0;text-align:center}
+.link-dialog-foot{border-top:1px solid #d2e1e4;border-bottom:0;background:#ecf5f5;color:#174c53}.link-dialog-foot>div{display:flex;gap:8px}
+.link-dialog-foot a{color:#165e55;font-size:13px}.wizard-message{padding:6px 17px;color:#18594e;background:#e8f3ef}.wizard-message.bad{background:#ffede2;color:#7e2d20}.wizard-message:empty{display:none}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:710px){
+ #linkWizard{width:calc(100vw - 14px)}.link-dialog-body{grid-template-columns:1fr}.task-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:5px;border-right:0;border-bottom:1px solid #d2e1e4}.task-steps li{font-size:12px;padding:5px 4px;margin:0}
+ .link-work-area{padding:13px}.direction-grid{grid-template-columns:1fr}.link-endpoints.three{grid-template-columns:1fr}.library-top,.pending-link{align-items:flex-start;flex-direction:column}.relationship-option label{grid-template-columns:auto minmax(0,1fr)}.relationship-option label .relation-badge{grid-column:2;justify-self:start}.link-topology{padding:6px}.link-node{padding:5px 3px;font-size:12px}.link-node small{font-size:10px}
+}
+</style><script>
+const renderWithLinks=render
+render=function(){
+ renderWithLinks()
+ if(page===1&&objectStep===2)refreshPropertyPreview()
+}
+const propertyChange=$('screen').onchange
+$('screen').onchange=event=>{
+ const id=event.target.id
+ if(page===1&&objectStep===2){
+  if(id.startsWith('extraName')){
+   const prior=meta[type]
+   const before=prior?.extras[Number(id.slice(9))]?.name
+   const d=preserveObject(),after=d.extras[Number(id.slice(9))]?.name
+   if(before!==after){if(d.primary===before)d.primary=after||'id';if(d.title===before)d.title=after||'id';render();return}
+  }
+  if($('objectKeyPreview'))refreshPropertyPreview()
+ }
+ return propertyChange(event)
+}
+render()
+</script>
+<style>
+.property-intro{display:grid;gap:12px;padding-top:4px;margin-bottom:16px}
+.property-intro h3{font-size:15px;margin:0 0 2px}.property-intro p{margin:0;color:#496472;font-size:13px}
+.property-interface,.property-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}.property-interface{background:#eaf4f4;border:1px solid #c3dfe1;padding:10px 12px;border-radius:8px}
+.property-interface label{min-width:190px;margin:0!important;font-size:12px}.property-interface select{padding:5px 8px;min-height:36px}.property-toolbar button{white-space:nowrap}
+.property-table{border:1px solid #cbdde5;border-radius:8px}.property-table table{min-width:590px}.property-table td,.property-table th{padding:6px 8px}.property-table th{font-size:13px;background:#eaf2f6}.property-table td:nth-child(1),.property-table td:nth-child(4){width:23%}.property-table td:nth-child(3){min-width:110px}.property-table td:last-child{width:74px}.property-table tr:last-child td{border-bottom:0}
+#screen .property-table label{margin:0;font-size:0;gap:0}.property-table select,.property-table input{font-size:13px;min-height:36px;width:100%;padding:5px 7px}.property-table button{min-height:34px;padding:4px 8px;font-size:12px}.map-arrow{color:#397971;font-weight:700}.property-fixed{color:#52717e;font-size:12px}
+.property-badge{display:inline-block;color:#126052;background:#d9eee8;font-size:11px;font-weight:700;border-radius:5px;padding:2px 6px;margin-right:4px}.title-badge{color:#465399;background:#e9edfa}
+#screen .property-keys{margin:0;padding:10px 12px;border:1px solid #cbdde5;border-radius:8px;background:#f7fbfc}.property-keys label,.property-bindings label{font-size:13px;font-weight:650}.property-keys select{width:100%}
+.property-preview{display:grid;gap:3px;border-left:3px solid #64a196;padding:6px 10px}.property-preview table td,.property-preview table th{padding:4px 8px;font-size:13px}
+.property-bindings{padding:8px 12px;border:1px solid #d1e0e6;border-radius:7px}.property-bindings summary{cursor:pointer;font-size:13px;font-weight:650}
+@media(max-width:720px){.property-interface{align-items:stretch;flex-direction:column}.property-interface label{min-width:0}.property-toolbar{align-items:flex-start}.property-toolbar button{white-space:normal}}
+</style><style>
+.house-picker{border-color:#aacac9;background:#f9fdfd}
+.house-picker-top{display:flex;justify-content:space-between;align-items:center;gap:16px}.house-picker-top p{margin-bottom:0}.house-picker-top label{min-width:min(100%,320px);font-weight:700}.house-picker select{width:100%;background:white}
+.house-context{margin-top:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border-top:1px solid #cbdde1;padding-top:10px}
+.house-context small,.house-context strong{display:block}.house-context small{color:#416373}
+@media(max-width:720px){.house-picker-top{align-items:stretch;flex-direction:column}.house-context{grid-template-columns:1fr}}
+</style>
+<script>
+const houseChange=$('screen').onchange, houseInput=$('screen').oninput
+$('screen').onchange=event=>{
+ if(page===4&&event.target.id==='house'){
+  selectedHouse=event.target.value
+  render();notice('');$('house')?.focus()
+  return
+ }
+ if(page===4&&event.target.id==='op')notice('')
+ return houseChange(event)
+}
+$('screen').oninput=event=>{
+ if(page===4&&['tenant','date','end'].includes(event.target.id)){
+  $('result').innerHTML='';notice('')
+ }
+ return houseInput?.(event)
+}
+</script></html>

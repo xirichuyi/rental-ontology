@@ -155,12 +155,46 @@ dialog::backdrop{background:#1c2127a8}
  .row button,.spread button{white-space:normal}
 }
 @media(max-width:520px){.top-actions .hide-sm{display:none}.top{gap:6px;padding:0 8px}}
+.aip-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,.9fr);gap:16px;align-items:start}
+.aip-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:0;overflow:hidden}
+.aip-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 17px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.aip-card-head h2{margin:0}.aip-card-head p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.aip-card-head input{width:auto;min-height:36px}.aip-card-head label{white-space:nowrap}
+.aip-transcript{min-height:245px;max-height:55vh;overflow:auto;padding:15px 17px}
+.aip-empty{margin:12px 0;color:var(--muted);max-width:42ch}
+.aip-turn{display:grid;gap:9px;margin-bottom:17px}.aip-question{justify-self:end;max-width:90%;background:var(--blue-l);color:var(--blue-t);border-radius:10px 10px 2px 10px;padding:8px 12px;overflow-wrap:anywhere}
+.aip-reply{border:1px solid var(--line2);border-radius:2px 10px 10px 10px;padding:11px 12px;overflow-wrap:anywhere}.aip-reply p{margin:0 0 8px}.aip-reply p:last-child{margin:0}
+.aip-reply .aip-message{white-space:pre-wrap}.aip-notice{color:var(--muted);font-size:12px}.aip-model-error{color:var(--red-t,var(--text))}
+.aip-reply ul{padding-left:20px;margin:6px 0 10px}.aip-turn-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.aip-form{padding:12px 17px 15px;border-top:1px solid var(--line);background:var(--panel2)}
+.aip-input-row{display:flex;align-items:stretch;gap:8px}.aip-form input,.aip-form button{min-height:44px}
+.aip-example{margin:0 0 10px;white-space:normal;text-align:left;min-height:38px;color:var(--blue-t);border-color:var(--line);background:var(--blue-l)}
+.aip-trace{list-style:none;margin:0;padding:14px 16px}.aip-trace li{position:relative;padding:0 0 14px 33px;min-width:0}
+.aip-trace li:not(:last-child)::before{position:absolute;content:"";left:11px;top:25px;bottom:0;width:1px;background:var(--line)}
+.aip-step-num{position:absolute;top:0;left:0;display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:var(--blue-l);color:var(--blue-t);font-weight:700}
+.aip-step-head{display:flex;justify-content:space-between;gap:7px;align-items:baseline;flex-wrap:wrap}
+.aip-step-detail{margin:4px 0;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.aip-records{display:grid;gap:4px;margin:6px 0 0}.aip-record{background:var(--panel2);border-radius:5px;border:1px solid var(--line2);padding:5px 8px;overflow-wrap:anywhere}
+.aip-record span{color:var(--muted);font-size:12px}.aip-ready{margin-bottom:13px}.aip-ready p{margin:0}.aip-empty-trace{padding:18px;color:var(--muted)}
+@media(max-width:930px){.aip-grid{grid-template-columns:1fr}.aip-transcript{max-height:48vh}}
+@media(max-width:480px){.aip-card-head{flex-wrap:wrap}.aip-card-head,.aip-transcript,.aip-form{padding-left:11px;padding-right:11px}}
+.action-kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:0 0 16px}
+.action-kinds button{min-height:44px;padding:5px 7px;white-space:normal;overflow-wrap:anywhere}
+.action-kinds button[aria-pressed="true"]{color:var(--blue-t);background:var(--blue-l);border-color:var(--blue);font-weight:650}
+.action-kinds button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.action-scope{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0 14px}
+.action-scope .chk{min-height:32px}
+.action-run-steps{margin:8px 0 12px;padding-inline-start:24px}
+.action-run-steps li{padding:3px 0;overflow-wrap:anywhere}
+.action-tools{margin:0 0 12px}
+@media(max-width:540px){.action-kinds{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <dialog id="modal" aria-labelledby="dlgTitle"></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="./agent-workspaces.js"></script>
 <script>
 'use strict'
 /* ============ 基础工具 ============ */
@@ -189,6 +223,26 @@ const USER_GROUPS=[['managers','运营经理组'],['agents','租赁专员组'],[
 const OPS=[['is','is'],['isNot','is not'],['lt','is less than'],['gte','is greater than or equals']]
 const RULES={create:['Create object','创建新对象，主键必填，其余属性可选。'],createOrModify:['Create or modify object(s)','选择了对象参数就修改它；没选就新建对象，主键用提交的值，未映射主键时自动生成唯一 ID。'],modify:['Modify object(s)','修改对象参数所引用的对象。'],delete:['Delete object(s)','删除对象参数所引用的对象。'],function:['Function','由一个已发布的 @OntologyEditFunction 产生本次提交的全部编辑；不能与其他 Ontology 规则组合。'],createIface:['Create object(s) of interface','创建任一实现了该接口的对象类型的对象；用 Object type 参数选择具体类型，只能写接口属性，且每个实现类型的主键都要映射到接口属性。'],modifyIface:['Modify object(s) of interface','通过 interface reference 参数修改任一实现类型的对象；只能写接口属性，主键不能修改。'],deleteIface:['Delete object(s) of interface','通过 interface reference 参数删除任一实现类型的对象。'],createLink:['Create link(s)','在多对多关系（Join table）的两端对象之间新增关联。'],deleteLink:['Delete link','删除多对多关系中两个对象之间的关联。']}
 const OBJECT_RULES=['create','modify','createOrModify','delete'],LINK_RULES=['createLink','deleteLink'],IFACE_RULES=['createIface','modifyIface','deleteIface']
+const INTERFACE_LINK_RULES=['createIfaceLink','deleteIfaceLink']
+Object.assign(RULES,{
+ createIfaceLink:['Create link on object of interface','按接口的关系约束找到对应的具体 Link，再建立关联。'],
+ deleteIfaceLink:['Delete link on object of interface','按接口的关系约束找到对应的具体 Link，再解除关联。'],
+ applyScenario:['Apply scenario','将指定范围内已暂存的场景变更合并到当前工作区。']
+})
+const ACTION_KINDS=[
+ ['object','Object'],['link','Link'],['function','Function'],['webhook','Webhook'],
+ ['interface','Interface'],['notification','Notification'],['scenario','Scenario（Beta）'],['advanced','Advanced']
+]
+const ACTION_EFFECTS={
+ writeback:['Writeback Webhook','先调用外部系统。失败时停止 Action，成功时响应可写入对象。'],
+ webhook:['Webhook','对象编辑完成后调用外部系统。外部请求失败会记入执行记录。'],
+ notification:['Notification','提交成功后，将通知模板渲染给指定用户或用户组。'],
+ schedule:['Schedule','提交时启动数据集构建，本地记录构建请求。']
+}
+const DEMO_CONNECTORS={
+ contracts:{name:'电子签约系统 · 创建合同',inputs:[['lease_id','租约编号'],['recipient','签约人']],response:'contract_id',prefix:'CONTRACT'},
+ crm:{name:'CRM · 同步租约',inputs:[['lease_id','租约编号'],['status','租约状态']],response:'sync_id',prefix:'CRM'}
+}
 const SOURCES=[['param','From parameter'],['objprop','Object parameter property'],['static','Static value'],['user','Current User/Time · 用户'],['time','Current User/Time · 时间']]
 const LINK_MODES={
  fk:['Object type foreign keys','一个对象的外键属性指向另一个对象的主键。','一对一 / 多对一'],
@@ -237,11 +291,15 @@ const SEED_DS={
  AgentHouse:{fields:['agent_id','house_id'],rows:[['A01','H01'],['A01','H02'],['A02','H03']]}
 }
 const emptyOnto=()=>({objectTypes:{},linkTypes:{},actionTypes:{},sharedProps:{},interfaces:{},groups:{}})
+const workspaceParameter=new URLSearchParams(location.search).get('workspace')
+const WORKSPACE_ID=Object.hasOwn(AGENT_WORKSPACES,workspaceParameter)?workspaceParameter:'rental'
+const WORKSPACE=AGENT_WORKSPACES[WORKSPACE_ID]
 function fresh(){
  const datasets={}
- for(const [k,v] of Object.entries(SEED_DS))datasets[k]={...clone(v),path:'/租赁沙盒/datasets/'+k,rid:'ri.foundry.main.dataset.'+hex(8)}
- return {datasets,committed:emptyOnto(),working:emptyOnto(),valueTypes:{},functions:[],fnRepo:{source:newFnSource(),committed:'',tags:[]},fnMetrics:{},edits:{},linkEdits:{},logs:[],seq:{},user:'manager',
-  ui:{modal:null,wiz:null,msg:null,toast:null,nav:false,newMenu:false,more:false,search:'',recent:[],selProp:{},otFilter:'',dsSel:'Tenant',demo:false}}
+ const sources=WORKSPACE.types?Object.fromEntries(WORKSPACE.types.map(t=>[t.apiName,{fields:t.properties.map(p=>p[0]),rows:t.rows}])):SEED_DS
+ for(const [k,v] of Object.entries(sources))datasets[k]={...clone(v),path:'/'+WORKSPACE.name+'/datasets/'+k,rid:'ri.foundry.main.dataset.'+hex(8)}
+ return {datasets,committed:emptyOnto(),working:emptyOnto(),valueTypes:{},functions:[],fnRepo:{source:newFnSource(),committed:'',tags:[]},fnMetrics:{},edits:{},linkEdits:{},logs:[],scenarios:[],actionRuns:[],seq:{},user:'manager',
+  ui:{modal:null,wiz:null,msg:null,toast:null,nav:false,newMenu:false,more:false,search:'',recent:[],selProp:{},otFilter:'',dsSel:Object.keys(datasets)[0],demo:false}}
 }
 let S=fresh()
 const W=()=>S.working, C=()=>S.committed
@@ -250,6 +308,11 @@ const W=()=>S.working, C=()=>S.committed
 const otName=(id,onto=W())=>onto.objectTypes[id]?.name||id
 const propOf=(ot,id)=>ot?.properties.find(p=>p.id===id)
 const pkProp=ot=>propOf(ot,ot.primaryKey)
+const readableProperties=ot=>ot.properties.filter(p=>p.visibility!=='hidden')
+function ontologyReadScope(onto=C(),user=S.user){
+ const types=Object.hasOwn(USERS,user)?onto.objectTypes:{}
+ return {user,onto,types,objects:id=>Object.hasOwn(types,id)?objectsOf(id,onto):[]}
+}
 function objectsOf(otId,onto=C()){
  const ot=onto.objectTypes[otId];if(!ot)return []
  const ed=S.edits[otId]||{created:{},modified:{},deleted:[]}
@@ -284,10 +347,18 @@ const parseIref=v=>{const s=String(v??''),i=s.indexOf(':');return i<0?null:{ot:s
 const implementsIf=(ot,ifaceId)=>!!ot?.interfaces.some(x=>x.iface===ifaceId)
 const ifaceImpls=(ifaceId,onto=W())=>Object.values(onto.objectTypes).filter(o=>implementsIf(o,ifaceId))
 const ifaceLocal=(ot,ifaceId,ip)=>ot?.interfaces.find(x=>x.iface===ifaceId)?.mapping[ip]||''
-const isIfaceAction=at=>at.rules.some(r=>IFACE_RULES.includes(r.type))
+const isIfaceAction=at=>at.rules.some(r=>IFACE_RULES.includes(r.type)||INTERFACE_LINK_RULES.includes(r.type))
 const ifaceActionOff=(ot,atId,ifaceId)=>!!ot?.interfaces.find(x=>x.iface===ifaceId)?.disabledActions?.includes(atId)
 const isFnAction=at=>at.rules.some(r=>r.type==='function')
-const actionTarget=(at,onto=W())=>{if(isFnAction(at))return '函数 · '+at.rules[0].fn;const ifs=[...new Set(at.rules.filter(r=>IFACE_RULES.includes(r.type)).map(r=>r.interface))];return ifs.length?'接口 · '+ifs.map(i=>onto.interfaces[i]?.name||i).join('、'):otName(at.objectType,onto)}
+function actionTarget(at,onto=W()){
+ const fn=at.rules.find(r=>r.type==='function')
+ if(fn)return '函数 · '+fn.fn
+ const ifs=[...new Set(at.rules.map(r=>r.interface).filter(Boolean))]
+ if(ifs.length)return '接口 · '+ifs.map(i=>onto.interfaces[i]?.name||i).join('、')
+ if(at.rules.some(r=>r.type==='applyScenario'))return 'Ontology 场景'
+ return otName(at.objectType,onto)||'工作区'
+}
+const actionRuleNames=at=>[...at.rules.map(r=>RULES[r.type][0]),...(at.effects||[]).map(r=>ACTION_EFFECTS[r.type][0])]
 /* 取对象参数（Object reference / Interface reference）上的属性 */
 function paramObject(at,vals,pid,onto){
  const p=at.parameters.find(x=>x.id===pid);if(!p)return null
@@ -315,12 +386,12 @@ function joinPairs(l){
  return out
 }
 /* 从 fromSide 端的对象出发，取另一端关联对象 */
-function linkedObjects(l,fromSide,obj,onto=C()){
+function linkedObjects(l,fromSide,obj,onto=C(),readObjects=id=>objectsOf(id,onto)){
  const from=l[fromSide],to=l[other(fromSide)]
  const fromOT=onto.objectTypes[from.objectType],toOT=onto.objectTypes[to.objectType]
  if(!fromOT||!toOT||!obj)return []
  const pk=String(obj[fromOT.primaryKey])
- const targets=objectsOf(to.objectType,onto)
+ const targets=readObjects(to.objectType)
  if(l.mode==='fk'){
   if(fromSide==='a'){const v=obj[l.fk.property];return v?targets.filter(t=>String(t[toOT.primaryKey])===String(v)):[]}
   return targets.filter(t=>String(t[l.fk.property])===pk)
@@ -333,7 +404,7 @@ function linkedObjects(l,fromSide,obj,onto=C()){
  if(l.mode==='back'){
   const la=onto.linkTypes[fromSide==='a'?l.back.aLink:l.back.bLink],lb=onto.linkTypes[fromSide==='a'?l.back.bLink:l.back.aLink]
   if(!la||!lb)return []
-  const middles=objectsOf(l.back.middle,onto).filter(m=>String(m[la.fk.property])===pk)
+  const middles=readObjects(l.back.middle).filter(m=>String(m[la.fk.property])===pk)
   const keys=new Set(middles.map(m=>String(m[lb.fk.property])))
   return targets.filter(t=>keys.has(String(t[toOT.primaryKey])))
  }
@@ -450,8 +521,9 @@ function validateOnto(onto=W()){
   const c='actionTypes',ot=onto.objectTypes[at.objectType]
   if(!at.name)E(c,k,'缺少 Action type name。')
   if(!/^[a-z][A-Za-z0-9]{0,99}$/.test(at.apiName))E(c,k,'API name 须为 camelCase。')
-  if(!at.rules.length)E(c,k,'至少需要一条规则。')
-  if(!ot&&!isIfaceAction(at)&&!isFnAction(at)){E(c,k,'目标对象类型不存在。');continue}
+  if(!at.rules.length&&!at.effects?.length)E(c,k,'至少需要一条规则。')
+  if(at.objectType&&!ot){E(c,k,'目标对象类型不存在。');continue}
+  for(const error of actionEffectErrors(at,onto))E(c,k,error)
   if(isIfaceAction(at)&&at.actionLog.enabled)E(c,k,'接口动作暂不支持 Action log，请在 Capabilities 中关闭。')
   const pids=new Set()
   for(const p of at.parameters){
@@ -464,15 +536,29 @@ function validateOnto(onto=W()){
   const refOK=path=>{const [pid,prop]=String(path).split('.');const p=at.parameters.find(x=>x.id===pid);if(!p)return false;if(!prop)return true;if(p.type==='Interface reference')return !!onto.interfaces[p.interface]?.properties.some(x=>x.apiName===prop);return p.type==='Object reference'&&!!propOf(onto.objectTypes[p.objectType],prop)}
   at.parameters.forEach((p,pi)=>{if(p.default?.kind!=='objprop')return;const src=String(p.default.value).split('.')[0],si=at.parameters.findIndex(x=>x.id===src);if(!refOK(p.default.value))E(c,k,'参数 '+p.name+' 的默认值引用了无效的对象参数属性。');else if(si>=pi)E(c,k,'参数 '+p.name+' 的 Object property default value 只能引用排在它前面的参数。')})
   for(const r of at.rules){
+   if(r.type==='applyScenario'){
+    if(!r.objectTypes?.length&&!r.linkTypes?.length)E(c,k,'至少选择一个允许合并的对象类型或关系类型。')
+    if(r.objectTypes?.some(id=>!onto.objectTypes[id])||r.linkTypes?.some(id=>!onto.linkTypes[id]))E(c,k,'场景合并范围引用了已删除的类型。')
+    if(!at.parameters.some(p=>p.id===r.scenarioParam&&p.type==='String'&&p.required))E(c,k,'场景规则需要一个必填的场景参数。')
+    continue
+   }
+   if(INTERFACE_LINK_RULES.includes(r.type)){
+    const constraint=onto.interfaces[r.interface]?.linkConstraints?.find(link=>link.apiName===r.constraint)
+    const source=at.parameters.find(p=>p.id===r.objectParam)
+    const target=at.parameters.find(p=>p.id===r.targetParam)
+    if(!constraint||source?.type!=='Interface reference'||source.interface!==r.interface||
+       (constraint.targetKind==='interface'?target?.type!=='Interface reference'||target.interface!==constraint.target:target?.type!=='Object reference'||target.objectType!==constraint.target))E(c,k,'请选择有效的接口 Link type constraint 和两端参数。')
+    continue
+   }
    if(r.type==='function'){
     if(at.rules.length>1)E(c,k,'Function rule 不能与其他 Ontology 规则组合。')
     const meta=fnVersionMeta(r.fn,r.version)
     if(!meta){E(c,k,'Function rule 引用的函数 '+r.fn+'@'+r.version+' 不存在。');continue}
     if(meta.kind!=='edit')E(c,k,'Function rule 只能使用 @OntologyEditFunction。')
     if(r.autoUpgrade&&semver(r.version)?.[0]===0)E(c,k,'0.y.z 版本不支持 Auto upgrade。')
-    for(const inp of meta.inputs){const pid=r.inputs?.[inp.name],p=at.parameters.find(x=>x.id===pid),t=fnParamType(inp.type,onto)
+    for(const inp of meta.inputs){const pid=r.inputs?.[inp.name],p=at.parameters.find(x=>x.id===pid)
      if(!p){E(c,k,'函数输入 '+inp.name+' 没有映射到参数。');continue}
-     if(!t||p.type!==t.type||(t.type==='Object reference'&&p.objectType!==t.objectType)||!!t.list!==!!p.multiple)E(c,k,'函数输入 '+inp.name+'（'+inp.type+'）与参数 '+p.name+'（'+p.type+(p.multiple?' 列表':'')+'）类型不一致。')}
+     if(!fnInputMatches(inp,p,onto))E(c,k,'函数输入 '+inp.name+'（'+inp.type+'）与参数 '+p.name+'（'+p.type+(p.multiple?' 列表':'')+'）类型不一致。')}
     for(const e of meta.edits)if(!otByApi(e,onto))E(c,k,'函数声明编辑的对象类型 '+e+' 已不存在。')
     continue
    }
@@ -505,6 +591,7 @@ function validateOnto(onto=W()){
     if(!propOf(rot,m.prop))E(c,k,'规则映射的属性 '+rot.name+'.'+m.prop+' 不存在。')
     if(m.source==='param'&&!refOK(m.value))E(c,k,'属性 '+m.prop+' 映射的参数不存在。')
     if(m.source==='objprop'&&!refOK(m.value))E(c,k,'属性 '+m.prop+' 映射的对象参数属性无效。')
+    if(m.source==='writeback'&&(writebackField(at)!==m.value||!m.value))E(c,k,'请选择有效的 Writeback response 字段。')
    }
    if(r.type==='create'&&!r.mappings.some(m=>m.prop===rot.primaryKey))E(c,k,'Create object 规则必须为主键 '+rot.primaryKey+' 提供值。')
   }
@@ -549,6 +636,138 @@ const pendingTag=(c,k)=>{const d=diff().find(x=>x.c===c&&x.k===k);return d?' '+b
 const isActive=(c,k)=>C()[c][k]?.status==='active'
 
 /* ============ Action 执行引擎 ============ */
+function newActionEffect(type,connector=type==='writeback'?'contracts':'crm'){
+ if(type==='notification')return {type,audience:'group',recipient:'agents',template:'租约工作台有一项业务操作已完成。'}
+ if(type==='schedule')return {type,dataset:Object.keys(S.datasets)[0]||'',result:'success'}
+ return {type,connector,result:'success',inputs:{}}
+}
+const writebackField=at=>DEMO_CONNECTORS[at.effects?.find(r=>r.type==='writeback')?.connector]?.response||''
+
+function actionEffectErrors(at,onto){
+ const errors=[]
+ const effects=at.effects||[]
+ if(effects.filter(r=>r.type==='writeback').length>1)errors.push('一个 Action 只能有一个 Writeback Webhook。')
+ if(effects.filter(r=>r.type==='schedule').length>1)errors.push('一个 Action 只能选一个构建计划。')
+ for(const r of effects){
+  if(r.type==='notification'){
+   const recipientOK=r.audience==='current'||(r.audience==='group'?USER_GROUPS.some(([id])=>id===r.recipient):Object.hasOwn(USERS,r.recipient))
+   if(!recipientOK)errors.push('请选择通知接收人。')
+   if(!r.template?.trim())errors.push('请填写通知内容。')
+   continue
+  }
+  if(r.type==='schedule'){
+   if(!Object.hasOwn(S.datasets,r.dataset))errors.push('请选择计划要构建的数据集。')
+   continue
+  }
+  const connector=DEMO_CONNECTORS[r.connector]
+  if(!connector){errors.push('请选择已注册的 Webhook。');continue}
+  for(const [id,label] of connector.inputs){
+   const input=r.inputs[id]
+   const [paramId,property]=String(input?.value??'').split('.')
+   const p=at.parameters.find(p=>p.id===paramId)
+   const valid=input?.source==='static'?!!String(input.value??'').trim():
+    input?.source==='param'?!!p&&!p.multiple:
+    input?.source==='objprop'&&p?.type==='Object reference'&&!p.multiple&&!!propOf(onto.objectTypes[p.objectType],property)
+   if(!valid)errors.push('Webhook 输入「'+label+'」需要有效的值来源。')
+  }
+ }
+ return errors
+}
+
+function actionEffectSteps(at,vals,onto,types,steps,failures){
+ let response={}
+ for(const r of at.effects||[]){
+  if(!types.includes(r.type))continue
+  const name=ACTION_EFFECTS[r.type][0]
+  if(r.type==='notification'){
+   const recipients=Object.entries(USERS).filter(([id,u])=>r.audience==='current'?id===S.user:r.audience==='user'?id===r.recipient:u.groups.includes(r.recipient))
+   steps.push({name,status:'已模拟发送',detail:recipients.map(([,u])=>u.name).join('、')+' · '+renderActionTemplate(r.template,at,vals,onto)})
+   continue
+  }
+  if(r.type==='schedule'){
+   const failed=r.result==='error'
+   steps.push({name,status:failed?'启动失败':'已模拟启动',detail:r.dataset+(failed?'':' · BUILD-'+hex(8))})
+   if(failed)failures.push('构建计划启动失败，Action 未提交对象编辑。')
+   continue
+  }
+  const connector=DEMO_CONNECTORS[r.connector]
+  const payload=Object.fromEntries(connector.inputs.map(([id])=>{
+   const input=r.inputs[id]
+   return [id,input.source==='static'?input.value:input.source==='objprop'?paramProp(at,vals,input.value,onto):vals[input.value]]
+  }))
+  const failed=r.result==='error'||Object.values(payload).some(value=>value==null||String(value).trim()==='')
+  const output=failed?{}:{[connector.response]:connector.prefix+'-'+hex(8)}
+  steps.push({name,status:failed?'请求失败':'已模拟调用',detail:connector.name+' · '+JSON.stringify(payload)+(failed?'':' → '+JSON.stringify(output))})
+  if(r.type==='writeback'){
+   if(failed)failures.push('Writeback Webhook 失败，Action 未提交对象编辑。')
+   response=output
+  }
+ }
+ return response
+}
+
+function renderActionTemplate(template,at,vals,onto){
+ return template.replace(/\/([a-z][A-Za-z0-9_]*)(?:\.([A-Za-z0-9_-]+))?/g,(token,id,property)=>{
+  const p=at.parameters.find(p=>p.id===id)
+  if(!p)return token
+  if(property)return String(paramProp(at,vals,id+'.'+property,onto)??'')
+  const object=paramObject(at,vals,id,onto)
+  return String(object?titleOf(object.ot.id,object.obj,onto):vals[id]??'')
+ })
+}
+
+function recordActionRun(at,steps,failures){
+ if(!steps.length)return
+ S.actionRuns.unshift({at:at.name,time:new Date().toISOString(),user:S.user,status:failures.length?'未提交':'已提交',steps:clone(steps)})
+ if(S.actionRuns.length>100)S.actionRuns.pop()
+}
+
+function scenarioEdits(rule,scenario,onto){
+ if(!scenario||scenario.status!=='staged')throw Error('请选择未合并的场景。')
+ const edits=scenario.edits.filter(e=>e.link?rule.linkTypes.includes(e.link):rule.objectTypes.includes(e.ot))
+ if(!edits.length)throw Error('场景里没有落在此规则范围内的变更。')
+ if(edits.length!==scenario.edits.length)throw Error('当前 Action 的合并范围未涵盖这个场景的全部变更。')
+ for(const e of edits){
+  if(e.link){
+   const link=onto.linkTypes[e.link]
+   if(!link||link.mode!=='join')throw Error('场景引用的关系类型已变更。')
+   if(joinPairs(link).some(([a,b])=>a===e.a&&b===e.b)!==(e.type==='deleteLink'))throw Error('场景中的关系已被修改，请重新准备。')
+  }else{
+   const current=findObj(e.ot,e.pk,onto)
+   if(!onto.objectTypes[e.ot]||JSON.stringify(current??null)!==JSON.stringify(e.before??null))throw Error('场景对象 '+e.pk+' 已被修改，请重新准备。')
+  }
+ }
+ return clone(edits)
+}
+
+function interfaceLinkEdits(rule,at,vals,onto,edits){
+ const source=paramObject(at,vals,rule.objectParam,onto),target=paramObject(at,vals,rule.targetParam,onto)
+ if(!source||!target)throw Error('请选择接口关系两端的对象。')
+ if(ifaceActionOff(source.ot,at.id,rule.interface))throw Error('此对象类型禁用了该接口动作。')
+ const linkId=source.ot.interfaces.find(i=>i.iface===rule.interface)?.links?.[rule.constraint]
+ const link=onto.linkTypes[linkId]
+ const create=rule.type==='createIfaceLink'
+ const side=['a','b'].find(s=>link?.[s].objectType===source.ot.id&&link?.[other(s)].objectType===target.ot.id)
+ if(!side)throw Error('两端对象没有实现选中的接口关系约束。')
+ const sourcePk=String(source.obj[source.ot.primaryKey]),targetPk=String(target.obj[target.ot.primaryKey])
+ const [a,b]=side==='a'?[sourcePk,targetPk]:[targetPk,sourcePk]
+ if(link.mode==='join'){
+  const exists=joinPairs(link).some(p=>p[0]===a&&p[1]===b)
+  if(exists===create)throw Error(create?'关联已存在。':'关联不存在。')
+  edits.push({type:create?'createLink':'deleteLink',link:link.id,a,b})
+  return
+ }
+ if(link.mode!=='fk')throw Error('这条关联由中间对象维护，请通过该中间对象的 Action 更新。')
+ const owner=side==='a'?source:target
+ const fk=link.fk.property
+ const prior=edits.find(e=>e.ot===owner.ot.id&&String(e.pk)===a&&e.after)
+ const before=prior?.after||owner.obj
+ if(!create&&String(before[fk]??'')!==b)throw Error('关联不存在。')
+ const after={...before,[fk]:create?b:''}
+ if(prior)prior.after=after
+ else edits.push({type:'modify',ot:owner.ot.id,pk:a,before,after})
+}
+
 function defaultValues(at,ctx,onto){
  const vals={}
  for(const p of at.parameters){
@@ -566,7 +785,7 @@ function defaultValues(at,ctx,onto){
  return vals
 }
 function evaluateAction(at,vals,onto=C(),{dry=true}={}){
- const failures=[],crit=[],edits=[]
+ const failures=[],crit=[],edits=[],steps=[],mergedScenarios=[]
  const cache={}
  const objs=id=>cache[id]??=objectsOf(id,onto)
  vals={...vals}
@@ -590,26 +809,61 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
   else if(!typeOk(p.type,v))failures.push('参数「'+p.name+'」不是有效的 '+p.type+'。')
   }
  }
- if(failures.length)return {failures,crit,edits,vals}
+ const criteria=evalCondList(at.criteria,at.criteriaMode||'all',{at,vals,onto})
+ crit.push(...criteria.results)
+ crit.pass=criteria.pass
+ if(!crit.pass){
+  const bad=at.criteriaMode==='none'?crit.filter(c=>c.pass):crit.filter(c=>!c.pass)
+  for(const c of bad)failures.push(c.message||'提交条件未满足：'+c.label)
+ }
+ failures.push(...actionEffectErrors(at,onto))
+ if(failures.length)return {failures,crit,edits,vals,steps}
+ const writeback=actionEffectSteps(at,vals,onto,['writeback'],steps,failures)
+ if(failures.length){
+  if(!dry)recordActionRun(at,steps,failures)
+  return {failures,crit,edits,vals,steps}
+ }
  const mapValue=(m,rot)=>{
   if(m.source==='param')return vals[m.value]??''
   if(m.source==='static')return m.value
   if(m.source==='objprop')return ref(m.value)??''
   if(m.source==='user')return S.user
   if(m.source==='time')return today()
+  if(m.source==='writeback')return writeback[m.value]??''
   return ''
  }
  for(const r of at.rules){
+  if(r.type==='applyScenario'){
+   try{
+    const scenario=S.scenarios.find(s=>s.id===vals[r.scenarioParam])
+    const staged=scenarioEdits(r,scenario,onto)
+    edits.push(...staged)
+    mergedScenarios.push(scenario)
+   }catch(error){failures.push(error.message)}
+   continue
+  }
+  if(INTERFACE_LINK_RULES.includes(r.type)){
+   try{interfaceLinkEdits(r,at,vals,onto,edits)}catch(error){failures.push(error.message)}
+   continue
+  }
   if(r.type==='function'){
    const rs=fnResolve(r)
    if(!rs){failures.push('函数 '+r.fn+'@'+r.version+' 不存在。');continue}
-   const raw={};for(const inp of rs.meta.inputs)raw[inp.name]=vals[r.inputs?.[inp.name]]??''
+   if(rs.meta.kind!=='edit'){failures.push('版本 '+rs.version+' 不是 Ontology Edit Function。');continue}
+   const invalid=rs.meta.inputs.find(inp=>{
+    const id=r.inputs?.[inp.name]
+    return id?!fnInputMatches(inp,at.parameters.find(p=>p.id===id),onto):!inp.optional
+   })
+   if(invalid){failures.push(r.fn+'@'+rs.version+' 的输入 '+invalid.name+' 需要重新映射参数。');continue}
+   const raw=Object.fromEntries(rs.meta.inputs.map(inp=>[inp.name,vals[r.inputs?.[inp.name]]??'']))
    const res=runFunction(rs.meta,raw,onto,{edit:true})
    if(!dry)fnRecord(r.fn,res)
-   if(!res.ok){failures.push(res.userFacing?res.error:'函数执行失败：'+res.error);continue}
+   const run={name:'Function',status:'执行成功',detail:r.fn+'@'+rs.version+' · '+res.edits.length+' 项对象或关系编辑'}
+   steps.push(run)
+   if(!res.ok){run.status='执行失败';run.detail=r.fn+'@'+rs.version;failures.push(res.userFacing?res.error:'函数执行失败：'+res.error);continue}
    const declared=new Set((fnVersionMeta(r.fn,r.version)||rs.meta).edits),bad=new Set()
    for(const e of res.edits){const types=e.link?[onto.linkTypes[e.link].a.objectType,onto.linkTypes[e.link].b.objectType]:[e.ot];for(const t of types){const api=onto.objectTypes[t]?.apiName;if(!declared.has(api))bad.add(api)}}
-   if(bad.size){failures.push('Provenance：函数编辑了 @Edits 中没有声明的对象类型 '+[...bad].join('、')+'，动作失败。');continue}
+   if(bad.size){run.status='编辑范围校验失败';failures.push('Provenance：函数编辑了 @Edits 中没有声明的对象类型 '+[...bad].join('、')+'，动作失败。');continue}
    edits.push(...res.edits);continue
   }
   if(IFACE_RULES.includes(r.type)){
@@ -674,14 +928,6 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
    if(prior)prior.after=after;else edits.push({type:'modify',ot:rot.id,pk,before,after})
   }
  }
- const cmp=(a,op,b)=>{
-  const na=Number(a),nb=Number(b),num=a!==''&&b!==''&&Number.isFinite(na)&&Number.isFinite(nb)
-  const x=num?na:String(a??''),y=num?nb:String(b??'')
-  return {is:x===y,isNot:x!==y,lt:x<y,lte:x<=y,gt:x>y,gte:x>=y}[op]
- }
- {const ev=evalCondList(at.criteria,at.criteriaMode||'all',{at,vals,onto});for(const r of ev.results)crit.push(r);crit.pass=ev.pass}
- const combined=crit.pass
- if(!combined){const bad=(at.criteriaMode==='none'?crit.filter(c=>c.pass):crit.filter(c=>!c.pass));for(const c of bad)failures.push(c.message||'提交条件未满足：'+c.label)}
  // Ontology 完整性
  for(const e of edits){
   if(!e.after)continue
@@ -695,6 +941,12 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
    if(!e.pk)failures.push('新对象的主键不能为空。')
    else if(objs(eot.id).some(o=>String(o[eot.primaryKey])===String(e.pk)))failures.push('主键 '+e.pk+' 已存在。')
   }
+ }
+ if(!failures.length)actionEffectSteps(at,vals,onto,['schedule'],steps,failures)
+ const afterCommit=[]
+ if(!failures.length){
+  if(steps.length||at.effects?.length||mergedScenarios.length)steps.push({name:'Ontology',status:dry?'计划提交':'已提交',detail:edits.length+' 项对象或关系编辑'})
+  actionEffectSteps(at,vals,onto,['webhook','notification'],afterCommit,failures)
  }
  if(!dry&&!failures.length){
   const vkey=e=>e.link?'link|'+e.link+'|'+e.a+'|'+e.b:e.ot+'|'+e.pk
@@ -713,13 +965,16 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
    if(e.type==='modify'){if(E.created[e.pk])E.created[e.pk]=e.after;else E.modified[e.pk]=e.after}
    if(e.type==='delete')E.deleted.push(String(e.pk))
   }
+  for(const scenario of mergedScenarios)scenario.status='merged'
   if(at.actionLog.enabled&&!isIfaceAction(at)){
    S.lastSubmission.logRid='ri.actions.main.action.'+hex(8)
    S.logs.unshift({logType:'[Log] '+at.name,at:at.id,actionRid:S.lastSubmission.logRid,actionTypeRid:at.rid,version:at.version,timestamp:new Date().toISOString(),user:S.user,
     edited:edits.map(e=>e.link?{link:e.link,pk:e.a+' ↔ '+e.b,type:e.type}:{ot:e.ot,pk:e.pk,type:e.type}),params:{...vals},summary:renderSummary(at,vals,onto)})
   }
  }
- return {failures,crit,edits,vals}
+ steps.push(...afterCommit)
+ if(!dry)recordActionRun(at,steps,failures)
+ return {failures,crit,edits,vals,steps}
 }
 function paramLabel(at,path){
  const [pid,prop]=String(path).split('.'),p=at.parameters.find(x=>x.id===pid)
@@ -744,6 +999,27 @@ const mkOT=o=>({rid:newRid('object-type'),description:'',groups:[],status:'exper
 const mkParam=(id,name,type,extra={})=>({id,name,type,objectType:'',required:true,constraint:'none',options:'',default:{kind:'none',value:''},hidden:false,...extra})
 const mkMap=(prop,source,value='')=>({prop,source,value})
 const mkAT=o=>({rid:newRid('action-type'),description:'',status:'experimental',location:PROJECTS[0],version:0,criteriaMode:'all',criteria:[],actionLog:{enabled:true,summary:''},...o})
+function loadConfiguredWorkspace(){
+ if(!WORKSPACE.types)return
+ const onto=emptyOnto()
+ for(const t of WORKSPACE.types){
+  const {id,apiName,name,icon,properties}=t
+  onto.objectTypes[id]=mkOT({id,apiName,name,plural:name,icon,color:COLORS[0],datasource:apiName,
+   primaryKey:'id',titleKey:t.title||'name',properties:properties.map(([id,label,type,extra])=>mkProp(id,label,type,extra))})
+ }
+ for(const l of WORKSPACE.links){
+  const endpoint=(objectType,[displayName,apiName])=>({objectType,displayName,apiName,plural:displayName,visibility:'normal'})
+  onto.linkTypes[l.id]={id:l.id,rid:newRid('link-type'),mode:'fk',cardinality:'many-to-one',status:'experimental',location:PROJECTS[0],
+   a:endpoint(l.from,l.reverse),b:endpoint(l.to,l.forward),fk:{property:l.property},join:null,back:null}
+ }
+ for(const definition of WORKSPACE.actionTypes){
+  const at=clone(definition)
+  const parameters=at.parameters.map(p=>mkParam(p.id,p.name,p.type,p))
+  onto.actionTypes[at.id]=mkAT({...at,parameters,version:1})
+ }
+ S.committed=onto
+ S.working=clone(onto)
+}
 function buildSample(){
  const o=emptyOnto()
  o.groups.rental={id:'rental',name:'租赁业务'}
@@ -882,7 +1158,7 @@ function topo(left,mid,right,leftSub,rightSub,midLabel='',rightLabel=''){
 /* ============ 路由 ============ */
 let ROUTE='discover'
 const route=()=>(ROUTE||'discover').split('/').map(decodeURIComponent)
-function go(h){ROUTE=h;S.ui.nav=false;S.ui.newMenu=false;S.ui.more=false;S.ui.search='';const r=route();if(r[0]==='object-types'&&r[1]){S.ui.recent=[r[1],...S.ui.recent.filter(x=>x!==r[1])].slice(0,6)}render();window.scrollTo(0,0)}
+function go(h){ROUTE=h;S.ui.nav=false;S.ui.newMenu=false;S.ui.more=false;S.ui.search='';const r=route();if(r[0]==='object-types'&&r[1]){S.ui.recent=[r[1],...S.ui.recent.filter(x=>x!==r[1])].slice(0,6)}render();window.scrollTo(0,0);void checkAipConnection()}
 
 /* ============ 外壳 ============ */
 function renderHeader(){
@@ -896,7 +1172,7 @@ function renderHeader(){
  }
  const newItems=[['newObjectType','Object type'],['newLinkType','Link type'],['newActionType','Action type'],['-'],['newSharedProp','Shared property'],['newInterface','Interface'],['newGroup','Object type group'],['-'],['newValueType','Value type（Value Types Manager）']]
  return '<header class="top">'+B('toggleNav','☰','menu-toggle','','aria-label="打开导航" aria-expanded="'+S.ui.nav+'"')+
- '<div class="brand"><b>Ontology Lab</b><span>租约本体工作台 · 仿 Foundry 流程的本地沙盒</span></div>'+
+ '<div class="brand"><b>Ontology Lab</b><span>'+esc(WORKSPACE.name)+' · 本地 Ontology 工作台</span></div>'+
  '<div class="search"><input id="globalSearch" data-bind="ui.search" value="'+esc(S.ui.search)+'" placeholder="搜索对象类型、属性、关系、动作…  (Ctrl+K)" aria-label="搜索资源" autocomplete="off">'+results+'</div>'+
  '<div class="top-actions"><div class="dropdown">'+B('toggleNew','＋ New ▾','','','aria-expanded="'+S.ui.newMenu+'"')+(S.ui.newMenu?'<div class="menu" role="menu">'+newItems.map(([a,l])=>a==='-'?'<hr>':B(a,l,'','','role="menuitem"')).join('')+'</div>':'')+'</div>'+
  '<label class="user-lbl" style="display:flex;align-items:center;gap:6px;font-size:12px;color:#abb3bf">当前用户<select id="userSelect" data-change="setUser" aria-label="当前用户">'+options(Object.entries(USERS).map(([k,u])=>[k,u.name]),S.user)+'</select></label>'+
@@ -911,11 +1187,11 @@ function renderNav(){
  '<h6>Foundry 数据</h6>'+a('datasets','Datasets 数据集',Object.keys(S.datasets).length)+
  '<h6>Ontology Manager</h6>'+a('discover','Discover 首页')+a('object-types','Object types',cnt('objectTypes'))+a('link-types','Link types',cnt('linkTypes'))+a('action-types','Action types',cnt('actionTypes'))+a('functions','Functions',Object.keys(fnRegistry()).length)+
  '<h6>Resources</h6>'+a('shared-properties','Shared properties',cnt('sharedProps'))+a('interfaces','Interfaces',cnt('interfaces'))+a('groups','Object type groups',cnt('groups'))+
- '<h6>其他应用</h6>'+a('value-types','Value Types Manager',Object.keys(S.valueTypes).length)+a('functions-repo','Code Repositories · 函数仓库')+a('explorer','Object Explorer · 业务台')+a('action-log','Action Log',S.logs.length)+'</nav>'
+ '<h6>其他应用</h6>'+a('value-types','Value Types Manager',Object.keys(S.valueTypes).length)+a('functions-repo','Code Repositories · 函数仓库')+a('explorer','Object Explorer · 业务台')+a('aip','AIP 租约查询')+a('action-log','Action Log',S.logs.length)+'</nav>'
 }
 function renderPage(){
  const [p,...rest]=route()
- const pages={discover:pageDiscover,datasets:pageDatasets,'object-types':pageObjectTypes,'link-types':pageLinkTypes,'action-types':pageActionTypes,'shared-properties':pageShared,interfaces:pageInterfaces,groups:pageGroups,'value-types':pageValueTypes,explorer:pageExplorer,'action-log':pageActionLog,functions:pageFunctions,'functions-repo':pageFnRepo}
+ const pages={discover:pageDiscover,datasets:pageDatasets,'object-types':pageObjectTypes,'link-types':pageLinkTypes,'action-types':pageActionTypes,'shared-properties':pageShared,interfaces:pageInterfaces,groups:pageGroups,'value-types':pageValueTypes,explorer:pageExplorer,aip:pageAip,'action-log':pageActionLog,functions:pageFunctions,'functions-repo':pageFnRepo}
  return (pages[p]||pageDiscover)(...rest)
 }
 const head=(title,desc,actions='',crumb='')=>'<div class="page-head"><div>'+(crumb?'<div class="crumb">'+crumb+'</div>':'')+'<h1>'+title+'</h1>'+(desc?'<p class="muted">'+desc+'</p>':'')+'</div><div class="row">'+actions+'</div></div>'
@@ -1085,7 +1361,7 @@ function pageActionTypes(id,tab='overview'){
  if(id)return actionTypeView(id,tab)
  const list=Object.values(W().actionTypes)
  return head('Action types','Action type 定义用户如何一次性修改对象：规则、参数、提交条件、Action log。',B('newActionType','＋ New action type','primary'))+
- '<section class="card">'+table(['名称','API name','对象类型','规则','参数','提交条件','版本','Status'],list.map(a=>['<a href="#/action-types/'+esc(a.id)+'">'+esc(a.name)+'</a>'+pendingTag('actionTypes',a.id),'<code>'+esc(a.apiName)+'</code>',isIfaceAction(a)?esc(actionTarget(a)):otLink(a.objectType),a.rules.map(r=>esc(RULES[r.type][0])).join(', '),a.parameters.length,a.criteria.length,C().actionTypes[a.id]?'v'+C().actionTypes[a.id].version:'—',statusTag(a.status)]),'还没有动作。先保存对象类型，再点击「New action type」。')+'</section>'
+ '<section class="card">'+table(['名称','API name','作用范围','规则','参数','提交条件','版本','Status'],list.map(a=>['<a href="#/action-types/'+esc(a.id)+'">'+esc(a.name)+'</a>'+pendingTag('actionTypes',a.id),'<code>'+esc(a.apiName)+'</code>',isIfaceAction(a)||!a.objectType?esc(actionTarget(a)):otLink(a.objectType),esc(actionRuleNames(a).join(' · ')),a.parameters.length,a.criteria.length,C().actionTypes[a.id]?'v'+C().actionTypes[a.id].version:'—',statusTag(a.status)]),'还没有动作。点击「New action type」开始配置。')+'</section>'
 }
 function actionTypeView(id,tab){
  const at=W().actionTypes[id]
@@ -1098,21 +1374,30 @@ function actionTypeView(id,tab){
 }
 function atOverview(at){
  const P='working.actionTypes.'+at.id+'.',active=isActive('actionTypes',at.id)
+ const agent=aipAgentPolicy(at)
  return '<div class="split"><section class="card"><h3>Metadata</h3><div class="grid2">'+fInp(P+'name','Action type name',at.name)+fInp(P+'apiName','API name'+(active?' <small>active 不可改</small>':''),at.apiName,active?'disabled':'')+fSel(P+'status','Status',STATUSES,at.status)+'<label class="fld"><span>'+(isIfaceAction(at)?'Interface':'Object type')+'</span><input value="'+esc(actionTarget(at))+'" disabled></label></div><div style="margin-top:10px">'+fArea(P+'description','Description',at.description)+'</div></section>'+
- '<section class="card"><h3>摘要</h3><dl class="kv"><dt>Rules</dt><dd>'+at.rules.map(r=>esc(RULES[r.type][0])).join(', ')+'</dd><dt>Parameters</dt><dd>'+at.parameters.map(p=>esc(p.name)).join('、')+'</dd><dt>Submission criteria</dt><dd>'+at.criteria.length+' 个条件（'+(at.criteriaMode==='any'?'满足任意一个':'全部满足')+'）</dd><dt>Action log</dt><dd>'+(isIfaceAction(at)?'接口动作暂不支持':at.actionLog.enabled?'[Log] '+esc(at.name):'未启用')+'</dd></dl><p class="muted small-t">「Test run」模拟执行并展示将要产生的编辑，有未保存的更改时不可用。正式执行在 Object Explorer 中。</p></section></div>'
+ '<section class="card"><h3>摘要</h3><dl class="kv"><dt>Rules</dt><dd>'+esc(actionRuleNames(at).join(' · '))+'</dd><dt>Parameters</dt><dd>'+at.parameters.map(p=>esc(p.name)).join('、')+'</dd><dt>Submission criteria</dt><dd>'+at.criteria.length+' 个条件（'+(at.criteriaMode==='any'?'满足任意一个':'全部满足')+'）</dd><dt>Action log</dt><dd>'+(isIfaceAction(at)?'接口动作暂不支持':at.actionLog.enabled?'[Log] '+esc(at.name):'未启用')+'</dd></dl><p class="muted small-t">「Test run」预览本次提交的编辑和执行顺序。发布后可在 Object Explorer 运行。</p></section></div>'+
+ '<section class="card"><h3>Agent 配置</h3>'+fChk(P+'agent.enabled','允许 Agent 准备此 Action',agent.enabled)+
+ fArea(P+'agent.intent','业务意图与适用边界',agent.intent||'')+
+ fSel(P+'agent.replacementParameter','更换对象时使用的参数',[['','无'],...at.parameters.filter(p=>p.type==='Object reference'&&!p.hidden&&!p.multiple).map(p=>[p.id,p.name])],agent.replacementParameter||'')+'</section>'
 }
 function atRules(at){
  const objPropOpts=at.parameters.filter(p=>p.type==='Object reference').flatMap(p=>(W().objectTypes[p.objectType]?.properties||[]).map(x=>[p.id+'.'+x.id,p.name+'.'+x.name]))
  const refOpts=at.parameters.map(p=>[p.id,p.name+' ('+p.type+')'])
- return '<p class="muted small-t">一次提交按顺序执行全部规则，编译成一组原子编辑：例如签约同时「创建租约」和「修改房屋」。对同一对象的多条规则会合并为一次编辑。</p>'+at.rules.map((r,ri)=>{
+ return '<p class="muted small-t">Writeback 在对象编辑前调用。通知和普通 Webhook 在对象编辑后执行。</p>'+at.rules.map((r,ri)=>{
   const P='working.actionTypes.'+at.id+'.rules.'+ri+'.'
   const ruleBtns='<div class="row">'+B('moveRule','↑','small',at.id+'|'+ri+'|-1',ri?'aria-label="上移"':'disabled aria-label="上移"')+B('moveRule','↓','small',at.id+'|'+ri+'|1',ri<at.rules.length-1?'aria-label="下移"':'disabled aria-label="下移"')+B('removeRule','删除规则','small danger',at.id+'|'+ri)+'</div>'
+  if(r.type==='applyScenario')return '<section class="card"><div class="spread"><h3>Apply scenario</h3>'+ruleBtns+'</div>'+actionScopeFields(r,P.slice(0,-1),at.id+'|'+ri)+'</section>'
+  if(INTERFACE_LINK_RULES.includes(r.type)){
+   const constraint=W().interfaces[r.interface]?.linkConstraints?.find(l=>l.apiName===r.constraint)
+   const refOpts=at.parameters.filter(p=>p.type==='Interface reference'&&p.interface===r.interface).map(p=>[p.id,p.name])
+   const targetOpts=at.parameters.filter(p=>constraint?.targetKind==='interface'?p.type==='Interface reference'&&p.interface===constraint.target:p.type==='Object reference'&&p.objectType===constraint?.target).map(p=>[p.id,p.name])
+   return '<section class="card"><div class="spread"><h3>'+esc(RULES[r.type][0])+'</h3>'+ruleBtns+'</div>'+
+    '<p class="muted">'+esc(W().interfaces[r.interface]?.name||r.interface)+' · '+esc(r.constraint)+'</p>'+
+    '<div class="grid2">'+fSel(P+'objectParam','来源接口对象',refOpts,r.objectParam)+fSel(P+'targetParam','目标对象',targetOpts,r.targetParam)+'</div></section>'
+  }
   if(r.type==='function'){
-   const reg=fnRegistry()[r.fn],meta=fnVersionMeta(r.fn,r.version),rs=fnResolve(r),zero=semver(r.version)?.[0]===0
-   return '<section class="card"><div class="spread"><h3>Rule '+(ri+1)+' · Function · <a href="#/functions/'+encodeURIComponent(r.fn)+'">'+esc(r.fn)+'</a></h3>'+ruleBtns+'</div><p class="muted small-t">'+esc(RULES.function[1])+'</p>'+
-    '<div class="grid2">'+fSel(P+'version','Function version',reg?reg.versions.map(x=>[x.version,x.version+(x===reg.latest?'（最新）':'')]):[[r.version,r.version]],r.version,'data-after="fnVersion" data-arg="'+esc(at.id+'|'+ri)+'"')+'<div class="fld"><span>Auto upgrade</span>'+fChk(P+'autoUpgrade','以所选版本为最低版本，自动使用同主版本的向后兼容版本'+(zero?'（0.y.z 不支持）':''),r.autoUpgrade,zero?'disabled':'')+'</div></div>'+
-    (r.autoUpgrade&&rs?'<p class="note">当前解析到 <b>'+esc(rs.version)+'</b>。注意：开启后，有函数编辑权限但没有动作编辑权限的人也能通过发布新版本改变动作行为；编辑范围（provenance）以所选最低版本为准。</p>':'<p class="muted small-t">函数逻辑变更不会自动更新动作，需要在这里选择新版本。</p>')+
-    (meta?'<h4 style="margin-top:10px">Inputs → Parameters</h4>'+table(['函数输入','类型','动作参数'],meta.inputs.map(inp=>{const t=fnParamType(inp.type,W());return [esc(inp.name)+(inp.optional?'?':''),esc(inp.type),'<select data-bind="'+esc(P+'inputs.'+inp.name)+'" aria-label="映射 '+esc(inp.name)+'">'+options([['','未映射'],...at.parameters.filter(p=>t&&p.type===t.type&&(t.type!=='Object reference'||p.objectType===t.objectType)).map(p=>[p.id,p.name])],r.inputs?.[inp.name]||'')+'</select>']}))+'<p class="muted small-t">Edits（provenance）：'+esc(meta.edits.join('、')||'—')+'。函数编辑了未声明的对象类型时，动作会失败。</p>':'<p class="note bad">版本 '+esc(r.version)+' 不存在。</p>')+'</section>'
+   return renderFunctionRule(at,r,ri,P,ruleBtns)
   }
   if(IFACE_RULES.includes(r.type)){
    const it=W().interfaces[r.interface]
@@ -1145,16 +1430,89 @@ function atRules(at){
   (r.type==='create'?(()=>{const js=Object.values(W().linkTypes).filter(l=>l.mode==='join'&&(l.a.objectType===rot?.id||l.b.objectType===rot?.id));return '<div style="margin-top:10px"><b class="small-t">Links</b>'+(r.links||[]).map((lk,li)=>{const l=W().linkTypes[lk.linkType],oth=l?l[l.a.objectType===rot.id?'b':'a'].objectType:'';return '<div class="row" style="margin-top:4px">'+fSel(P+'links.'+li+'.linkType','Link type',js.map(x=>[x.id,x.a.displayName+' ↔ '+x.b.displayName]),lk.linkType)+fSel(P+'links.'+li+'.param','关联到（参数）',[['','请选择'],...at.parameters.filter(p=>p.type==='Object reference'&&p.objectType===oth).map(p=>[p.id,p.name+(p.multiple?'（列表）':'')])],lk.param)+B('removeRuleLink','移除','small ghost',at.id+'|'+ri+'|'+li)+'</div>'}).join('')+(js.length?'<div style="margin-top:4px">'+B('addRuleLink','＋ Add link','small',at.id+'|'+ri)+'</div>':'<p class="muted small-t">该对象类型没有多对多关系，Add link 不可用（一对多请写外键属性）。</p>')+'</div>'})():'')+
   (r.type==='delete'?'':'<div class="scroll" style="margin-top:10px"><table><thead><tr><th>Property</th><th>Value source</th><th>Value</th><th></th></tr></thead><tbody>'+r.mappings.map((m,mi)=>{
    const M=P+'mappings.'+mi+'.',prop=propOf(rot,m.prop)
-   const srcs=SOURCES
+   const response=writebackField(at)
+   const srcs=response||m.source==='writeback'?[...SOURCES,['writeback','Writeback response']]:SOURCES
    let val=''
    if(m.source==='param')val='<select data-bind="'+esc(M+'value')+'" aria-label="参数">'+options([['','请选择参数'],...refOpts],m.value)+'</select>'
    else if(m.source==='objprop')val='<select data-bind="'+esc(M+'value')+'" aria-label="对象参数属性">'+options([['','请选择'],...objPropOpts],m.value)+'</select>'
    else if(m.source==='static')val='<input data-bind="'+esc(M+'value')+'" value="'+esc(m.value)+'" placeholder="（留空表示清空该属性）" aria-label="静态值">'
+   else if(m.source==='writeback')val=fSel(M+'value','响应字段',[['','请选择'],...(response?[[response,response]]:[])],m.value)
    else val='<span class="muted small-t">'+{user:'提交人 ID（执行开始时）',time:'执行开始时间'}[m.source]+'</span>'
    return '<tr><td>'+esc(prop?.name||m.prop)+' <code>'+esc(m.prop)+'</code>'+(m.prop===rot?.primaryKey?' '+badge('PK','pk'):'')+'</td><td><select data-bind="'+esc(M+'source')+'" data-after="mapSource" data-arg="'+esc(at.id+'|'+ri+'|'+mi)+'" aria-label="来源">'+options(srcs,m.source)+'</select></td><td class="wrap" style="min-width:180px">'+val+'</td><td>'+B('removeMapping','移除','small ghost',at.id+'|'+ri+'|'+mi,r.type==='create'&&m.prop===rot?.primaryKey?'disabled':'')+'</td></tr>'}).join('')+'</tbody></table></div>'+
   (unused.length?'<div class="row" style="margin-top:10px"><label class="fld"><span>Add property</span><select id="addMapSel'+ri+'">'+options(unused.map(p=>[p.id,p.name+' ('+p.id+')']))+'</select></label>'+B('addMapping','＋ Add property','',at.id+'|'+ri)+'</div>':''))+'</section>'
  }).join('')+
- '<section class="card"><h3>Add new rule</h3><div class="row"><label class="fld"><span>规则类型</span><select id="newRuleType">'+options(Object.entries(RULES).filter(([k])=>(k==='function'&&Object.values(fnRegistry()).some(f=>f.kind==='edit'))||OBJECT_RULES.includes(k)||(LINK_RULES.includes(k)&&Object.values(W().linkTypes).some(l=>l.mode==='join'))||(IFACE_RULES.includes(k)&&Object.keys(W().interfaces).length)).map(([k,[l]])=>[k,l]))+'</select></label>'+(Object.values(fnRegistry()).some(f=>f.kind==='edit')?'<label class="fld"><span>Function（函数规则）</span><select id="newRuleFn">'+options(Object.values(fnRegistry()).filter(f=>f.kind==='edit').map(f=>[f.id,f.id+' · '+f.latest.version]))+'</select></label>':'')+(Object.keys(W().interfaces).length?'<label class="fld"><span>Interface（接口规则）</span><select id="newRuleIface">'+options(Object.values(W().interfaces).map(i=>[i.id,i.name]))+'</select></label>':'')+'<label class="fld"><span>Object type（对象规则）</span><select id="newRuleOT">'+options(Object.values(W().objectTypes).map(o=>[o.id,o.name]),at.objectType)+'</select></label>'+(Object.values(W().linkTypes).some(l=>l.mode==='join')?'<label class="fld"><span>Link type（关联规则）</span><select id="newRuleLink">'+options(Object.values(W().linkTypes).filter(l=>l.mode==='join').map(l=>[l.id,l.a.displayName+' ↔ '+l.b.displayName]))+'</select></label>':'')+''+B('addRule','＋ Add rule','',at.id)+'</div><p class="muted small-t">Modify / Delete 规则会自动创建（或复用）一个引用该对象类型的对象参数。Create link(s) / Delete link 仅用于多对多关系；外键关系请修改外键属性。Function rule 不能与其他 Ontology rule 组合。</p></section>'
+ renderActionEffects(at)+renderAddActionRule(at)
+}
+function renderFunctionRule(at,rule,index,path,buttons){
+ const functions=editableFunctions()
+ const registry=functions.find(f=>f.id===rule.fn)
+ const meta=fnVersionMeta(rule.fn,rule.version)
+ const resolved=fnResolve(rule)
+ const zero=semver(rule.version)?.[0]===0
+ const arg=at.id+'|'+index
+ const names=functions.map(f=>[f.id,f.id])
+ if(!registry)names.unshift([rule.fn,rule.fn+'（不可用）'])
+ const versions=(registry?.versions||[]).map(x=>[x.version,x.version+(x===registry.latest?'（最新）':'')])
+ if(!versions.some(([version])=>version===rule.version))versions.unshift([rule.version,rule.version+'（不可用）'])
+ const cols=meta?.inputs.map(inp=>{
+  const mapping=rule.inputs?.[inp.name]||''
+  const choices=[['','选择 Action 参数'],...at.parameters.filter(p=>fnInputMatches(inp,p,W())).map(p=>[p.id,p.name+' · '+p.id])]
+  if(mapping&&!choices.some(([id])=>id===mapping))choices.push([mapping,mapping+'（类型不匹配或已删除）'])
+  const select=fSel(path+'inputs.'+inp.name,'映射 '+esc(inp.name),choices,mapping,'data-after="fnInputBinding" data-arg="'+esc(arg)+'" data-previous="'+esc(mapping)+'"')
+  return [esc(inp.name)+(inp.optional?' <small>可选值</small>':''),esc(inp.type),'<div class="row">'+select+B('newFunctionParameter','新建参数','small',arg+'|'+inp.name)+'</div>']
+ })||[]
+ const former=at.parameters.filter(p=>rule.previousInputs?.includes(p.id)&&!Object.values(rule.inputs||{}).includes(p.id))
+ const paramsLink='<a href="#/action-types/'+encodeURIComponent(at.id)+'/parameters">编辑 Action 参数</a>'
+ return '<section class="card"><div class="spread"><h3>Rule '+(index+1)+' · Run function</h3>'+buttons+'</div>'+
+  '<div class="grid2">'+fSel(path+'fn','Published Ontology Edit Function',names,rule.fn,'data-after="pickRuleFunction" data-arg="'+esc(arg)+'"')+
+  fSel(path+'version','Function version',versions,rule.version,'data-after="fnVersion" data-arg="'+esc(arg)+'"')+'</div>'+
+  fChk(path+'autoUpgrade','Auto upgrade · 自动升级到同主版本的新版本',rule.autoUpgrade,zero?'disabled':'')+
+  '<p class="muted small-t">'+(resolved?'当前执行版本 <code>'+esc(resolved.version)+'</code> · ':'')+
+  (rule.autoUpgrade?'按选定最低版本的编辑范围校验。':'已固定版本。发布新版本后可在此切换。')+
+  (zero?' 0.x 版本只能固定。':'')+'</p>'+
+  (meta?'<div class="spread"><h4>Inputs → Parameters</h4>'+paramsLink+'</div>'+
+   table(['函数输入','输入类型','Action 参数'],cols,'此函数无输入')+
+   '<p class="muted small-t">声明的编辑范围 · '+esc(meta.edits.join('、')||'—')+'</p>':'<p class="note bad">所选函数版本不可用。</p>')+
+  (former.length?'<p class="note">旧映射保留了这些 Action 参数：'+former.map(p=>esc(p.name)).join('、')+'。可在 Parameters 调整或删除未引用的参数。</p>':'')+
+  '<a class="small-t" href="#/functions/'+encodeURIComponent(rule.fn)+'">查看已发布的函数详情 →</a></section>'
+}
+function renderActionEffects(at){
+ return (at.effects||[]).map((rule,index)=>{
+  const [name,desc]=ACTION_EFFECTS[rule.type]
+  return '<section class="card"><div class="spread"><h3>'+esc(name)+'</h3>'+B('removeActionEffect','删除规则','small danger',at.id+'|'+index)+'</div>'+
+   '<p class="muted">'+esc(desc)+'</p>'+renderActionEffect(rule,'working.actionTypes.'+at.id+'.effects.'+index,at)+'</section>'
+ }).join('')
+}
+function renderAddActionRule(at){
+ const links=actionJoins(),itList=Object.values(W().interfaces),functions=editableFunctions()
+ const available=[
+  ['Ontology',[
+   ...OBJECT_RULES.map(id=>[id,RULES[id][0],!Object.keys(W().objectTypes).length||isFnAction(at)]),
+   ...LINK_RULES.map(id=>[id,RULES[id][0],!links.length||isFnAction(at)]),
+   ['function','Run function',!functions.length||!!at.rules.length],
+   ...[...IFACE_RULES,...INTERFACE_LINK_RULES].map(id=>[id,RULES[id][0],!itList.length||isFnAction(at)]),
+   ['applyScenario','Apply scenario',isFnAction(at)||at.rules.some(r=>r.type==='applyScenario')]
+  ]],
+  ['External Request',[['writeback','Writeback Webhook',at.effects?.some(r=>r.type==='writeback')]]],
+  ['Side Effects',[['webhook','Webhook',false],['notification','Notification',false]]],
+  ['Advanced',[['schedule','Schedule',at.effects?.some(r=>r.type==='schedule')]]]
+ ]
+ const all=available.flatMap(([,items])=>items)
+ const kind=all.find(([id,,off])=>id===S.ui.addRuleKind&&!off)?.[0]||all.find(([, ,off])=>!off)?.[0]
+ const vis=available.map(([group,items])=>'<optgroup label="'+esc(group)+'">'+items.map(([id,label,off])=>'<option value="'+esc(id)+'" '+(id===kind?'selected ':'')+(off?'disabled':'')+'>'+esc(label)+'</option>').join('')+'</optgroup>').join('')
+ const selectedIface=itList.find(i=>i.id===S.ui.ruleIface)||itList[0]
+ let field=''
+ if(OBJECT_RULES.includes(kind))field='<label class="fld"><span>Object type</span><select id="newRuleOT">'+options(Object.values(W().objectTypes).map(o=>[o.id,o.name]),at.objectType)+'</select></label>'
+ if(LINK_RULES.includes(kind))field='<label class="fld"><span>Link type</span><select id="newRuleLink">'+options(links.map(l=>[l.id,joinLabel(l)]))+'</select></label>'
+ if(kind==='function')field='<label class="fld"><span>Published Function</span><select id="newRuleFn">'+options(functions.map(f=>[f.id,f.id+' · '+f.latest.version]))+'</select></label>'
+ if(IFACE_RULES.includes(kind)||INTERFACE_LINK_RULES.includes(kind)){
+  field='<label class="fld"><span>Interface</span><select id="newRuleIface" data-change="selectRuleInterface">'+options(itList.map(i=>[i.id,i.name]),selectedIface?.id)+'</select></label>'
+  if(INTERFACE_LINK_RULES.includes(kind))field+='<label class="fld"><span>Link type constraint</span><select id="newRuleConstraint">'+options((selectedIface?.linkConstraints||[]).map(l=>[l.apiName,l.apiName]))+'</select></label>'
+ }
+ if(kind==='webhook'||kind==='writeback')field='<label class="fld"><span>Data Connection · Webhook</span><select id="newRuleConnector">'+options(Object.entries(DEMO_CONNECTORS).map(([id,c])=>[id,c.name]),kind==='writeback'?'contracts':'crm')+'</select></label>'
+ if(kind==='applyScenario')field='<p class="muted small-t">添加后，在规则内限定这个动作可合并的范围。</p>'
+ return '<section class="card"><h3>Add new rule</h3><div class="row"><label class="fld"><span>规则类型</span><select id="newRuleType" data-change="selectRuleKind">'+vis+'</select></label>'+field+
+  B('addRule','＋ Add rule','',at.id,!kind?'disabled':'')+'</div></section>'
 }
 function atParams(at){
  const P='working.actionTypes.'+at.id+'.parameters.'
@@ -1223,18 +1581,27 @@ const vtUsers=id=>[...new Set([...Object.values(W().objectTypes),...Object.value
 const vtDesc=v=>({none:'无',regex:'正则 '+v.constraint.pattern,enum:'枚举 '+v.constraint.values,range:(v.baseType==='String'?'长度 ':'范围 ')+(v.constraint.min||'-∞')+' ~ '+(v.constraint.max||'+∞')}[v.constraint.kind])
 /* ============ Object Explorer ============ */
 function pageExplorer(otId,pk){
- const ots=Object.values(C().objectTypes)
- if(!ots.length)return head('Object Explorer','使用已保存到 Ontology 的对象、关系和动作。')+'<div class="empty">Ontology 中还没有已保存的对象类型。请先在 Ontology Manager 中创建并 Save，或在 <a href="#/discover">Discover</a> 加载样例。</div>'
- const ot=C().objectTypes[otId]||ots.find(o=>o.visibility==='prominent')||ots[0]
- const objs=objectsOf(ot.id)
+ const read=ontologyReadScope(),ots=Object.values(read.types)
+ const workspaceActions=workspaceActionBar()
+ if(!ots.length)return head('Object Explorer','使用已保存到 Ontology 的对象、关系和动作。')+workspaceActions+'<div class="empty">Ontology 中还没有已保存的对象类型。请先在 Ontology Manager 中创建并 Save，或在 <a href="#/discover">Discover</a> 加载样例。</div>'
+ const ot=read.types[otId]||ots.find(o=>o.visibility==='prominent')||ots[0]
+ const objs=read.objects(ot.id),properties=readableProperties(ot)
  const q=(S.ui.exQ||'').toLowerCase()
- const shown=objs.filter(o=>!q||Object.values(o).join(' ').toLowerCase().includes(q))
+ const shown=objs.filter(o=>!q||properties.map(p=>o[p.id]).join(' ').toLowerCase().includes(q))
  const obj=pk!==undefined?objs.find(o=>String(o[ot.primaryKey])===pk):undefined
  const pend=diff().length
- return head('Object Explorer · 租赁业务台','选择对象，沿关系查看关联对象，并在对象上提交 Action。这里只使用<b>已保存</b>的 Ontology'+(pend?'（另有 '+pend+' 项未保存更改未生效）':'')+'。')+
- '<div class="explorer"><section class="card" style="padding:10px"><label class="fld"><span>Object type</span><select data-change="exploreType" aria-label="对象类型">'+options(ots.map(o=>[o.id,o.icon+' '+o.name]),ot.id)+'</select></label><input style="margin:8px 0" data-bind="ui.exQ" value="'+esc(S.ui.exQ||'')+'" placeholder="搜索 '+esc(ot.plural)+'" aria-label="搜索对象"><div class="obj-list">'+(shown.map(o=>'<a href="#/explorer/'+esc(ot.id)+'/'+encodeURIComponent(o[ot.primaryKey])+'"'+(o===obj?' aria-current="page"':'')+'><b>'+esc(titleOf(ot.id,o))+'</b> <span class="muted small-t">'+esc(o[ot.primaryKey])+(o.status?' · '+esc(o.status):'')+'</span></a>').join('')||'<p class="muted small-t" style="padding:8px">没有对象</p>')+'</div>'+
+ return head('Object Explorer · 租赁业务台','选择对象，沿关系查看关联对象，并在对象上提交 Action。这里只使用<b>已保存</b>的 Ontology'+(pend?'（另有 '+pend+' 项未保存更改未生效）':'')+'。','<a href="#/aip">打开 AIP 租约查询 →</a>')+
+ workspaceActions+'<div class="explorer"><section class="card" style="padding:10px"><label class="fld"><span>Object type</span><select data-change="exploreType" aria-label="对象类型">'+options(ots.map(o=>[o.id,o.icon+' '+o.name]),ot.id)+'</select></label><input style="margin:8px 0" data-bind="ui.exQ" value="'+esc(S.ui.exQ||'')+'" placeholder="搜索 '+esc(ot.plural)+'" aria-label="搜索对象"><div class="obj-list">'+(shown.map(o=>'<a href="#/explorer/'+esc(ot.id)+'/'+encodeURIComponent(o[ot.primaryKey])+'"'+(o===obj?' aria-current="page"':'')+'><b>'+esc(titleOf(ot.id,o))+'</b> <span class="muted small-t">'+esc(o[ot.primaryKey])+(o.status?' · '+esc(o.status):'')+'</span></a>').join('')||'<p class="muted small-t" style="padding:8px">没有对象</p>')+'</div>'+
  (actionsFor(ot.id,true).length?'<div style="margin-top:10px">'+actionsFor(ot.id,true).map(a=>B('openAction',esc(a.name),'',a.id+'|'+ot.id+'|')).join(' ')+'</div>':'')+'</section>'+
  '<div>'+(obj?objectView(ot,obj):'<div class="empty">从左侧选择一个'+esc(ot.name)+'，查看属性、关联对象与可执行的动作。</div>')+'</div></div>'
+}
+function workspaceActionBar(){
+ const actions=Object.values(C().actionTypes).filter(a=>!a.objectType&&!isIfaceAction(a))
+ const staged=S.scenarios.filter(s=>s.status==='staged')
+ if(!actions.length&&!staged.length)return ''
+ return '<section class="card action-tools"><h3>工作区动作</h3><div class="row">'+
+  actions.map(at=>B('openAction',esc(at.name),'',at.id+'||')).join('')+'</div>'+
+  (staged.length?'<p class="muted small-t">待合并场景 · '+staged.map(s=>esc(s.name)+'（'+s.edits.length+' 项编辑）').join('、')+'</p>':'')+'</section>'
 }
 function actionsFor(otId,createOnly=false){
  const ot=C().objectTypes[otId]
@@ -1248,12 +1615,17 @@ function objectView(ot,obj){
  return '<section class="card"><div class="spread"><div class="res-head">'+icon(ot)+'<div><h2 style="margin:0">'+esc(titleOf(ot.id,obj))+'</h2><span class="muted small-t">'+esc(ot.name)+' · '+esc(pk)+'</span></div></div><div class="row">'+actionsFor(ot.id).map(a=>B('openAction',esc(a.name),'primary',a.id+'|'+ot.id+'|'+pk)).join('')+'</div></div>'+
  '<dl class="kv" style="margin-top:12px">'+ot.properties.filter(p=>p.visibility!=='hidden').map(p=>{const t=fkTargetOf(ot.id,p.id,C());const v=obj[p.id];return '<dt>'+esc(p.name)+'</dt><dd>'+(t&&v?'<a href="#/explorer/'+esc(t)+'/'+encodeURIComponent(v)+'">'+esc(titleOf(t,findObj(t,v))||v)+'</a> <code>'+esc(v)+'</code>':esc(v)||'<span class="muted">—</span>')+'</dd>'}).join('')+'</dl></section>'+
  links.map(l=>{const s=sideOf(l,ot.id),o=other(s),to=C().objectTypes[l[o].objectType],objs=linkedObjects(l,s,obj)
-  return '<section class="card"><div class="spread"><h3>'+esc(l[o].displayName)+' <span class="muted small-t">('+esc(to.name)+' · '+cardOf(l,o)+')</span></h3><span class="muted small-t">'+objs.length+'</span></div>'+(()=>{const acts=actionsFor(to.id),vis=to.properties.filter(p=>p.visibility!=='hidden');const cell=(p,x,i)=>{const v=x[p.id];if(i===0)return '<a href="#/explorer/'+esc(to.id)+'/'+encodeURIComponent(x[to.primaryKey])+'">'+esc(v)+'</a>';const t=fkTargetOf(to.id,p.id,C());return t&&v?'<a href="#/explorer/'+esc(t)+'/'+encodeURIComponent(v)+'">'+esc(titleOf(t,findObj(t,v))||v)+'</a>':esc(v)};return table([...vis.map(p=>esc(p.name)),...(acts.length?['Actions']:[])],objs.map(x=>[...vis.map((p,i)=>cell(p,x,i)),...(acts.length?[acts.map(a=>B('openAction',esc(a.name),'small',a.id+'|'+to.id+'|'+x[to.primaryKey])).join(' ')]:[])]),'没有关联的'+esc(to.name))})()+'</section>'}).join('')+
+  const note=WORKSPACE.linkNotes?.[l.id]
+  return '<section class="card"><div class="spread"><h3>'+esc(l[o].displayName)+' <span class="muted small-t">('+esc(to.name)+' · '+cardOf(l,o)+')</span></h3><span class="muted small-t">'+objs.length+'</span></div>'+
+   (note?'<p class="muted small-t">'+esc(note)+'</p>':'')+
+   (()=>{const acts=actionsFor(to.id),vis=to.properties.filter(p=>p.visibility!=='hidden');const cell=(p,x,i)=>{const v=x[p.id];if(i===0)return '<a href="#/explorer/'+esc(to.id)+'/'+encodeURIComponent(x[to.primaryKey])+'">'+esc(v)+'</a>';const t=fkTargetOf(to.id,p.id,C());return t&&v?'<a href="#/explorer/'+esc(t)+'/'+encodeURIComponent(v)+'">'+esc(titleOf(t,findObj(t,v))||v)+'</a>':esc(v)};return table([...vis.map(p=>esc(p.name)),...(acts.length?['Actions']:[])],objs.map(x=>[...vis.map((p,i)=>cell(p,x,i)),...(acts.length?[acts.map(a=>B('openAction',esc(a.name),'small',a.id+'|'+to.id+'|'+x[to.primaryKey])).join(' ')]:[])]),'没有关联的'+esc(to.name))})()+'</section>'}).join('')+
  ''
 }
 function pageActionLog(){
  const types=[...new Set(S.logs.map(l=>l.logType))]
- return head('Action Log','每次成功提交生成一个 [Log] 对象，记录提交人、时间、动作版本、参数与被编辑对象。失败的提交不会产生记录。')+
+ const runs=S.actionRuns.map(run=>[esc(run.time.slice(0,19).replace('T',' ')),esc(run.at),esc(USERS[run.user]?.name||run.user),esc(run.status),renderExecutionSteps(run.steps)])
+ return head('Action Log','查看提交记录，以及 Webhook、通知和构建的执行结果。')+
+ (runs.length?'<section class="card"><h3>执行记录</h3>'+table(['时间','动作','提交人','状态','执行顺序'],runs)+'</section>':'')+
  (types.length?types.map(t=>'<section class="card"><h3>'+esc(t)+'</h3>'+table(['Timestamp','User','Action type version','Summary','Edited objects','Parameters','Action RID','Revert'],S.logs.filter(l=>l.logType===t).map(l=>[esc(l.timestamp.slice(0,19).replace('T',' ')),esc(USERS[l.user]?.name||l.user),'v'+l.version,'<span class="wrap">'+esc(l.summary)+'</span>',l.edited.map(e=>e.link?esc(e.pk)+' '+badge(e.type):'<a href="#/explorer/'+esc(e.ot)+'/'+encodeURIComponent(e.pk)+'">'+esc(e.pk)+'</a> '+badge(e.type)).join(' '),esc(Object.entries(l.params).map(([k,v])=>k+'='+v).join(', ')),'<code>'+esc(l.actionRid)+'</code>',l.reverted?badge('已撤销 · '+(USERS[l.revertedBy]?.name||'')+' · '+l.revertedAt.slice(11,19),'del'):'—']))+'</section>').join(''):'<div class="empty">还没有 Action log。在 Object Explorer 提交动作后出现在这里。</div>')
 }
 
@@ -1454,110 +1826,335 @@ WIZ.linkType={title:'Create a new link type',steps:['Relationship type','Link re
 const joinsOf=otId=>Object.values(W().linkTypes).filter(l=>l.mode==='join'&&(l.a.objectType===otId||l.b.objectType===otId))
 function initMappings(d){
  const ot=W().objectTypes[d.objectType]
- d.mappings=[];if(!ot)return
- if(LINK_RULES.includes(d.rule)){
-  const js=joinsOf(ot.id);if(!js.length){d.rule='modify';return initMappings(d)}
-  if(!js.some(l=>l.id===d.linkType))d.linkType=js[0].id
-  const l=W().linkTypes[d.linkType],A=W().objectTypes[l.a.objectType],Bt=W().objectTypes[l.b.objectType]
-  if(!d.apiTouched)d.apiName=(d.rule==='createLink'?'link':'unlink')+A.apiName+Bt.apiName
-  if(!d.nameTouched)d.name=(d.rule==='createLink'?'关联':'解除关联 · ')+l.b.displayName
-  return
- }
+ d.mappings=[]
+ if(!ot)return
  if(d.rule==='create')d.mappings=ot.properties.map(p=>({prop:p.id,source:'param'}))
  if(d.rule==='modify'||d.rule==='createOrModify')d.mappings=ot.properties.filter(p=>p.id!==ot.primaryKey).slice(0,1).map(p=>({prop:p.id,source:'param'}))
- const verb={create:'create',modify:'modify',delete:'delete'}[d.rule]
- if(!d.apiTouched)d.apiName=verb+ot.apiName
- if(!d.nameTouched)d.name={create:'创建',modify:'修改',delete:'删除'}[d.rule]+ot.name
+ actionDraftName(d,{create:'创建',modify:'修改',createOrModify:'更新或创建',delete:'删除'}[d.rule]+ot.name,({create:'create',modify:'modify',createOrModify:'upsert',delete:'delete'}[d.rule]+ot.apiName))
 }
-WIZ.actionType={title:'New action type',steps:d=>d.target==='interface'?['Action type','Properties','Metadata','Submission criteria']:['Action type','Mapping','Metadata'],finishLabel:'Create',doc:'https://www.palantir.com/docs/foundry/action-types/getting-started/',
- init(arg){const ots=Object.keys(W().objectTypes);const d={target:'object',iface:Object.keys(W().interfaces)[0]||'',irule:'modifyIface',imaps:[],groups:['managers','agents'],objectType:arg&&W().objectTypes[arg]?arg:ots[0]||'',rule:'modify',mappings:[],name:'',apiName:'',description:'',location:PROJECTS[0]};initMappings(d);return d},
- render(d,step){
-  const P='ui.wiz.d.',ot=W().objectTypes[d.objectType]
-  const tabs='<div class="row" role="radiogroup" aria-label="动作作用对象" style="margin-bottom:10px">'+[['object','Object'],['interface','Interfaces']].map(([k,l])=>'<label class="chk opt-card" style="flex:1;margin:0"><input type="radio" name="atTarget" data-bind="'+P+'target" value="'+k+'" data-after="atTarget" '+(d.target===k?'checked':'')+(k==='interface'&&!Object.keys(W().interfaces).length?' disabled':'')+'><span><b>'+l+'</b><small>'+(k==='object'?'作用于一个对象类型':'作用于实现了某接口的所有对象类型')+'</small></span></label>').join('')+'</div>'
-  if(d.target==='interface'){
-   const it=W().interfaces[d.iface]
-   if(step===0)return tabs+'<p class="muted">在 Interfaces 下选择接口和规则类型。接口动作对所有实现类型生效，只能写接口属性；按文档暂不支持 Action log。</p>'+fSel(P+'iface','Interface',Object.values(W().interfaces).map(i=>[i.id,i.name]),d.iface,'data-after="atIfaceReset"')+
-    '<h4 style="margin-top:12px">Interface actions</h4>'+IFACE_RULES.map(k=>'<label class="opt-card"><input type="radio" name="atIRule" data-bind="'+P+'irule" value="'+k+'" data-after="atIfaceReset" '+(d.irule===k?'checked':'')+'><span><b>'+RULES[k][0]+'</b><small>'+RULES[k][1]+'</small></span></label>').join('')+
-    '<p class="muted small-t">实现类型：'+(it?ifaceImpls(it.id).map(o=>esc(o.name)).join('、')||'暂无':'—')+'</p>'
-   if(step===1){
-    if(d.irule==='deleteIface')return '<p class="note">Delete object(s) of interface：自动创建一个 interface reference 参数，提交时删除所选对象。</p>'
-    const unused=(it?.properties||[]).filter(p=>!d.imaps.some(m=>m.prop===p.apiName))
-    return '<p class="muted">选择要写入的接口属性。默认 From parameter，会自动生成同名参数。'+(d.irule==='createIface'?'会自动生成 Object type 参数，用来选择创建哪种实现类型；每个实现类型的主键都必须映射到某个接口属性。':'会自动生成 interface reference 参数。主键不能修改。')+'</p>'+
-     table(['Interface property','Value source',''],d.imaps.map((m,i)=>{const p=it.properties.find(x=>x.apiName===m.prop);return [esc(p?.name||m.prop)+' <code>'+esc(m.prop)+'</code>','<select data-bind="'+P+'imaps.'+i+'.source" aria-label="来源">'+options(SOURCES.filter(([s])=>s!=='objprop'),m.source)+'</select>'+(m.source==='static'?'<input style="margin-top:4px" data-bind="'+P+'imaps.'+i+'.value" value="'+esc(m.value||'')+'" aria-label="静态值">':''),B('wizRemoveIMap','移除','small ghost',String(i))]}),'尚未选择接口属性')+
-     (unused.length?'<div class="row" style="margin-top:10px"><label class="fld"><span>Add property</span><select id="wizAddIMapSel">'+options(unused.map(p=>[p.apiName,p.name+' ('+p.apiName+')']))+'</select></label>'+B('wizAddIMap','＋ Add property')+'</div>':'')
-   }
-   if(step===2)return fInp(P+'name','Action type name',d.name,'data-after="atName"')+fArea(P+'description','Description',d.description)
-   return '<p class="muted">选择可以执行该动作的用户组（生成一个 Current user 提交条件）。提交条件对所有实现类型统一生效。</p><div class="row">'+USER_GROUPS.map(([g,l])=>'<label class="chk"><input type="checkbox" data-change="wizToggleGroupCrit" data-arg="'+g+'" '+(d.groups.includes(g)?'checked':'')+'> '+esc(l)+'</label>').join('')+'</div><p class="note">点击 <b>Create</b> 后进入详情页，可继续调整参数和提交条件。保存到 Ontology 后，实现该接口的对象会在 Object Explorer 中出现此动作。</p>'
+function actionDraftName(d,name,apiName){
+ if(!d.nameTouched)d.name=name
+ if(!d.apiTouched)d.apiName=apiName
+}
+const editableFunctions=()=>Object.values(fnRegistry()).flatMap(f=>{
+ const versions=f.versions.filter(entry=>entry.meta.kind==='edit')
+ return versions.length?[{id:f.id,versions,latest:versions[0]}]:[]
+})
+const actionJoins=()=>Object.values(W().linkTypes).filter(l=>l.mode==='join')
+const joinLabel=l=>l.a.displayName+' ↔ '+l.b.displayName
+
+function resetWizardFunction(d,resetVersion){
+ const fn=editableFunctions().find(f=>f.id===d.functionId)
+ if(resetVersion)d.functionVersion=fn?.latest.version||''
+ const meta=fnVersionMeta(d.functionId,d.functionVersion)
+ const prev=d.fnInputs||[]
+ d.fnInputs=meta?.inputs.map(inp=>({name:inp.name,label:prev.find(p=>p.name===inp.name&&p.type===inp.type)?.label||inp.name,type:inp.type,optional:inp.optional}))||[]
+ if(semver(d.functionVersion)?.[0]===0)d.autoUpgrade=false
+ if(fn)actionDraftName(d,fn.id.split('.').at(-1),toCamel(fn.id.split('.').at(-1)))
+}
+function resetActionTarget(d){
+ if(d.target==='object'){initMappings(d);return}
+ if(d.target==='interface'){initInterfaceActionDraft(d);return}
+ if(d.target==='link'){
+  const l=W().linkTypes[d.linkType]
+  const create=d.linkRule==='createLink'
+  actionDraftName(d,(create?'关联':'解除关联')+(l?' · '+joinLabel(l):''),(create?'link':'unlink')+(l?(W().objectTypes[l.a.objectType]?.apiName||'')+(W().objectTypes[l.b.objectType]?.apiName||''):'Objects'))
+  return
+ }
+ if(d.target==='function'){resetWizardFunction(d,false);return}
+ if(d.target==='scenario'){actionDraftName(d,'合并业务场景','applyScenario');return}
+ const effects={webhook:['同步外部系统','syncExternalSystem'],notification:['发送业务通知','sendNotification'],advanced:['启动数据构建','triggerDatasetBuild']}
+ actionDraftName(d,...effects[d.target])
+}
+function initInterfaceActionDraft(d){
+ const it=W().interfaces[d.iface]
+ if(!it?.linkConstraints?.some(l=>l.apiName===d.constraint))d.constraint=it?.linkConstraints?.[0]?.apiName||''
+ const pkLike=ap=>ifaceImpls(it.id).some(o=>ifaceLocal(o,it.id,ap)===o.primaryKey)
+ d.imaps=!it||d.irule==='deleteIface'||INTERFACE_LINK_RULES.includes(d.irule)?[]:
+  it.properties.filter(p=>d.irule==='createIface'||!pkLike(p.apiName)).slice(0,d.irule==='createIface'?it.properties.length:1).map(p=>({prop:p.apiName,source:'param',value:''}))
+ const labels={createIface:'登记',modifyIface:'更新',deleteIface:'删除',createIfaceLink:'关联',deleteIfaceLink:'解除关联'}
+ actionDraftName(d,labels[d.irule]+(it?.name||'接口'),d.irule+(it?.apiName||'Object'))
+}
+function actionScopeFields(rule,base,ruleRef=''){
+ const opts=(collection,selected,key)=>Object.values(collection).map(item=>{
+  const label=esc(item.a?joinLabel(item):item.name)
+  const attrs=ruleRef?'data-change="toggleScenarioRuleScope" data-arg="'+esc(ruleRef+'|'+key+'|'+item.id)+'"':''
+  return fChk(base+'.'+key+'.'+item.id,label,selected.includes(item.id),attrs)
+ }).join('')
+ return '<p class="muted">勾选可被合并的对象和关系。场景的全部编辑都必须在配置范围内。</p>'+
+ '<h4>Object types</h4><div class="action-scope">'+(opts(W().objectTypes,rule.objectTypes,'objectTypes')||'尚无对象类型')+'</div>'+
+ '<h4>Link types</h4><div class="action-scope">'+(opts(W().linkTypes,rule.linkTypes,'linkTypes')||'尚无关系类型')+'</div>'
+}
+function scopeSelections(scope){
+ return Object.keys(scope||{}).filter(id=>scope[id])
+}
+function renderActionEffect(rule,path,at,selection=false){
+ const local='<p class="note">本地模拟。试运行会展示输入、响应和执行顺序。</p>'
+ if(rule.type==='notification'){
+  const recipients=rule.audience==='group'?USER_GROUPS:Object.entries(USERS).map(([id,u])=>[id,u.name])
+  const audience='<div class="grid2">'+fSel(path+'.audience','发给',[['group','用户组'],['user','指定用户'],['current','当前提交人']],rule.audience,'data-after="notificationAudience"')+
+   (rule.audience==='current'?'':fSel(path+'.recipient','接收人',recipients,rule.recipient))+'</div>'
+  const message=fArea(path+'.template','通知模板',rule.template)+'<p class="muted small-t">可用 /参数ID 或 /参数ID.属性ID 引用表单内容。</p>'
+  return (selection||at?audience:'')+(selection?'':message)+local
+ }
+ if(rule.type==='schedule'){
+  const dataset=fSel(path+'.dataset','构建计划 · 目标数据集',[['','选择数据集'],...Object.keys(S.datasets)],rule.dataset)
+  const result=fSel(path+'.result','模拟构建响应',[['success','接受并启动构建'],['error','拒绝启动']],rule.result)
+  return (selection||at?dataset:'<p class="muted">目标数据集 · '+esc(rule.dataset||'未选择')+'</p>')+(selection?'':result)+local
+ }
+ const connector=DEMO_CONNECTORS[rule.connector]
+ const response=fSel(path+'.result','模拟请求响应',[['success','成功返回'],['error','外部系统报错']],rule.result)
+ if(selection)return '<p class="muted">'+esc(ACTION_EFFECTS[rule.type][1])+'</p>'+
+  '<div class="grid2">'+fSel(path+'.connector','Data Connection · Webhook',Object.entries(DEMO_CONNECTORS).map(([id,value])=>[id,value.name]),rule.connector)+response+'</div>'+local
+ if(!connector)return '<p class="note bad">请选择已注册的 Webhook。</p>'
+ const objProps=at?.parameters.filter(p=>p.type==='Object reference'&&!p.multiple).flatMap(p=>(W().objectTypes[p.objectType]?.properties||[]).map(x=>[p.id+'.'+x.id,p.name+'.'+x.name]))||[]
+ const rows=connector.inputs.map(([id,label])=>{
+  const mapped=rule.inputs[id]||{source:'param',value:id}
+  const base=path+'.inputs.'+id
+  const sources=[['param','From parameter'],['static','Static value'],...(at?[['objprop','Object parameter property']]:[])]
+  const value=mapped.source==='static'?fInp(base+'.value','固定值',mapped.value):
+   mapped.source==='objprop'?fSel(base+'.value','对象属性',[['','选择属性'],...objProps],mapped.value):
+   at?fSel(base+'.value','Action 参数',[['','选择参数'],...at.parameters.filter(p=>!p.multiple).map(p=>[p.id,p.name])],mapped.value):
+   '<code>'+esc(id)+'</code> · 自动生成表单参数'
+  return [esc(label)+' <code>'+esc(id)+'</code>',fSel(base+'.source','值来源',sources,mapped.source,'data-after="actionEffectInput"'),value]
+ })
+ return '<h4>'+esc(connector.name)+'</h4>'+table(['Webhook 输入','来源','输入值'],rows)+
+  '<p class="muted">响应字段 <code>'+esc(connector.response)+'</code>'+(rule.type==='writeback'?' 可以在对象规则中选为 Writeback response。':' 会出现在执行记录里。')+'</p>'+response+local
+}
+function materializeWebhookInputs(at,rule){
+ for(const [id,label] of DEMO_CONNECTORS[rule.connector].inputs){
+  const input=rule.inputs[id]||{source:'param'}
+  if(input.source==='param'){
+   let existing=at.parameters.find(p=>p.id===id&&!p.multiple)
+   if(!existing){let paramId=id;while(at.parameters.some(p=>p.id===paramId))paramId+='_2';existing=mkParam(paramId,label,'String',{required:false,webhookInput:true});at.parameters.push(existing)}
+   input.value=existing.id
   }
+  rule.inputs[id]=input
+ }
+}
+function bindEditFunction(at,id,version,autoUpgrade=false,labels=[]){
+ if(at.rules.length)throw Error('Run function 需要单独承担本次 Action 的 Ontology 编辑。请先移除其他 Ontology 规则。')
+ const meta=fnVersionMeta(id,version)
+ if(meta?.kind!=='edit')throw Error('请选择已发布的 Ontology Edit Function 和版本。')
+ for(const inp of meta.inputs)if(!fnParamType(inp.type,W()))throw Error('函数输入 '+inp.name+' 的类型不受支持。')
+ const inputs={}
+ for(const inp of meta.inputs){
+  const pid=fnEnsureParam(at,inp)
+  inputs[inp.name]=pid
+  const custom=labels.find(p=>p.name===inp.name)?.label.trim()
+  if(custom)at.parameters.find(p=>p.id===pid).name=custom
+ }
+ at.rules.push({type:'function',fn:id,version,autoUpgrade:!!autoUpgrade,mappings:[],inputs})
+}
+function rebindEditFunction(at,rule){
+ const meta=fnVersionMeta(rule.fn,rule.version)
+ if(meta?.kind!=='edit')throw Error('请选择已发布的 Ontology Edit Function 版本。')
+ const previous=rule.inputs||{}
+ rule.inputs=Object.fromEntries(meta.inputs.map(inp=>{
+  const mapped=at.parameters.find(p=>p.id===previous[inp.name])
+  return [inp.name,fnInputMatches(inp,mapped,W())?mapped.id:fnEnsureParam(at,inp)]
+ }))
+ rememberFnParameters(rule,Object.values(previous))
+ if(semver(rule.version)?.[0]===0)rule.autoUpgrade=false
+}
+function rememberFnParameters(rule,ids){
+ const current=new Set(Object.values(rule.inputs||{}))
+ const unused=[...new Set([...(rule.previousInputs||[]),...ids])].filter(id=>id&&!current.has(id))
+ if(unused.length)rule.previousInputs=unused
+ else delete rule.previousInputs
+}
+function appendRefParam(at,type,target,label,defaultKind='none'){
+ const apiName=(type==='Interface reference'?W().interfaces[target]:W().objectTypes[target])?.apiName
+ const base=toParamId(toCamel(apiName||target)||'object')
+ let id=base,n=2
+ while(at.parameters.some(p=>p.id===id))id=base+'_'+n++
+ const ref=type==='Interface reference'?{interface:target}:{objectType:target}
+ at.parameters.push(mkParam(id,label,type,{...ref,default:{kind:defaultKind,value:''}}))
+ return id
+}
+function bindInterfaceLink(at,type,ifaceId,constraintId){
+ const it=W().interfaces[ifaceId],constraint=it?.linkConstraints?.find(l=>l.apiName===constraintId)
+ if(!constraint)throw Error('请选择接口和关系约束。')
+ const targetType=constraint.targetKind==='interface'?'Interface reference':'Object reference'
+ const label=constraint.targetKind==='interface'?W().interfaces[constraint.target]?.name:W().objectTypes[constraint.target]?.name
+ const objectParam=appendRefParam(at,'Interface reference',ifaceId,it.name+' · 来源','currentObject')
+ const targetParam=appendRefParam(at,targetType,constraint.target,(label||constraint.target)+' · 目标')
+ at.rules.push({type,interface:ifaceId,constraint:constraintId,objectParam,targetParam,mappings:[]})
+}
+function bindScenario(at,objectTypes,linkTypes){
+ if(at.rules.some(r=>r.type==='applyScenario'))throw Error('一个 Action 只能有一个场景合并规则。')
+ let id='scenario_id'
+ while(at.parameters.some(p=>p.id===id))id+='_2'
+ at.parameters.push(mkParam(id,'场景','String'))
+ at.rules.push({type:'applyScenario',scenarioParam:id,objectTypes,linkTypes,mappings:[]})
+}
+WIZ.actionType={title:'New action type',steps:['Action type','Mapping','Metadata','Submission criteria','Save location'],finishLabel:'Create',doc:'https://www.palantir.com/docs/foundry/action-types/explore-action-types/',
+ init(arg){
+  const ot=W().objectTypes[arg]||Object.values(W().objectTypes)[0]
+  const d={target:'object',objectType:ot?.id||'',rule:'modify',linkRule:'createLink',linkType:actionJoins()[0]?.id||'',
+   iface:Object.keys(W().interfaces)[0]||'',irule:'modifyIface',constraint:'',imaps:[],mappings:[],groups:['managers','agents'],name:'',apiName:'',description:'',location:PROJECTS[0],
+   functionId:editableFunctions()[0]?.id||'',functionVersion:editableFunctions()[0]?.latest.version||'',fnInputs:[],autoUpgrade:false,functionTarget:'',
+   mode:'webhook',effects:{webhook:newActionEffect('webhook'),writeback:newActionEffect('writeback'),notification:newActionEffect('notification'),schedule:newActionEffect('schedule')},
+   scope:{objectTypes:{},linkTypes:{}}}
+  initMappings(d)
+  return d
+ },
+ render(d,step){
+  const P='ui.wiz.d.',ot=W().objectTypes[d.objectType],it=W().interfaces[d.iface]
+  const kinds='<div class="action-kinds" role="group" aria-label="Action 类型">'+ACTION_KINDS.map(([id,label])=>B('chooseActionKind',label,'',id,'aria-pressed="'+(id===d.target)+'"')).join('')+'</div>'
+  const ruleOptions=(rules,key,after)=>rules.map(id=>'<label class="opt-card"><input type="radio" name="'+key+'" data-bind="'+P+key+'" value="'+id+'" data-after="'+after+'" '+(d[key]===id?'checked':'')+'><span><b>'+esc(RULES[id][0])+'</b><small>'+esc(RULES[id][1])+'</small></span></label>').join('')
+  const effectPath=key=>P+'effects.'+key
+  const objectOptions=Object.values(W().objectTypes).map(o=>[o.id,o.name])
   if(step===0){
-   const m2m=joinsOf(d.objectType).length>0
-   return tabs+'<p class="muted">Object 标签：选择对象类型，再选择要做的变更。向导会配置动作的第一条规则。</p>'+fSel(P+'objectType','Object type',Object.values(W().objectTypes).map(o=>[o.id,o.name]),d.objectType,'data-after="atInit"')+
-   '<h4 style="margin-top:12px">Object actions</h4>'+Object.entries(RULES).filter(([k])=>OBJECT_RULES.includes(k)).map(([k,[l,desc]])=>'<label class="opt-card"><input type="radio" name="atRule" data-bind="'+P+'rule" value="'+k+'" data-after="atInit" '+(d.rule===k?'checked':'')+'><span><b>'+l+'</b><small>'+desc+'</small></span></label>').join('')+
-   '<h4 style="margin-top:12px">Link actions</h4>'+(m2m?LINK_RULES.map(k=>'<label class="opt-card"><input type="radio" name="atRule" data-bind="'+P+'rule" value="'+k+'" data-after="atInit" '+(d.rule===k?'checked':'')+'><span><b>'+RULES[k][0]+'</b><small>'+RULES[k][1]+'</small></span></label>').join('')+(LINK_RULES.includes(d.rule)?fSel(P+'linkType','Link type',joinsOf(d.objectType).map(l=>[l.id,l.a.displayName+' ↔ '+l.b.displayName]),d.linkType,'data-after="atInit"'):''):'<label class="opt-card disabled"><input type="radio" disabled><span><b>Create link(s) / Delete link</b><small>仅用于 Join table 多对多关系；'+esc(ot?.name||'')+' 还没有这类关系。外键关系请用 Modify object(s) 修改外键属性。</small></span></label>')
+   let config=''
+   if(d.target==='object')config=fSel(P+'objectType','Object type',[['','选择对象类型'],...objectOptions],d.objectType,'data-after="atInit"')+ruleOptions(OBJECT_RULES,'rule','atInit')
+   if(d.target==='link')config=fSel(P+'linkType','Link type',[['','选择多对多关系'],...actionJoins().map(l=>[l.id,joinLabel(l)])],d.linkType,'data-after="atTarget"')+
+    (actionJoins().length?ruleOptions(LINK_RULES,'linkRule','atTarget'):'<p class="note">请先创建 Join table 多对多关系。</p>')+
+    '<p class="muted small-t">外键关系通过 Object → Modify object(s) 改写外键。对象支撑的关系通过中间对象的 Action 建立或删除。</p>'
+   if(d.target==='function'){
+    const fn=editableFunctions().find(f=>f.id===d.functionId)
+    config='<div class="grid2">'+fSel(P+'functionId','Published Ontology Edit Function',[['','选择函数'],...editableFunctions().map(f=>[f.id,f.id])],d.functionId,'data-after="wizardFunctionPick"')+
+     fSel(P+'functionVersion','Version',(fn?.versions||[]).map(v=>[v.version,v.version]),d.functionVersion,'data-after="wizardFunctionVersion"')+'</div>'+
+     (fn?fChk(P+'autoUpgrade','自动升级到兼容版本',d.autoUpgrade,semver(d.functionVersion)?.[0]===0?'disabled':''):'<p class="note">在 Code Repositories 发布 Ontology Edit Function 后即可选择。</p>')
+   }
+   if(d.target==='webhook')config=fSel(P+'mode','执行时机',[['webhook','Webhook · 提交后'],['writeback','Writeback Webhook · 提交前']],d.mode)+renderActionEffect(d.effects[d.mode],effectPath(d.mode),null,true)
+   if(d.target==='interface')config=fSel(P+'iface','Interface',[['','选择接口'],...Object.values(W().interfaces).map(i=>[i.id,i.name])],d.iface,'data-after="atIfaceReset"')+
+    ruleOptions([...IFACE_RULES,...INTERFACE_LINK_RULES],'irule','atIfaceReset')+(INTERFACE_LINK_RULES.includes(d.irule)?fSel(P+'constraint','Link type constraint',[['','选择关系约束'],...(it?.linkConstraints||[]).map(l=>[l.apiName,l.apiName])],d.constraint):'')
+   if(d.target==='notification')config=renderActionEffect(d.effects.notification,effectPath('notification'),null,true)
+   if(d.target==='scenario')config=actionScopeFields({objectTypes:scopeSelections(d.scope.objectTypes),linkTypes:scopeSelections(d.scope.linkTypes)},P+'scope')
+   if(d.target==='advanced')config='<h4>Schedule</h4><p class="muted">'+esc(ACTION_EFFECTS.schedule[1])+'</p>'+renderActionEffect(d.effects.schedule,effectPath('schedule'),null,true)
+   return kinds+config
   }
   if(step===1){
-   if(LINK_RULES.includes(d.rule)){const l=W().linkTypes[d.linkType];return '<p class="note">'+esc(RULES[d.rule][0])+'：会自动创建两个对象参数（'+esc(otName(l.a.objectType))+'、'+esc(otName(l.b.objectType))+'），提交时'+(d.rule==='createLink'?'新增':'删除')+'它们之间的「'+esc(l.a.displayName+' ↔ '+l.b.displayName)+'」关联。</p>'}
-   if(d.rule==='delete')return '<p class="note">Delete object(s)：自动创建一个引用 '+esc(ot?.name)+' 的对象参数，提交时删除该对象。</p>'
-   const unused=(ot?.properties||[]).filter(p=>!d.mappings.some(m=>m.prop===p.id)&&(d.rule==='create'||p.id!==ot.primaryKey))
-   return '<p class="muted">选择要写入的属性。每个属性默认 From parameter，会自动生成同名参数；也可改为 Static value 等。'+(d.rule==='modify'?'要修改的对象由自动创建的对象参数指定。':'')+'</p>'+
-   table(['Property','Value source',''],d.mappings.map((m,i)=>{const p=propOf(ot,m.prop);const srcs=SOURCES.filter(([s])=>s!=='objprop');return [esc(p?.name||m.prop)+' <code>'+esc(m.prop)+'</code>'+(fkTargetOf(ot.id,m.prop)?' '+badge('→ '+otName(fkTargetOf(ot.id,m.prop))):''),'<select data-bind="'+P+'mappings.'+i+'.source" aria-label="来源">'+options(srcs,m.source)+'</select>'+(m.source==='static'?'<input style="margin-top:4px" data-bind="'+P+'mappings.'+i+'.value" value="'+esc(m.value||'')+'" placeholder="静态值" aria-label="静态值">':''),B('wizRemoveMap','移除','small ghost',String(i),d.rule==='create'&&m.prop===ot.primaryKey?'disabled':'')]}),'尚未选择属性')+
-   (unused.length?'<div class="row" style="margin-top:10px"><label class="fld"><span>Add property</span><select id="wizAddMapSel">'+options(unused.map(p=>[p.id,p.name+' ('+p.id+')']))+'</select></label>'+B('wizAddMap','＋ Add property')+'</div>':'')
+   if(d.target==='link'){
+    const l=W().linkTypes[d.linkType]
+    return '<h4>'+esc(joinLabel(l))+'</h4><p class="muted">表单会生成两个对象引用。提交时用它们'+(d.linkRule==='createLink'?'建立':'解除')+'关联。</p>'+
+     table(['关系端点','动作参数'],[['A',esc(otName(l.a.objectType))],['B',esc(otName(l.b.objectType))]])
+   }
+   if(d.target==='function'){
+    const meta=fnVersionMeta(d.functionId,d.functionVersion)
+    return '<p class="muted">每个函数输入会生成一个同类型的 Action 参数。在 Rules 中可以改绑其他兼容参数。</p>'+
+     table(['函数输入','类型','自动生成的 Action 参数'],d.fnInputs.map((p,i)=>[esc(p.name)+(p.optional?' <small>可选值</small>':''),esc(p.type),fInp(P+'fnInputs.'+i+'.label','参数显示名称',p.label)]),'此函数无输入')+
+     '<p class="muted">函数声明编辑的类型 · '+esc(meta?.edits.join('、')||'—')+'</p>'+
+     fSel(P+'functionTarget','在业务台展示到',[['','工作区级动作'],...objectOptions],d.functionTarget)
+   }
+   if(d.target==='webhook')return renderActionEffect(d.effects[d.mode],effectPath(d.mode))
+   if(d.target==='notification')return renderActionEffect(d.effects.notification,effectPath('notification'))
+   if(d.target==='advanced')return renderActionEffect(d.effects.schedule,effectPath('schedule'))
+   if(d.target==='scenario')return '<p class="note">表单会生成「场景」参数。可在 Object Explorer 把一次试运行保存为场景，再回到这个动作进行合并。</p>'
+   if(d.target==='interface'&&(d.irule==='deleteIface'||INTERFACE_LINK_RULES.includes(d.irule)))return '<p class="note">'+(d.irule==='deleteIface'?'表单会生成一个接口对象参数。':'表单会按关系约束生成两端参数，执行时解析对应的具体 Link。')+'</p>'
+   if(d.target==='object'&&d.rule==='delete')return '<p class="note">表单会生成一个引用 '+esc(ot.name)+' 的对象参数。</p>'
+   const onInterface=d.target==='interface',mappings=onInterface?d.imaps:d.mappings,key=onInterface?'imaps':'mappings'
+   const props=(onInterface?it.properties:ot.properties).map(p=>({...p,field:onInterface?p.apiName:p.id}))
+   const unused=props.filter(p=>!mappings.some(m=>m.prop===p.field)&&(onInterface||d.rule==='create'||p.field!==ot.primaryKey))
+   return '<p class="muted">每个属性默认生成一个 Action 参数，也可选择固定值、当前用户或时间。</p>'+
+    table(['Property','Value source',''],mappings.map((m,i)=>{
+     const p=props.find(p=>p.field===m.prop),base=P+key+'.'+i
+     return [esc(p?.name||m.prop)+' <code>'+esc(m.prop)+'</code>',
+      fSel(base+'.source','来源',SOURCES.filter(([s])=>s!=='objprop'),m.source)+(m.source==='static'?fInp(base+'.value','固定值',m.value||''):''),
+      B(onInterface?'wizRemoveIMap':'wizRemoveMap','移除','small ghost',String(i),!onInterface&&d.rule==='create'&&m.prop===ot.primaryKey?'disabled':'')]
+    }),'尚未选择属性')+
+    (unused.length?'<div class="row"><label class="fld"><span>Add property</span><select id="'+(onInterface?'wizAddIMapSel':'wizAddMapSel')+'">'+options(unused.map(p=>[p.field,p.name]))+'</select></label>'+B(onInterface?'wizAddIMap':'wizAddMap','＋ Add property')+'</div>':'')
   }
-  if(step===2)return fInp(P+'name','Action type name',d.name,'data-after="atName"')+'<p class="note">点击 <b>Create</b> 后进入 Action type 详情：在 Overview 填写 Description，并继续配置 Rules、Parameters、Security & Submission criteria 和 Capabilities。动作需 Save 到 Ontology 后才能使用。</p>'
-  return fSel(P+'location','保存位置（Project）',projOpts,d.location)+'<p class="note">点击 <b>Create</b> 后进入 Action type 详情：可继续配置 Parameters、Security & Submission criteria 和 Action log。动作需 Save 到 Ontology 后才能在 Object Explorer 中使用。</p>'
+  if(step===2)return '<div class="grid2">'+fInp(P+'name','Action type name',d.name,'data-after="atName"')+fInp(P+'apiName','API name',d.apiName,'data-after="atApi"')+'</div>'+fArea(P+'description','Description',d.description)
+  if(step===3)return '<p class="muted">选择可以提交这个 Action 的用户组。更多条件可在动作详情中设置。</p><div class="action-scope">'+USER_GROUPS.map(([id,label])=>'<label class="chk"><input type="checkbox" data-change="wizToggleGroupCrit" data-arg="'+id+'" '+(d.groups.includes(id)?'checked':'')+'> '+esc(label)+'</label>').join('')+'</div>'
+  return fSel(P+'location','Save location',projOpts,d.location)+'<p class="muted">创建后会进入 Action 详情。点击工作台顶部 Save 发布，才能从业务台执行。</p>'
  },
  next(d,step){
-  if(d.target==='interface'){
-   const it=W().interfaces[d.iface]
-   if(step===0&&!it)throw Error('请选择接口。')
-   if(step===1&&d.irule!=='deleteIface'){if(!d.imaps.length)throw Error('至少选择一个接口属性。');if(d.imaps.some(m=>m.source==='static'&&!String(m.value||'').trim()))throw Error('请填写静态值。')}
-   if(step===2){if(!d.name)throw Error('请输入 Action type name。');let api=toCamel(d.irule.replace('Iface','')+' '+it.apiName)||'action',n=2;const base=api;while(Object.values(W().actionTypes).some(a=>a.apiName===api))api=base+n++;d.apiName=api}
-   if(step===3&&!d.groups.length)throw Error('至少选择一个用户组。')
-   return
+  const ot=W().objectTypes[d.objectType],it=W().interfaces[d.iface]
+  if(step===0){
+   if(d.target==='object'&&!ot)throw Error('请选择对象类型。')
+   if(d.target==='link'&&!actionJoins().some(l=>l.id===d.linkType))throw Error('请选择一个 Join table 多对多关系。')
+   if(d.target==='function'&&fnVersionMeta(d.functionId,d.functionVersion)?.kind!=='edit')throw Error('请选择已发布的 Ontology Edit Function 和版本。')
+   if(d.target==='interface'&&(!it||INTERFACE_LINK_RULES.includes(d.irule)&&!it.linkConstraints?.some(l=>l.apiName===d.constraint)))throw Error('请选择接口和所需的关系约束。')
+   if(d.target==='scenario'&&!scopeSelections(d.scope.objectTypes).length&&!scopeSelections(d.scope.linkTypes).length)throw Error('至少选择一个对象类型或关系类型。')
   }
-  const ot=W().objectTypes[d.objectType]
-  if(step===0&&!ot)throw Error('请先创建对象类型。')
-  if(step===1&&d.rule!=='delete'&&!LINK_RULES.includes(d.rule)){
-   if(!d.mappings.length)throw Error('至少选择一个属性。')
-   if(d.rule==='create'&&!d.mappings.some(m=>m.prop===ot.primaryKey))throw Error('Create object 需要为主键提供值。')
-   if(d.mappings.some(m=>m.source==='static'&&!String(m.value||'').trim()))throw Error('请填写静态值。')
+  if(step===1){
+   if(d.target==='object'&&d.rule!=='delete'){
+    if(!d.mappings.length)throw Error('至少选择一个属性。')
+    if(d.rule==='create'&&!d.mappings.some(m=>m.prop===ot.primaryKey))throw Error('Create object 需要为主键提供值。')
+   }
+   if(d.target==='interface'&&['createIface','modifyIface'].includes(d.irule)&&!d.imaps.length)throw Error('至少选择一个接口属性。')
+   if(d.target==='webhook'){
+    const effect=clone(d.effects[d.mode]),temp={effects:[effect],parameters:[]}
+    materializeWebhookInputs(temp,effect)
+    const errors=actionEffectErrors(temp,W())
+    if(errors.length)throw Error(errors.join(' '))
+   }
+   if(d.target==='notification'||d.target==='advanced'){
+    const errors=actionEffectErrors({effects:[d.effects[d.target==='notification'?'notification':'schedule']],parameters:[]},W())
+    if(errors.length)throw Error(errors.join(' '))
+   }
   }
   if(step===2){
+   d.name=d.name.trim();d.apiName=d.apiName.trim()
    if(!d.name)throw Error('请输入 Action type name。')
-   let api=/^[a-z][A-Za-z0-9]{0,99}$/.test(d.apiName)?d.apiName:'action',n=2;const base=api
-   while(Object.values(W().actionTypes).some(a=>a.apiName===api))api=base+n++
-   d.apiName=api
+   if(!/^[a-z][A-Za-z0-9]{0,99}$/.test(d.apiName))throw Error('API name 须为 camelCase。')
+   const base=d.apiName;let n=2
+   while(Object.values(W().actionTypes).some(a=>a.apiName===d.apiName))d.apiName=base+n++
   }
+  if(step===3&&!d.groups.length)throw Error('至少选择一个用户组。')
+  if(step===4&&!PROJECTS.includes(d.location))throw Error('请选择保存位置。')
  },
  finish(d){
-  if(d.target==='interface'){
-   const it=W().interfaces[d.iface];let id=toKebab(d.apiName);while(W().actionTypes[id]||C().actionTypes[id])id+='-2'
-   const at=mkAT({id,apiName:d.apiName,name:d.name,description:d.description,objectType:'',parameters:[],rules:[],criteria:[{kind:'user',groups:[...d.groups],message:'当前用户不能执行此动作。'}],actionLog:{enabled:false,summary:''}})
-   const rule={type:d.irule,interface:it.id,mappings:[]}
-   if(d.irule==='createIface'){const tp=mkParam(toParamId(toCamel(it.apiName)+'Type'),it.name+'类型','Object type',{interface:it.id});at.parameters.push(tp);rule.typeParam=tp.id}
-   else{const rp=mkParam(toParamId(toCamel(it.apiName)||'iface'),it.name,'Interface reference',{interface:it.id,default:{kind:'currentObject',value:''}});at.parameters.push(rp);rule.objectParam=rp.id}
-   for(const m of d.imaps)rule.mappings.push(m.source==='param'?mkMap(m.prop,'param',ensureIfaceParam(at,it,m.prop)):mkMap(m.prop,m.source,m.value||''))
-   at.rules.push(rule);W().actionTypes[id]=at;return 'action-types/'+id
-  }
-  const ot=W().objectTypes[d.objectType]
-  if(LINK_RULES.includes(d.rule)){
-   const l=W().linkTypes[d.linkType];let id=toKebab(d.apiName);while(W().actionTypes[id]||C().actionTypes[id])id+='-2'
-   const at=mkAT({id,apiName:d.apiName,name:d.name,description:d.description,objectType:ot.id,location:d.location,parameters:[],rules:[],actionLog:{enabled:true,summary:''}})
-   const ap=ensureRefParam(at,l.a.objectType),bp=ensureRefParam(at,l.b.objectType)
-   for(const p of at.parameters)if(p.objectType===ot.id)p.default={kind:'currentObject',value:''}
-   at.rules.push({type:d.rule,linkType:l.id,aParam:ap,bParam:bp,mappings:[]});at.actionLog.summary=d.name+'：/'+ap+' ↔ /'+bp
-   W().actionTypes[id]=at;return 'action-types/'+id
-  }
-  const params=[],maps=[]
-  let objectParam=''
-  if(d.rule!=='create'){objectParam=toParamId(toCamel(ot.apiName)||'object');params.push(mkParam(objectParam,ot.name,'Object reference',{objectType:ot.id,required:d.rule!=='createOrModify',default:{kind:'currentObject',value:''}}))}
-  for(const m of d.mappings){
-   const p=propOf(ot,m.prop)
-   if(m.source==='param'){const pr=paramFor(ot,p);pr.required=true;let pid=pr.id;while(params.some(x=>x.id===pid))pid+='_2';pr.id=pid;params.push(pr);maps.push(mkMap(m.prop,'param',pid))}
-   else maps.push(mkMap(m.prop,m.source,m.value||''))
-  }
   let id=toKebab(d.apiName);while(W().actionTypes[id]||C().actionTypes[id])id+='-2'
-  W().actionTypes[id]=mkAT({id,apiName:d.apiName,name:d.name,description:d.description,objectType:ot.id,location:d.location,parameters:params,rules:[{type:d.rule,objectType:ot.id,objectParam,mappings:maps}],actionLog:{enabled:true,summary:d.name+(params[0]?' /'+params[0].id:'')}})
+  const at=mkAT({id,apiName:d.apiName,name:d.name,description:d.description,objectType:'',location:d.location,
+   parameters:[],rules:[],effects:[],criteria:[{kind:'user',groups:[...d.groups],message:'当前用户不能执行此动作。'}]})
+  if(d.target==='object'){
+   const ot=W().objectTypes[d.objectType]
+   at.objectType=ot.id
+   const rule={type:d.rule,objectType:ot.id,objectParam:'',mappings:[]}
+   if(d.rule!=='create'){
+    rule.objectParam=appendRefParam(at,'Object reference',ot.id,ot.name,'currentObject')
+    at.parameters[0].required=d.rule!=='createOrModify'
+   }
+   for(const m of d.mappings){
+    const pr=paramFor(ot,propOf(ot,m.prop))
+    if(m.source!=='param'){rule.mappings.push(mkMap(m.prop,m.source,m.value||''));continue}
+    while(at.parameters.some(p=>p.id===pr.id))pr.id+='_2'
+    pr.required=true
+    at.parameters.push(pr)
+    rule.mappings.push(mkMap(m.prop,'param',pr.id))
+   }
+   at.rules.push(rule)
+  }
+  if(d.target==='link'){
+   const link=W().linkTypes[d.linkType]
+   at.objectType=link.a.objectType
+   const aParam=appendRefParam(at,'Object reference',link.a.objectType,otName(link.a.objectType)+' · A','currentObject')
+   const bParam=appendRefParam(at,'Object reference',link.b.objectType,otName(link.b.objectType)+' · B')
+   at.rules.push({type:d.linkRule,linkType:link.id,aParam,bParam,mappings:[]})
+  }
+  if(d.target==='function'){
+   at.objectType=d.functionTarget
+   bindEditFunction(at,d.functionId,d.functionVersion,d.autoUpgrade,d.fnInputs)
+  }
+  if(d.target==='interface'){
+   const it=W().interfaces[d.iface]
+   if(INTERFACE_LINK_RULES.includes(d.irule))bindInterfaceLink(at,d.irule,d.iface,d.constraint)
+   else{
+    const rule={type:d.irule,interface:it.id,mappings:[]}
+    if(d.irule==='createIface'){
+     const tp=mkParam(toParamId(toCamel(it.apiName)+'Type'),it.name+'类型','Object type',{interface:it.id})
+     at.parameters.push(tp);rule.typeParam=tp.id
+    }else rule.objectParam=appendRefParam(at,'Interface reference',it.id,it.name,'currentObject')
+    for(const m of d.imaps)rule.mappings.push(m.source==='param'?mkMap(m.prop,'param',ensureIfaceParam(at,it,m.prop)):mkMap(m.prop,m.source,m.value||''))
+    at.rules.push(rule)
+   }
+   at.actionLog.enabled=false
+  }
+  if(d.target==='scenario'){
+   bindScenario(at,scopeSelections(d.scope.objectTypes),scopeSelections(d.scope.linkTypes))
+   at.allowRevert=false
+  }
+  if(d.target==='webhook'||d.target==='notification'||d.target==='advanced'){
+   const kind=d.target==='webhook'?d.mode:d.target==='notification'?'notification':'schedule'
+   const rule=clone(d.effects[kind])
+   if(d.target==='webhook')materializeWebhookInputs(at,rule)
+   at.effects.push(rule)
+  }
+  at.actionLog.summary=d.name+(at.parameters[0]?' /'+at.parameters[0].id:'')
+  W().actionTypes[id]=at
   return 'action-types/'+id
  }
 }
@@ -1670,21 +2267,26 @@ function renderReview(frame){
 
 /* ---- Action form ---- */
 function renderActionForm(frame){
- const m=S.ui.modal,onto=C(),at=onto.actionTypes[m.at]
+ const m=S.ui.modal,onto=m.test?W():C(),at=onto.actionTypes[m.at]
  if(!at)return frame('动作不存在','','<span></span>'+B('closeModal','关闭'))
+ const fromAip=m.aipTurn!==undefined,read=fromAip?ontologyReadScope():null
+ const replacement=fromAip?aipAgentPolicy(at).replacementParameter:''
+ const choicesFor=p=>fromAip?aipActionOptions(at,p,read,m.vals,m.aipProposal.excluded):paramChoices(at,p,m.vals,onto)
  const eff=effectiveParams(at,m.vals,onto)
  for(const p of eff){
   if(p.overrideDefault&&(m.vals[p.id]===''||m.vals[p.id]==null))m.vals[p.id]=p.overrideDefault
-  const ch=paramChoices(at,p,m.vals,onto)
-  if(ch&&ch.length===1&&p.required&&!p.multiple&&(m.vals[p.id]===''||m.vals[p.id]==null))m.vals[p.id]=ch[0]
+  const ch=choicesFor(p)
+  if(ch&&ch.length===1&&p.required&&!p.multiple&&p.id!==replacement&&(m.vals[p.id]===''||m.vals[p.id]==null))m.vals[p.id]=ch[0]
  }
  const fields=formItems(at).map(it=>{
   if(it.section){const sec=it.section,ps=sec.params.map(id=>eff.find(p=>p.id===id)).filter(p=>p&&!p.hidden);if(sec.hidden||!ps.length)return '';const inner='<div class="'+(sec.columns===2?'grid2':'grid1')+'" style="display:grid;gap:10px">'+ps.map(fieldOf).join('')+'</div>';return '<fieldset class="form-section" style="grid-column:1/-1;border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin:0">'+(sec.collapsible?'<details open><summary><b>'+esc(sec.title)+'</b></summary>':'<legend><b>'+esc(sec.title)+'</b></legend>')+(sec.description?'<p class="muted small-t" style="margin:4px 0 8px">'+esc(sec.description)+'</p>':'')+inner+(sec.collapsible?'</details>':'')+'</fieldset>'}
   const p=eff.find(x=>x.id===it.param);return p&&!p.hidden?fieldOf(p):''
  }).join('')
  function fieldOf(p){
+  const scenarioRule=at.rules.find(rule=>rule.type==='applyScenario'&&rule.scenarioParam===p.id)
+  if(scenarioRule)return fSel('ui.modal.vals.'+p.id,'场景（必填）',[['','选择待合并场景'],...S.scenarios.filter(s=>s.status==='staged').map(s=>[s.id,s.name+' · '+s.edits.length+' 项编辑'])],m.vals[p.id])
   const bind='ui.modal.vals.'+p.id,label=esc(p.name)+(p.required?' *':'')+(p.activeOverride!==undefined?' <small>（Override '+(p.activeOverride+1)+' 生效）</small>':'')
-  const ch=paramChoices(at,p,m.vals,onto)
+  const ch=choicesFor(p)
   if(p.type==='Object reference'&&p.multiple){const t=onto.objectTypes[p.objectType],sel=listOf(m.vals[p.id]);return '<label class="fld"><span>'+label+' <small>'+esc(otName(p.objectType,onto))+' · 可多选</small></span><select multiple size="4" data-bind="'+esc(bind)+'">'+objectsOf(p.objectType,onto).filter(o=>!ch||ch.includes(String(o[t.primaryKey]))).map(o=>{const k=String(o[t.primaryKey]),ti=titleOf(p.objectType,o,onto);return '<option value="'+esc(k)+'"'+(sel.includes(k)?' selected':'')+'>'+esc((ti&&ti!==k?ti+' · ':'')+k)+'</option>'}).join('')+'</select></label>'}
   if(p.multiple)return fInp(bind,label+' <small>逗号分隔</small>',Array.isArray(m.vals[p.id])?m.vals[p.id].join(', '):m.vals[p.id])
   if(p.type==='Object reference')return fSel(bind,label+' <small>'+esc(otName(p.objectType,onto))+(ch?' · 已过滤':'')+'</small>',[['','请选择'],...objectsOf(p.objectType,onto).filter(o=>!ch||ch.includes(String(o[onto.objectTypes[p.objectType].primaryKey]))).map(o=>{const t=onto.objectTypes[p.objectType];const ti=titleOf(p.objectType,o,onto),k=o[t.primaryKey];return [k,(ti&&ti!==k?ti+' · ':'')+k+(o.status?' · '+o.status:'')]})],m.vals[p.id])
@@ -1698,14 +2300,24 @@ function renderActionForm(frame){
  let res=''
  if(r){
   res='<h4 style="margin-top:14px">Submission criteria</h4>'+(r.crit.length?'<ul class="crit">'+r.crit.map(c=>'<li class="'+(c.pass?'pass':'fail')+'">'+(c.pass?'✓ ':'✗ ')+esc(c.label)+(c.pass?'':' — <b>'+esc(c.message)+'</b>')+'</li>').join('')+'</ul>':'<p class="muted small-t">未配置提交条件。</p>')
+  if(r.steps?.length)res+='<h4>执行顺序</h4>'+renderExecutionSteps(r.steps)
   if(r.failures.length)res+='<div class="note bad"><b>无法提交：</b><ul style="margin:4px 0 0;padding-left:18px">'+r.failures.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul></div>'
   else{
    res+='<div class="note ok">'+(m.done?'已提交。':'试运行通过，以下是将要应用的编辑（'+r.edits.length+' 个对象）：')+'</div>'+r.edits.map(e=>{if(e.link){const l=onto.linkTypes[e.link];return '<h4>'+badge(RULES[e.type][0],e.type==='createLink'?'new':'del')+' '+esc(l.a.displayName+' ↔ '+l.b.displayName)+'</h4><p>'+esc(titleOf(l.a.objectType,findObj(l.a.objectType,e.a,onto),onto)||e.a)+' ↔ '+esc(titleOf(l.b.objectType,findObj(l.b.objectType,e.b,onto),onto)||e.b)+'</p>'}const ot=onto.objectTypes[e.ot];return '<h4>'+badge(e.type,e.type==='create'?'new':e.type==='delete'?'del':'mod')+' '+esc(ot.name)+' '+esc(e.pk)+'</h4><div class="scroll"><table class="diff"><thead><tr><th>属性</th><th>变更前</th><th>变更后</th></tr></thead><tbody>'+ot.properties.filter(p=>(e.before?.[p.id]??'')!==(e.after?.[p.id]??'')).map(p=>'<tr><td>'+esc(p.name)+'</td><td class="b">'+esc(e.before?.[p.id]??'')+'</td><td class="a">'+esc(e.after?.[p.id]??'')+'</td></tr>').join('')+'</tbody></table></div>'}).join('')
   }
+  if(!r.failures.length&&r.edits.length&&!at.rules.some(rule=>rule.type==='applyScenario')&&!at.effects?.length&&!m.scenarioSaved){
+   res+='<div class="row action-tools">'+fInp('ui.modal.scenarioName','场景名称',m.scenarioName||'')+B('saveActionScenario','保存为场景')+'</div>'
+  }
+  if(m.scenarioSaved)res+='<p class="note ok">场景已暂存。可在 Object Explorer 的工作区动作中选择已发布的合并动作。</p>'
  }
  const demo=S.ui.demo&&at.id==='transfer-lease'&&!m.test?'<div class="note"><b>规则验证</b>（当前租约 L001，从张三转给李四）<div class="row" style="margin-top:6px">'+B('demoCase','只读访客提交','small','viewer')+B('demoCase','接手人是当前承租人','small','same')+B('demoCase','交接日晚于到期日','small','late')+B('demoCase','正常转租','small','ok')+'</div></div>':''
- return frame(esc(at.name)+(m.test?' · Test run':''),(m.test?'<p class="note">Test run：模拟执行，返回动作将要产生的编辑（Proposed changes），不会真正写入。</p>':'')+(at.description?'<p class="muted">'+esc(at.description)+'</p>':'')+'<p class="small-t muted">提交人：'+esc(USERS[S.user].name)+'（可在顶部切换）</p>'+demo+'<div class="grid2">'+fields+'</div>'+res,
-  '<span class="muted small-t">'+(m.test?'':'已保存版本 v'+at.version)+'</span><div>'+B('closeModal','Cancel')+(m.test?B('actionPreview','Submit','primary'):B('actionPreview','试运行')+B('actionSubmit','Submit','primary'))+'</div>')
+ return frame(esc(at.name)+(m.test?' · Test run':''),(m.test?'<p class="note">Test run：模拟执行，返回动作将要产生的编辑（Proposed changes），不会真正写入。</p>':'')+
+  (fromAip?'<p class="note">核对参数，可先试运行。点「确认提交」后，工作台会校验并提交 Action。</p>':'')+
+  (at.description?'<p class="muted">'+esc(at.description)+'</p>':'')+'<p class="small-t muted">提交人：'+esc(USERS[S.user].name)+'（可在顶部切换）</p>'+demo+'<div class="grid2">'+fields+'</div>'+res,
+  '<span class="muted small-t">'+(m.test?'':'已保存版本 v'+at.version)+'</span><div>'+B('closeModal',fromAip?'返回对话':'Cancel')+(m.test?B('actionPreview','Submit','primary'):B('actionPreview','试运行')+B('actionSubmit',fromAip?'确认提交':'Submit','primary'))+'</div>')
+}
+function renderExecutionSteps(steps){
+ return '<ol class="action-run-steps">'+steps.map(s=>'<li><b>'+esc(s.name)+'</b> · '+esc(s.status)+' <span class="muted">'+esc(s.detail)+'</span></li>').join('')+'</ol>'
 }
 
 /* ============ 渲染 ============ */
@@ -1718,6 +2330,7 @@ function syncShared(onto=W()){
 }
 function render(){
  syncShared()
+ const chatScroll=$('#aipTranscript')?.scrollTop
  const a=document.activeElement
  let key=null,ss=null,se=null,sTop=null
  if(a&&a!==document.body){
@@ -1728,6 +2341,8 @@ function render(){
   sTop=a.scrollTop
  }
  $('#app').innerHTML=renderHeader()+'<div class="layout">'+renderNav()+'<main id="main">'+renderPage()+'</main></div>'
+ const chat=$('#aipTranscript')
+ if(chat&&chatScroll!==undefined)chat.scrollTop=chatScroll
  const m=$('#modal')
  if(S.ui.modal){m.innerHTML=renderModal();if(!m.open)m.showModal()}
  else if(m.open){m.close();m.innerHTML=''}
@@ -1744,7 +2359,7 @@ function setPath(path,val){
  o[ks.at(-1)]=val
 }
 const getPath=path=>path.split('.').reduce((o,k)=>o?.[k],S)
-function closeModal(){S.ui.modal=null;S.ui.wiz=null;S.ui.msg=null}
+function closeModal(){retainAipDraft(S.ui.modal);S.ui.modal=null;S.ui.wiz=null;S.ui.msg=null}
 
 /* ---- 绑定后的联动 ---- */
 const AFTER={
@@ -1758,9 +2373,34 @@ const AFTER={
  joinCols(){const d=S.ui.wiz.d,ds=S.datasets[d.dataset];if(ds){d.lc=ds.fields[0]||'';d.rc=ds.fields[1]||''}},
  atInit(){initMappings(S.ui.wiz.d)},
  atName(){S.ui.wiz.d.nameTouched=true},
- atTarget(){const d=S.ui.wiz.d;if(d.target==='interface')AFTER.atIfaceReset();else{d.nameTouched=false;initMappings(d)}},
- atIfaceReset(){const d=S.ui.wiz.d,it=W().interfaces[d.iface];const pkLike=ap=>ifaceImpls(it.id).some(o=>ifaceLocal(o,it.id,ap)===o.primaryKey);d.imaps=d.irule==='deleteIface'||!it?[]:it.properties.filter(p=>d.irule==='createIface'||(p.required&&!pkLike(p.apiName))).slice(0,d.irule==='createIface'?99:1).map(p=>({prop:p.apiName,source:'param',value:''}));if(!d.nameTouched)d.name={createIface:'登记',modifyIface:'更新',deleteIface:'删除'}[d.irule]+(it?.name||'')},
- fnVersion(el){const [atId,ri]=el.dataset.arg.split('|'),at=W().actionTypes[atId],r=at.rules[+ri],meta=fnVersionMeta(r.fn,r.version);if(!meta)return;r.inputs??={};for(const inp of meta.inputs)if(!r.inputs[inp.name])r.inputs[inp.name]=fnEnsureParam(at,inp);if(semver(r.version)[0]===0)r.autoUpgrade=false},
+ atApi(){S.ui.wiz.d.apiTouched=true},
+ atTarget(){resetActionTarget(S.ui.wiz.d)},
+ wizardFunctionPick(){resetWizardFunction(S.ui.wiz.d,true)},
+ wizardFunctionVersion(){resetWizardFunction(S.ui.wiz.d,false)},
+ atIfaceReset(){initInterfaceActionDraft(S.ui.wiz.d)},
+ notificationAudience(el){
+  const rule=getPath(el.dataset.bind.split('.').slice(0,-1).join('.'))
+  rule.recipient=rule.audience==='group'?'agents':S.user
+ },
+ actionEffectInput(el){
+  const input=getPath(el.dataset.bind.split('.').slice(0,-1).join('.'))
+  input.value=''
+ },
+ pickRuleFunction(el){
+  const [id,index]=el.dataset.arg.split('|'),at=W().actionTypes[id],rule=at.rules[+index]
+  const fn=editableFunctions().find(f=>f.id===rule.fn)
+  if(!fn)throw Error('请选择已发布的 Ontology Edit Function。')
+  rule.version=fn.latest.version
+  rebindEditFunction(at,rule)
+ },
+ fnVersion(el){
+  const [id,index]=el.dataset.arg.split('|'),at=W().actionTypes[id]
+  rebindEditFunction(at,at.rules[+index])
+ },
+ fnInputBinding(el){
+  const [id,index]=el.dataset.arg.split('|')
+  rememberFnParameters(W().actionTypes[id].rules[+index],[el.dataset.previous])
+ },
  lcKind(el){const [id,i]=el.dataset.arg.split('|'),lc=W().interfaces[id].linkConstraints[i];lc.target=lc.targetKind==='interface'?Object.keys(W().interfaces)[0]||'':Object.keys(W().objectTypes)[0]||''},
  implReset(){S.ui.wiz.d.mapping={};S.ui.wiz.d.links={}},
  editOnlyToggle(el){const [otId,i]=el.dataset.arg.split('|'),ot=W().objectTypes[otId],p=ot.properties[i],ds=S.datasets[ot.datasource];if(p.editOnly)p.column='';else p.column=ds?.fields.find(f=>!ot.properties.some(x=>x.column===f))||''},
@@ -1772,6 +2412,7 @@ const AFTER={
  mapSource(el){
   const [atId,ri,mi]=el.dataset.arg.split('|'),at=W().actionTypes[atId],m=at.rules[ri].mappings[mi]
   m.value=''
+  if(m.source==='writeback'){m.value=writebackField(at);return}
   if(m.source==='param'&&IFACE_RULES.includes(at.rules[ri].type)){m.value=ensureIfaceParam(at,W().interfaces[at.rules[ri].interface],m.prop);return}
   if(m.source==='param'){const ot=W().objectTypes[at.rules[ri].objectType||at.objectType],p=propOf(ot,m.prop);let pr=at.parameters.find(x=>x.id===toParamId(m.prop));if(!pr){pr=paramFor(ot,p);at.parameters.push(pr)}m.value=pr.id}
  }
@@ -1784,7 +2425,7 @@ const ACT={
  toggleMore(){S.ui.more=!S.ui.more},
  goBack(arg){go(arg)},
  reset(){S.ui.modal={kind:'confirm',title:'重置工作台',text:'重置会清空所有对象类型、关系、动作、函数和业务数据，恢复到初始数据集。',act:'doReset',label:'重置'};S.ui.msg=null},
- doReset(){S=fresh();go('discover');toast('已重置。')},
+ doReset(){S=fresh();loadConfiguredWorkspace();go('discover');toast('已重置。')},
  loadSample(){loadSample();go('object-types');toast('样例配置已加载并保存到 Ontology。')},
  launchTransfer(){
   if(Object.keys(C().objectTypes).length||Object.keys(W().objectTypes).length||S.logs.length)throw Error('现有配置仍在使用。点击「重置」后再打开转租实操。')
@@ -1798,7 +2439,14 @@ const ACT={
  },
  newObjectType(){openWizard('objectType')},
  newLinkType(arg){if(Object.keys(W().objectTypes).length<2)throw Error('至少需要两个对象类型才能创建关系。');openWizard('linkType',arg)},
- newActionType(arg){if(!Object.keys(W().objectTypes).length)throw Error('请先创建对象类型。');openWizard('actionType',arg)},
+ newActionType(arg){openWizard('actionType',arg)},
+ chooseActionKind(arg){
+  const d=S.ui.wiz.d
+  if(d.target===arg)return
+  d.target=arg
+  resetActionTarget(d)
+  S.ui.msg=null
+ },
  newInterface(){openWizard('interface')},
  newSharedProp(){openSimple('sharedProp')},
  newGroup(){openSimple('group')},
@@ -1858,19 +2506,57 @@ const ACT={
  removeIfaceProp(arg){const [id,i]=arg.split('|');W().interfaces[id].properties.splice(+i,1)},
  addMapping(arg){const [atId,ri]=arg.split('|');if(IFACE_RULES.includes(W().actionTypes[atId].rules[ri].type)){const at=W().actionTypes[atId],r=at.rules[ri],it=W().interfaces[r.interface],v=$('#addMapSel'+ri)?.value;if(!v)return;r.mappings.push(mkMap(v,'param',ensureIfaceParam(at,it,v)));return}const at=W().actionTypes[atId],ot=W().objectTypes[at.rules[ri].objectType||at.objectType];const v=$('#addMapSel'+ri)?.value;if(!v)return;let pr=at.parameters.find(x=>x.id===toParamId(v));if(!pr){pr=paramFor(ot,propOf(ot,v));at.parameters.push(pr)}at.rules[ri].mappings.push(mkMap(v,'param',pr.id))},
  addRule(atId){const at=W().actionTypes[atId],type=$('#newRuleType').value
-  if(type==='function'){const f=fnRegistry()[$('#newRuleFn')?.value];if(!f)throw Error('请选择已发布的 @OntologyEditFunction。');if(at.rules.length)throw Error('Function rule 不能与其他 Ontology 规则组合：请先删除现有规则。');const inputs={};for(const inp of f.latest.meta.inputs)inputs[inp.name]=fnEnsureParam(at,inp);at.rules.push({type:'function',fn:f.id,version:f.latest.version,autoUpgrade:false,inputs,mappings:[]});return}
+  if(Object.hasOwn(ACTION_EFFECTS,type)){
+   if((type==='writeback'||type==='schedule')&&at.effects?.some(r=>r.type===type))throw Error('已配置 '+ACTION_EFFECTS[type][0]+'。')
+   const effect=newActionEffect(type,$('#newRuleConnector')?.value)
+   if(type==='webhook'||type==='writeback')materializeWebhookInputs(at,effect)
+   ;(at.effects??=[]).push(effect)
+   return
+  }
+  if(type==='function'){
+   const f=editableFunctions().find(f=>f.id===$('#newRuleFn')?.value)
+   if(!f)throw Error('请选择已发布的 Ontology Edit Function。')
+   bindEditFunction(at,f.id,f.latest.version)
+   return
+  }
   if(isFnAction(at))throw Error('已有 Function rule，不能再添加其他规则。')
+  if(type==='applyScenario'){bindScenario(at,[],[]);at.allowRevert=false;return}
+  if(INTERFACE_LINK_RULES.includes(type)){
+   bindInterfaceLink(at,type,$('#newRuleIface')?.value,$('#newRuleConstraint')?.value)
+   at.actionLog.enabled=false
+   return
+  }
   if(IFACE_RULES.includes(type)){const it=W().interfaces[$('#newRuleIface')?.value];if(!it)throw Error('请选择接口。')
    if(type==='createIface'){let tp=at.parameters.find(p=>p.type==='Object type'&&p.interface===it.id);if(!tp){let id=toParamId(toCamel(it.apiName)+'Type');while(at.parameters.some(p=>p.id===id))id+='2';tp=mkParam(id,it.name+'类型','Object type',{interface:it.id});at.parameters.push(tp)}
     at.rules.push({type,interface:it.id,typeParam:tp.id,mappings:[]});return}
    let rp=at.parameters.find(p=>p.type==='Interface reference'&&p.interface===it.id);if(!rp){let id=toParamId(toCamel(it.apiName)||'iface');while(at.parameters.some(p=>p.id===id))id+='2';rp=mkParam(id,it.name,'Interface reference',{interface:it.id,default:{kind:'currentObject',value:''}});at.parameters.push(rp)}
    at.rules.push({type,interface:it.id,objectParam:rp.id,mappings:[]});return}
-  if(LINK_RULES.includes(type)){const l=W().linkTypes[$('#newRuleLink')?.value];if(!l)throw Error('请选择一个多对多关系。');at.rules.push({type,linkType:l.id,aParam:ensureRefParam(at,l.a.objectType),bParam:ensureRefParam(at,l.b.objectType),mappings:[]});return}
-  const otId=$('#newRuleOT').value,ot=W().objectTypes[otId]
+  if(LINK_RULES.includes(type)){
+   const l=W().linkTypes[$('#newRuleLink')?.value]
+   if(!l)throw Error('请选择一个多对多关系。')
+   const aParam=ensureRefParam(at,l.a.objectType)
+   const bParam=l.a.objectType===l.b.objectType?appendRefParam(at,'Object reference',l.b.objectType,otName(l.b.objectType)+' · B'):ensureRefParam(at,l.b.objectType)
+   at.rules.push({type,linkType:l.id,aParam,bParam,mappings:[]})
+   return
+  }
+  const otId=$('#newRuleOT')?.value,ot=W().objectTypes[otId]
+  if(!ot)throw Error('请选择对象类型。')
   if(type==='create'&&at.rules.some(r=>r.type==='create'&&(r.objectType||at.objectType)===otId))throw Error('同一次提交不能重复创建 '+ot.name+'。')
   let objectParam=''
   if(type!=='create'){let pr=at.parameters.find(p=>p.type==='Object reference'&&p.objectType===otId);if(!pr){let id=toParamId(toCamel(ot.apiName)||'object');while(at.parameters.some(p=>p.id===id))id+='2';pr=mkParam(id,ot.name,'Object reference',{objectType:otId});at.parameters.push(pr)}objectParam=pr.id}
   at.rules.push({type,objectType:otId,objectParam,mappings:type==='create'?[mkMap(ot.primaryKey,'param',ensureValueParam(at,ot,pkProp(ot)))]:[]})},
+ newFunctionParameter(arg){
+  const [id,index,input]=arg.split('|'),at=W().actionTypes[id],rule=at.rules[+index]
+  const inp=fnVersionMeta(rule.fn,rule.version)?.inputs.find(p=>p.name===input)
+  if(!inp)throw Error('该函数输入已变更。')
+  const previous=rule.inputs[input]
+  rule.inputs[input]=fnEnsureParam(at,inp,{newParam:true})
+  rememberFnParameters(rule,[previous])
+ },
+ removeActionEffect(arg){
+  const [id,index]=arg.split('|'),at=W().actionTypes[id]
+  at.effects.splice(+index,1)
+ },
  detachShared(arg){const [otId,i]=arg.split('|');W().objectTypes[otId].properties[+i].shared='';toast('已 Detach，属性恢复为普通属性。')},
  convertShared(arg){const [otId,i]=arg.split('|'),p=W().objectTypes[otId].properties[+i];S.ui.modal={kind:'simple',type:'sharedProp',d:{name:p.name,description:p.description,baseType:p.baseType,visibility:p.visibility},attach:{ot:otId,i:+i}};S.ui.msg=null},
  addRuleLink(arg){const [atId,ri]=arg.split('|'),at=W().actionTypes[atId],r=at.rules[+ri],rot=W().objectTypes[r.objectType||at.objectType],l=Object.values(W().linkTypes).find(x=>x.mode==='join'&&(x.a.objectType===rot.id||x.b.objectType===rot.id));if(!l)return;(r.links??=[]).push({linkType:l.id,param:ensureRefParam(at,l[l.a.objectType===rot.id?'b':'a'].objectType)})},
@@ -1900,13 +2586,26 @@ const ACT={
  moveRule(arg){const [atId,ri,d]=arg.split('|');const r=W().actionTypes[atId].rules,i=+ri,j=i+(+d);[r[i],r[j]]=[r[j],r[i]]},
  removeMapping(arg){const [atId,ri,mi]=arg.split('|');W().actionTypes[atId].rules[ri].mappings.splice(+mi,1)},
  addParam(atId){const at=W().actionTypes[atId];let n=at.parameters.length+1;while(at.parameters.some(p=>p.id==='param'+n))n++;at.parameters.push(mkParam('param'+n,'参数 '+n,'String',{required:false}))},
- removeParam(arg){const [atId,i]=arg.split('|');const at=W().actionTypes[atId],p=at.parameters[i];const used=at.rules.some(r=>r.objectParam===p.id||r.mappings.some(m=>String(m.value).split('.')[0]===p.id&&['param','objprop'].includes(m.source)))||at.criteria.some(c=>c.kind==='param'&&(String(c.left).split('.')[0]===p.id||String(c.right).split('.')[0]===p.id))||at.parameters.some(x=>x.default?.kind==='objprop'&&String(x.default.value).split('.')[0]===p.id);if(used)throw Error('参数 '+p.name+' 仍被规则或提交条件引用，不能删除。');at.parameters.splice(+i,1)},
+ removeParam(arg){
+  const [id,index]=arg.split('|'),at=W().actionTypes[id],p=at.parameters[+index]
+  if(actionParameterUsed(at,p.id))throw Error('参数 '+p.name+' 仍被规则或表单条件引用，请先解除映射。')
+  at.parameters.splice(+index,1)
+ },
  addCriterion(arg){const [atId,kind]=arg.split('|');const at=W().actionTypes[atId];at.criteria.push(kind==='user'?{kind,groups:['managers'],message:'当前用户无权提交此动作。'}:{kind,left:at.parameters[0]?.id||'',op:'is',rightKind:'value',right:'',message:''})},
  removeCriterion(arg){const [atId,i]=arg.split('|');W().actionTypes[atId].criteria.splice(+i,1)},
  testRun(atId){S.ui.more=false;openActionForm(atId,null,null,{},true)},
  openAction(arg){const [atId,ot,pk]=arg.split('|');openActionForm(atId,ot,pk||null)},
  actionPreview(){runForm(true)},
  actionSubmit(){runForm(false)},
+ saveActionScenario(){
+  const m=S.ui.modal,r=m.result,at=C().actionTypes[m.at]
+  if(!at||!r||r.failures.length||!r.edits.length||at.effects?.length||at.rules.some(rule=>rule.type==='applyScenario')||m.scenarioSaved)throw Error('请先试运行一个只修改 Ontology 的动作。')
+  const name=m.scenarioName.trim()
+  if(!name)throw Error('请输入场景名称。')
+  S.scenarios.unshift({id:'scenario-'+hex(12),name,status:'staged',edits:clone(r.edits)})
+  m.scenarioSaved=true
+  S.ui.msg=null
+ },
  demoCase(kind){const m=S.ui.modal;S.user=kind==='viewer'?'viewer':'manager';m.vals.lease='L001';m.vals.tenant=kind==='same'?'T01':'T02';m.vals.date=kind==='late'?'2026-02-01':'2025-01-01';runForm(true)}
 }
 function ensureValueParam(at,ot,prop){
@@ -1917,11 +2616,24 @@ function ensureIfaceParam(at,it,ipApi){
  const ip=it.properties.find(x=>x.apiName===ipApi);let id=toParamId(ipApi);if(at.parameters.some(p=>p.id===id))return id
  at.parameters.push(mkParam(id,ip.name,ip.baseType,{required:!!ip.required}));return id
 }
-function fnEnsureParam(at,inp){
+function fnEnsureParam(at,inp,{newParam=false}={}){
  const t=fnParamType(inp.type,W());if(!t)throw Error('函数输入 '+inp.name+' 的类型不受支持。')
- const ex=at.parameters.find(p=>p.id===toParamId(inp.name)&&p.type===t.type&&(t.type!=='Object reference'||p.objectType===t.objectType));if(ex)return ex.id
+ const ex=!newParam&&at.parameters.find(p=>p.id===toParamId(inp.name)&&fnInputMatches(inp,p,W()));if(ex)return ex.id
  let id=toParamId(inp.name);while(at.parameters.some(p=>p.id===id))id+='2'
  at.parameters.push(mkParam(id,inp.name,t.type,{objectType:t.objectType,required:!inp.optional,multiple:!!t.list}));return id
+}
+function actionParameterUsed(at,id){
+ const ref=value=>String(value??'').split('.')[0]===id
+ const mapped=m=>['param','objprop'].includes(m.source)&&ref(m.value)
+ const referencedIn=conditions=>(conditions||[]).some(c=>c.kind==='group'?referencedIn(c.children):c.kind==='param'&&(ref(c.left)||c.rightKind==='param'&&ref(c.right)))
+ const inTemplate=text=>[...String(text??'').matchAll(/\/([a-z][A-Za-z0-9_]*)/g)].some(match=>match[1]===id)
+ return at.rules.some(r=>[r.objectParam,r.typeParam,r.targetParam,r.aParam,r.bParam,r.scenarioParam,...Object.values(r.inputs||{})].includes(id)||
+  (r.mappings||[]).some(mapped)||(r.links||[]).some(l=>l.param===id))||
+  (at.effects||[]).some(r=>Object.values(r.inputs||{}).some(mapped)||r.type==='notification'&&inTemplate(r.template))||
+  inTemplate(at.actionLog?.summary)||
+  referencedIn(at.criteria)||
+  at.parameters.some(p=>p.id!==id&&(p.default?.kind==='objprop'&&ref(p.default.value)||(p.overrides||[]).some(o=>referencedIn(o.conditions))))||
+  at.agent?.replacementParameter===id
 }
 function ensureRefParam(at,otId){
  const ex=at.parameters.find(p=>p.type==='Object reference'&&p.objectType===otId);if(ex)return ex.id
@@ -1933,20 +2645,40 @@ function openSimple(type){S.ui.newMenu=false;S.ui.modal={kind:'simple',type,d:SI
 function openActionForm(atId,ot,pk,extra={},test=false){
  const onto=test?W():C(),at=onto.actionTypes[atId]
  const vals={...defaultValues(at,ot?{ot,pk}:null,onto),...extra}
- S.ui.modal={kind:'action',at:atId,vals,test,result:null};S.ui.msg=null
+ S.ui.modal={kind:'action',at:atId,vals,test,result:null,scenarioName:at.name+' · 场景'};S.ui.msg=null
 }
 function refreshDerived(changed){
- const m=S.ui.modal,onto=C(),at=onto.actionTypes[m.at];if(!at)return
+ const m=S.ui.modal,onto=m.test?W():C(),at=onto.actionTypes[m.at];if(!at)return
  for(const p of at.parameters)if(p.default?.kind==='objprop'&&String(p.default.value).split('.')[0]===changed){
   m.vals[p.id]=paramProp(at,m.vals,p.default.value,onto)??''
  }
 }
 function runForm(dry){
- const m=S.ui.modal,onto=C(),at=onto.actionTypes[m.at]
+ const m=S.ui.modal,onto=m.test?W():C(),at=onto.actionTypes[m.at]
+ dry=dry||m.test
  m.done=false
+ m.scenarioSaved=false
+ if(m.aipTurn!==undefined){
+  const read=ontologyReadScope()
+  if(!aipActionType(read,at?.apiName)||m.aipProposal.version!==at.version)throw Error('当前用户或 Action 版本已变化，请重新检查草稿。')
+  for(const p of effectiveParams(at,m.vals,onto)){
+   if(p.hidden||p.type!=='Object reference'||!m.vals[p.id])continue
+   const choices=aipActionOptions(at,p,read,m.vals,m.aipProposal.excluded)
+   const selected=p.multiple?listOf(m.vals[p.id]):[String(m.vals[p.id])]
+   if(selected.some(value=>!choices.includes(value)))throw Error('所选'+p.name+'不符合当前提交条件，请重新选择。')
+  }
+ }
  m.result=evaluateAction(at,m.vals,onto,{dry})
  S.ui.msg=null
- if(!dry&&!m.result.failures.length){m.done=true;const e=m.result.edits[0];closeModal();toast('Edits successfully applied · 「'+at.name+'」 '+(e?(e.link?e.a+' ↔ '+e.b:e.pk):''),false,at.allowRevert!==false&&!isIfaceAction(at)?'undoLast':null);if(e&&!e.link&&e.type!=='delete'&&route()[0]==='explorer')go('explorer/'+e.ot+'/'+encodeURIComponent(e.pk))}
+ if(!dry&&!m.result.failures.length&&m.aipTurn!==undefined)recordAipSubmission(m,at)
+ if(!dry&&!m.result.failures.length){
+  m.done=true
+  const e=m.result.edits[0]
+  const hasSideEffectFailure=m.result.steps?.some(step=>step.status==='请求失败')
+  closeModal()
+  toast('已提交「'+at.name+'」'+(hasSideEffectFailure?' · Webhook 失败，详见 Action Log':''),false,e&&at.allowRevert!==false&&!isIfaceAction(at)&&!at.rules.some(rule=>rule.type==='applyScenario')?'undoLast':null)
+  if(e&&!e.link&&e.type!=='delete'&&route()[0]==='explorer')go('explorer/'+e.ot+'/'+encodeURIComponent(e.pk))
+ }
 }
 
 /* ============ 事件 ============ */
@@ -1990,6 +2722,13 @@ document.addEventListener('change',async e=>{
 })
 document.addEventListener('compositionend',e=>{if(e.target.dataset?.bind)e.target.dispatchEvent(new Event('input',{bubbles:true}))})
 const CHANGE={
+ selectRuleKind(t){S.ui.addRuleKind=t.value},
+ selectRuleInterface(t){S.ui.ruleIface=t.value},
+ toggleScenarioRuleScope(t){
+  const [id,index,kind,key]=t.dataset.arg.split('|')
+  const rule=W().actionTypes[id].rules[+index]
+  rule[kind]=t.checked?[...new Set([...rule[kind],key])]:rule[kind].filter(item=>item!==key)
+ },
  setUser(t){S.user=t.value;if(S.ui.modal?.kind==='action')S.ui.modal.result=null;toast('当前用户：'+USERS[S.user].name)},
  exploreType(t){S.ui.exQ='';go('explorer/'+t.value)},
  toggleGroup(t){const [otId,g]=t.dataset.arg.split('|');const ot=W().objectTypes[otId];ot.groups=t.checked?[...new Set([...ot.groups,g])]:ot.groups.filter(x=>x!==g)},
@@ -2032,6 +2771,11 @@ function fnParamType(t,onto){
  if(FN_SCALARS[base])return {type:FN_SCALARS[base],objectType:'',list}
  const ot=otByApi(base,onto);if(ot)return {type:'Object reference',objectType:ot.id,list}
  return null
+}
+function fnInputMatches(input,param,onto){
+ const t=fnParamType(input.type,onto)
+ return !!t&&!!param&&param.type===t.type&&!!param.multiple===!!t.list&&
+  (t.type!=='Object reference'||param.objectType===t.objectType)
 }
 function sampleFnSource(){return `import { Function, OntologyEditFunction, Edits, Query, Integer, LocalDate, UserFacingError } from "@foundry/functions-api";
 import { Objects, Lease, House, Tenant } from "@foundry/ontology-api";
@@ -2532,8 +3276,10 @@ function evalCondList(list,op,ctx){
 }
 /* 参数 Override：按顺序，第一个条件成立的 block 生效 */
 function effectiveParams(at,vals,onto){
+ const connectorInputs=new Set((at.effects||[]).flatMap(rule=>Object.values(rule.inputs||{}).filter(input=>input.source==='param').map(input=>input.value)))
  return at.parameters.map(p=>{
   const e={...p}
+  if(p.webhookInput&&connectorInputs.has(p.id))e.required=true
   for(const blk of p.overrides||[]){
    if(!blk.conditions?.length)continue
    if(evalCondList(blk.conditions,blk.op||'all',{at,vals,onto}).pass){
@@ -2645,7 +3391,7 @@ function paramExtras(at,p,i){
 }
 
 /* ============ 本地持久化（localStorage） ============ */
-const STORE_KEY='rental-ontology:v2'
+const STORE_KEY='rental-ontology:v2'+(WORKSPACE_ID==='rental'?'':':'+WORKSPACE_ID)
 let persistTimer=null,storeWarned=false
 function persist(){
  try{const {ui,...rest}=S;localStorage.setItem(STORE_KEY,JSON.stringify({v:2,route:ROUTE,recent:ui.recent,state:rest}));S.ui.stored=true}
@@ -2662,9 +3408,635 @@ function restore(){
   return true
  }catch{return false}
 }
+/* ============ AIP 租约查询 ============ */
+const AIP_QUESTION=AGENT_WORKSPACES.rental.examples[0].text
+function aipState(){
+ if(S.ui.aip?.user!==S.user)S.ui.aip={user:S.user,asOf:new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10),draft:'',turns:[],selected:0}
+ return S.ui.aip
+}
+let aipConnection=null
+const aipType=(read,apiName)=>Object.values(read.types).find(ot=>ot.apiName===apiName)
+const aipDate=value=>!!value&&typeOk('Date',value)
+function aipRecord(ot,obj,detail='',label){
+ label??=readableProperties(ot).some(p=>p.id===ot.titleKey)?obj[ot.titleKey]||obj[ot.primaryKey]:obj[ot.primaryKey]
+ return {typeId:ot.id,id:String(obj[ot.primaryKey]),label,detail}
+}
+function aipLeaseLink(onto,lease,target,property,sampleId){
+ const fk=lease.properties.find(p=>p.apiName===toCamel(property))
+ if(!fk)return null
+ const matches=fkLinksFrom(lease.id,onto).filter(l=>l.b.objectType===target.id&&l.fk?.property===fk.id)
+ return matches.find(l=>l.id===sampleId)||(matches.length===1?matches[0]:null)
+}
+const aipNormalize=value=>String(value??'').normalize('NFKC').trim().toLowerCase()
+function aipFindObjects(read,ot,lookup,properties=['name']){
+ const value=aipNormalize(lookup)
+ if(!value)return []
+ const rows=read.objects(ot.id),direct=rows.filter(obj=>aipNormalize(obj[ot.primaryKey])===value)
+ if(direct.length)return direct
+ const fields=readableProperties(ot).filter(p=>properties.includes(p.apiName)||p.id===ot.titleKey)
+ return rows.filter(obj=>fields.some(p=>aipNormalize(obj[p.id])===value))
+}
+function aipViewPlan(view,read){
+ const root=aipType(read,view.root)
+ if(!root)return null
+ const types=[root],links=[]
+ for(const template of view.links||[]){
+  const found=aipReadableLinks(read,types.at(-1)).filter(link=>link.apiName===template.apiName)
+  if(found.length!==1)return null
+  const properties=readableProperties(found[0].target)
+  if((template.filters||[]).some(f=>!properties.some(p=>p.apiName===f.property)))return null
+  links.push({...found[0],template})
+  types.push(found[0].target)
+ }
+ const columns=(view.columns||[]).map(col=>({...col,field:types[col.step]&&readableProperties(types[col.step]).find(p=>p.apiName===col.property)}))
+ if(!columns.length||columns.some(col=>!col.field))return null
+ return {root,types,links,columns}
+}
+function aipViewCatalog(read){
+ const catalog=[]
+ for(const view of WORKSPACE.views||[]){
+  const plan=aipViewPlan(view,read)
+  if(!plan)continue
+  catalog.push({id:view.id,name:view.name,description:view.description,root:view.root,
+   path:plan.links.map(({apiName,target,template})=>({link:apiName,to:target.apiName,
+    filters:(template.filters||[]).map(({property,operator,value})=>({property,operator,value}))}))})
+ }
+ return catalog
+}
+function aipRunView(request,asOf,read){
+ const definition=(WORKSPACE.views||[]).find(view=>view.id===request?.id)
+ const plan=definition&&aipViewPlan(definition,read)
+ if(!plan)throw Error('当前用户的可读范围内没有这个查询视图。')
+ const {root,types,links,columns}=plan
+ const matches=aipFindObjects(read,root,request.lookup,definition.lookup)
+ const roots=matches.map(obj=>aipRecord(root,obj))
+ const steps=[{title:'定位起始对象',tool:root.apiName,detail:'查找 '+request.lookup+' · 匹配 '+matches.length+' 个',records:roots}]
+ const result={steps,candidates:[],records:[]}
+ if(!roots.length)return {...result,message:'当前可读范围内找不到对应的'+root.name+'。'}
+ if(roots.length>1)return {...result,viewId:definition.id,candidates:roots,message:'找到多个同名对象，请按编号选择。'}
+ result.focus={view:definition.id,type:root.apiName,id:roots[0].id,name:roots[0].label}
+ let rows=matches.map(obj=>[obj])
+ const excluded=[]
+ let excludedTotal=0
+ for(const [index,{template,from,target,apiName,link}] of links.entries()){
+  const fromType=types[index]
+  const filters=aipFilters(target,template.filters||[],asOf)
+  const audited=readableProperties(target).filter(p=>template.auditProperties?.includes(p.apiName))
+  const found=new Map(),rejected=new Map()
+  rows=rows.flatMap(row=>{
+   const related=(row.at(-1)?linkedObjects(link,from,row.at(-1),read.onto,read.objects):[]).filter(obj=>{
+    const id=String(obj[target.primaryKey])
+    found.set(id,obj)
+    const failures=filters.filter(f=>!f.match(obj))
+    if(!failures.length)return true
+    rejected.set(id,{obj,failures})
+    return false
+   })
+   return related.length?related.map(obj=>[...row,obj]):template.optional?[[...row,null]]:[]
+  })
+  const picked=new Map()
+  for(const row of rows)if(row.at(-1)){
+   const record=aipRecord(target,row.at(-1))
+   picked.set(record.id,record)
+  }
+  const rejectedRecords=template.auditProperties?[...rejected.values()].slice(0,5).map(({obj,failures})=>{
+   const facts=audited.map(p=>({label:p.name,value:String(obj[p.id]??'').slice(0,120)}))
+   const reasons=failures.map(f=>f.explain(obj))
+   const detail=[...facts.map(f=>f.label+' '+(f.value||'未填写')),...reasons].join(' · ')
+   return {record:aipRecord(target,obj,detail),facts,reasons}
+  }):[]
+  if(template.auditProperties){
+   excludedTotal+=rejected.size
+   excluded.push(...rejectedRecords)
+  }
+  steps.push({title:'沿 Link 查询'+target.name,tool:fromType.apiName+'.'+apiName,
+   detail:link.id+' · 关联 '+found.size+' 个'+(filters.length?' · '+filters.map(f=>f.text).join(' 且 '):'')+
+    ' · 保留 '+picked.size+' 个'+(rejected.size?' · 排除 '+rejected.size+' 个':''),
+   records:[...picked.values(),...rejectedRecords.map(item=>item.record)].slice(0,15)})
+ }
+ const items=rows.slice(0,15).map(row=>columns.map(col=>{
+  const obj=row[col.step]
+  return {label:col.label,value:String(obj?.[col.field.id]??'').slice(0,120),
+   record:col.link&&obj?aipRecord(types[col.step],obj):null}
+ }))
+ result.view={name:definition.name,total:rows.length,items,excludedTotal,excluded:excluded.slice(0,5)}
+ const message=rows.length?'查到 '+rows.length+' 条「'+definition.name+'」结果。':
+  excludedTotal?'找到了 '+excludedTotal+' 条关联记录，但都未通过「'+definition.name+'」的筛选。':
+  '没有符合「'+definition.name+'」条件的记录。'
+ return {...result,message}
+}
+
+function aipReadableLinks(read,ot){
+ return linksOf(ot.id,read.onto).flatMap(link=>{
+  const from=sideOf(link,ot.id),end=link[other(from)],target=read.types[end.objectType]
+  return target?[{link,from,target,apiName:end.apiName}]:[]
+ })
+}
+function aipCatalog(read){
+ return Object.values(read.types).map(ot=>({
+  apiName:ot.apiName,name:ot.name,
+  properties:readableProperties(ot).map(p=>({apiName:p.apiName,name:p.name,type:p.baseType})),
+  links:aipReadableLinks(read,ot).map(({apiName,target})=>({apiName,to:target.apiName}))
+ }))
+}
+function aipActionCondition(conditions,mode,ctx){
+ if(!conditions.length)return true
+ const values=conditions.map(c=>{
+  if(c.kind==='group')return aipActionCondition(c.children||[],c.op,ctx)
+  if(c.kind==='user')return evalCond(c,ctx).pass
+  const supplied=path=>{const v=ctx.vals[String(path||'').split('.')[0]];return v!==undefined&&v!==''}
+  if(!supplied(c.left)||(c.rightKind==='param'&&!supplied(c.right)))return null
+  return evalCond(c,ctx).pass
+ })
+ if(mode==='any')return values.includes(true)?true:values.includes(null)?null:false
+ if(mode==='none')return values.includes(true)?false:values.includes(null)?null:true
+ return values.includes(false)?false:values.includes(null)?null:true
+}
+const aipAgentPolicy=at=>({...WORKSPACE.actions?.[at.id],...at.agent})
+function aipActionType(read,apiName){
+ if(!Object.hasOwn(USERS,read.user))return null
+ const matches=Object.values(read.onto.actionTypes).filter(at=>at.apiName===apiName)
+ if(matches.length!==1)return null
+ const [at]=matches
+ if(!aipAgentPolicy(at).enabled||!read.types[at.objectType])return null
+ if(at.parameters.some(p=>p.type==='Object reference'&&!read.types[p.objectType]))return null
+ return aipActionCondition(at.criteria,at.criteriaMode,{at,vals:{},onto:read.onto})!==false?at:null
+}
+function aipActionCatalog(read){
+ return Object.values(read.onto.actionTypes).filter(at=>aipActionType(read,at.apiName)===at).map(at=>{
+  const policy=aipAgentPolicy(at)
+  const effects=at.rules.map(rule=>{
+   const target=read.types[rule.objectType]
+   const fields=target?readableProperties(target):[]
+   return {operation:rule.type,objectType:target?.apiName,
+    properties:(rule.mappings||[]).flatMap(m=>fields.filter(p=>p.id===m.prop).map(p=>p.apiName))}
+  })
+  return {apiName:at.apiName,name:at.name,...(policy.intent?{intent:policy.intent}:{}),effects,
+   description:at.description,replacementParameter:policy.replacementParameter||'',
+   parameters:effectiveParams(at,{},read.onto).filter(p=>!p.hidden).map(p=>{
+    const type=read.types[p.objectType]
+    const path=policy.lookup?.[p.id]?.link
+    const via=type&&path&&aipReadableLinks(read,type).find(l=>l.apiName===path)
+    return {name:p.id,label:p.name,type:type?.apiName||p.type,required:p.required,
+     ...(via?{lookupVia:{link:via.apiName,objectType:via.target.apiName,label:via.target.name}}:{})}
+   })}
+ })
+}
+function aipActionOptions(at,p,read,vals,excluded){
+ const eligible=paramChoices(at,p,vals,read.onto)
+ if(p.type!=='Object reference')return eligible
+ const objType=read.types[p.objectType]
+ if(!objType)return []
+ const replacement=aipAgentPolicy(at).replacementParameter===p.id
+ return read.objects(objType.id).map(obj=>String(obj[objType.primaryKey])).filter(pk=>
+  (!eligible||eligible.includes(pk))&&!(excluded?.[p.id]===pk)&&
+  (!replacement||aipActionCondition(at.criteria,at.criteriaMode,{at,vals:{...vals,[p.id]:pk},onto:read.onto})!==false)
+ )
+}
+function aipActionRef(read,at,p,value){
+ const type=read.types[p.objectType]
+ const direct=aipFindObjects(read,type,value)
+ if(direct.length)return {records:direct.map(obj=>aipRecord(type,obj))}
+ const path=aipAgentPolicy(at).lookup?.[p.id]?.link
+ const link=aipReadableLinks(read,type).find(entry=>entry.apiName===path)
+ if(!link)return {records:[]}
+ const targets=new Set(aipFindObjects(read,link.target,value).map(obj=>String(obj[link.target.primaryKey])))
+ const matching=read.objects(type.id).filter(obj=>linkedObjects(link.link,link.from,obj,read.onto,read.objects)
+  .some(related=>targets.has(String(related[link.target.primaryKey]))))
+ return {records:matching.map(obj=>aipRecord(type,obj)),via:type.apiName+'.'+link.apiName}
+}
+function aipSetActionValue(at,vals,name,value){
+ if(vals[name]===value)return
+ if(value===undefined)delete vals[name]
+ else vals[name]=value
+ for(const param of at.parameters){
+  if(param.default?.kind==='objprop'&&param.default.value.split('.')[0]===name)delete vals[param.id]
+ }
+}
+function aipDraftOptions(proposal,at,read){
+ const p=at.parameters.find(p=>p.id===aipAgentPolicy(at).replacementParameter&&p.type==='Object reference')
+ if(!p)return null
+ const ot=read.types[p.objectType],keys=aipActionOptions(at,p,read,proposal.vals,proposal.excluded)
+ const records=read.objects(ot.id).filter(obj=>keys.includes(String(obj[ot.primaryKey]))).slice(0,8).map(obj=>aipRecord(ot,obj))
+ return {parameter:p.id,label:p.name,total:keys.length,records}
+}
+function aipRefreshProposal(proposal,at,read){
+ proposal.fields=effectiveParams(at,proposal.vals,read.onto).filter(p=>!p.hidden&&proposal.vals[p.id]!==undefined).map(p=>{
+  const value=proposal.vals[p.id],ot=read.types[p.objectType]
+  const obj=ot&&read.objects(ot.id).find(r=>String(r[ot.primaryKey])===String(value))
+  return {id:p.id,name:p.name,value:obj?aipRecord(ot,obj).label+' · '+value:String(value)}
+ })
+ proposal.choices=aipDraftOptions(proposal,at,read)
+}
+function aipMakeActionProposal(action,question,read,conversation){
+ const at=aipActionType(read,action?.actionType)
+ if(!at)throw Error('当前用户无法办理该 Action。')
+ const previous=action.mode==='revise'?conversation.pending:null
+ if(action.mode==='revise'&&(!previous||previous.id!==at.id||previous.version!==at.version)){
+  throw Error('找不到可继续修改的草稿，请重新描述要办理的业务。')
+ }
+ const vals={...previous?.vals},excluded={...previous?.excluded},warnings=[],resolution=[]
+ const visible=effectiveParams(at,vals,read.onto).filter(p=>!p.hidden&&!p.multiple)
+ for(const key of action.clear||[]){
+  if(!visible.some(p=>p.id===key))continue
+  if(key===aipAgentPolicy(at).replacementParameter&&vals[key])excluded[key]=vals[key]
+  aipSetActionValue(at,vals,key,undefined)
+ }
+ const source=aipNormalize(question).replace(/\s+/g,'')
+ for(const arg of action.parameters||[]){
+  const p=visible.find(p=>p.id===arg?.name)
+  const value=typeof arg?.value==='string'?arg.value.trim():''
+  if(!p||!value||value.length>120)continue
+  const [year,month,day]=value.split('-')
+  const chineseDate=p.type==='Date'&&aipDate(value)?year+'年'+Number(month)+'月'+Number(day)+'日':''
+  const mentioned=source.includes(aipNormalize(value).replace(/\s+/g,''))||(chineseDate&&source.includes(chineseDate))
+  const focus=conversation.focus
+  const refType=read.types[p.objectType]
+  const focusLink=refType&&aipReadableLinks(read,refType).find(l=>l.apiName===aipAgentPolicy(at).lookup?.[p.id]?.link)
+  const fromFocus=focus&&(refType?.apiName===focus.type||focusLink?.target.apiName===focus.type)&&[focus.id,focus.name].some(entry=>aipNormalize(entry)===aipNormalize(value))
+  if(!mentioned&&!fromFocus)continue
+  if(p.type==='Object reference'){
+   const {records,via}=aipActionRef(read,at,p,value)
+   if(records.length!==1){aipSetActionValue(at,vals,p.id,undefined);warnings.push('请在表单中选择'+p.name+'。');continue}
+   if(excluded[p.id]===records[0].id&&mentioned)delete excluded[p.id]
+   aipSetActionValue(at,vals,p.id,records[0].id)
+   resolution.push({field:p.name,record:records[0],via})
+  }else if(BASE_TYPES.includes(p.type)&&typeOk(p.type,value)){
+   aipSetActionValue(at,vals,p.id,value)
+  }
+ }
+ for(const p of visible){
+  if(p.type!=='Object reference'||!vals[p.id])continue
+  if(!read.objects(p.objectType).some(obj=>String(obj[read.types[p.objectType].primaryKey])===String(vals[p.id]))){
+   aipSetActionValue(at,vals,p.id,undefined)
+   warnings.push(p.name+'需要重新选择。')
+  }
+ }
+ const replace=visible.find(p=>p.id===aipAgentPolicy(at).replacementParameter&&p.type==='Object reference')
+ if(replace&&vals[replace.id]&&!aipActionOptions(at,replace,read,vals,excluded).includes(String(vals[replace.id]))){
+  aipSetActionValue(at,vals,replace.id,undefined)
+  warnings.push('指定的'+replace.name+'不符合当前提交条件，请重新选择。')
+ }
+ const proposal={id:at.id,version:at.version,name:at.name,apiName:at.apiName,vals,excluded,warnings,resolution,mode:action.mode}
+ aipRefreshProposal(proposal,at,read)
+ return proposal
+}
+function retainAipDraft(modal){
+ const draft=modal?.aipProposal
+ if(!draft||draft.submitted||S.ui.aip?.pending!==draft||S.ui.aip.user!==S.user)return
+ const read=ontologyReadScope(),at=aipActionType(read,draft.apiName)
+ if(!at||at.id!==draft.id||at.version!==draft.version)return
+ draft.vals=Object.fromEntries(effectiveParams(at,modal.vals,read.onto)
+  .filter(p=>!p.hidden&&modal.vals[p.id]!==''&&modal.vals[p.id]!=null).map(p=>[p.id,modal.vals[p.id]]))
+ aipRefreshProposal(draft,at,read)
+}
+function recordAipSubmission(modal,at){
+ const aip=S.ui.aip,turn=aip?.turns[modal.aipTurn]
+ if(!turn?.proposal||aip.pending!==turn.proposal)return
+ turn.proposal.submitted=true
+ aip.pending=null
+ turn.message='已提交「'+at.name+'」。'
+ const read=ontologyReadScope()
+ const records=modal.result.edits.flatMap(edit=>{
+  const ot=read.types[edit.ot]
+  return ot&&edit.after?[aipRecord(ot,edit.after)]:[]
+ })
+ aip.lastAction={apiName:at.apiName,name:at.name,records}
+ turn.steps.push({title:'用户确认并提交 Action',tool:at.apiName,detail:'已提交 '+modal.result.edits.length+' 项变更。',records})
+}
+function aipConversation(aip){
+ const draft=aip.pending
+ return {focus:aip.focus||null,lastAction:aip.lastAction||null,
+  draft:draft?{actionType:draft.apiName,name:draft.name,fields:draft.fields,stage:'待确认'}:null,
+  recent:aip.turns.slice(-6).filter(turn=>!turn.error&&turn.message&&!turn.message.startsWith('等待')).slice(-4)
+   .map(turn=>({question:turn.question,answer:turn.message.slice(0,320)}))}
+}
+
+function aipFilters(ot,filters,asOf){
+ if(!Array.isArray(filters)||filters.length>8)throw Error('查询筛选条件无效。')
+ const props=readableProperties(ot)
+ return filters.map(filter=>{
+  const p=props.find(p=>p.apiName===filter?.property)
+  if(!p)throw Error('当前用户的可读范围内没有这个查询属性。')
+  const op=filter.operator
+  const symbols={eq:'=',ne:'≠',lt:'<',lte:'≤',gt:'>',gte:'≥',contains:'包含'}
+  if(!Object.hasOwn(symbols,op)||typeof filter.value!=='string'||filter.value.length>120)throw Error('查询筛选参数无效。')
+  const raw=filter.value==='$asOf'&&p.baseType==='Date'?asOf:filter.value
+  if(!typeOk(p.baseType,raw)||(!raw&&['lt','lte','gt','gte'].includes(op)))throw Error('查询值与属性类型不匹配。')
+  if(op==='contains'&&p.baseType!=='String')throw Error('包含筛选适用于文本属性。')
+  if(['lt','lte','gt','gte'].includes(op)&&!['Date','Integer','Double'].includes(p.baseType))throw Error('大小比较适用于数字或日期。')
+  const cast=value=>['Integer','Double'].includes(p.baseType)?Number(value):String(value).normalize('NFKC').trim().toLowerCase()
+  const wanted=cast(raw)
+  const comparisons={eq:value=>value===wanted,ne:value=>value!==wanted,lt:value=>value<wanted,
+   lte:value=>value<=wanted,gt:value=>value>wanted,gte:value=>value>=wanted,contains:value=>value.includes(wanted)}
+  const hasValue=value=>value!=null&&typeOk(p.baseType,value)&&(value!==''||p.baseType==='String')
+  return {text:p.apiName+' '+symbols[op]+' '+raw,match:obj=>{
+   const value=obj[p.id]
+   return hasValue(value)&&comparisons[op](cast(value))
+  },explain:obj=>{
+   const value=obj[p.id]
+   if(!hasValue(value))return p.name+'缺失或格式无效'
+   return (filter.reason||'未通过筛选')+'（'+p.name+' '+String(value).slice(0,120)+'，需满足 '+symbols[op]+' '+raw+'）'
+  }}
+ })
+}
+function aipOntologyQuery(query,asOf,read){
+ const ot=aipType(read,query?.objectType)
+ if(!ot)throw Error('当前用户的可读范围内没有这个对象类型。')
+ if(!['count','list'].includes(query.mode))throw Error('请选择统计或列表查询。')
+ const conditions=aipFilters(ot,query.filters,asOf)
+ const fields=readableProperties(ot)
+ if(!Array.isArray(query.properties)||query.properties.length>8)throw Error('返回属性参数无效。')
+ const selected=query.properties.map(apiName=>{
+  const p=fields.find(p=>p.apiName===apiName)
+  if(!p)throw Error('当前用户的可读范围内没有这个返回属性。')
+  return p
+ })
+ const distinct=new Map()
+ for(const obj of read.objects(ot.id)){
+  const pk=obj[ot.primaryKey]
+  if(pk!=null&&String(pk)!=='')distinct.set(String(pk),obj)
+ }
+ let rows=[...distinct.values()].filter(obj=>conditions.every(f=>f.match(obj)))
+ const steps=[{
+  title:'读取当前用户可见对象',tool:ot.apiName,
+  detail:USERS[read.user].name+' · 可读范围包含 '+distinct.size+' 个'+ot.name+'对象'+
+   (conditions.length?' · '+conditions.map(f=>f.text).join(' 且 ')+' · 匹配 '+rows.length+' 个':''),
+  records:[]
+ }]
+ if(query.related!=null){
+  const matches=aipReadableLinks(read,ot).filter(l=>l.apiName===query.related.link)
+  if(matches.length!==1)throw Error('当前用户的可读范围内无法确定这条关联。')
+  const {target,link,from,apiName}=matches[0]
+  const relatedFilters=aipFilters(target,query.related.filters,asOf)
+  rows=rows.filter(obj=>linkedObjects(link,from,obj,read.onto,read.objects).some(related=>relatedFilters.every(f=>f.match(related))))
+  steps.push({title:'按关联对象筛选',tool:ot.apiName+'.'+apiName,
+   detail:'至少有一条关联'+target.name+(relatedFilters.length?'满足 '+relatedFilters.map(f=>f.text).join(' 且 '):'')+' · 匹配 '+rows.length+' 个'+ot.name,records:[]})
+ }
+ const counted=query.mode==='count'
+ const records=counted?[]:rows.slice(0,15).map(obj=>{
+  const attributes=selected.map(p=>({name:p.name,value:String(obj[p.id]??'').slice(0,100)}))
+  return {...aipRecord(ot,obj,attributes.map(p=>p.name+' '+p.value).join(' · ')),attributes}
+ })
+ const basis=[...conditions.map(f=>f.text),...steps.slice(1).map(s=>s.detail)].join(' · ')||'当前用户可见的全部'+ot.name
+ const aggregate={mode:query.mode,objectType:ot.apiName,label:ot.name,total:rows.length,basis}
+ const message='当前用户可查到 '+rows.length+' 个符合条件的'+ot.name+'对象。'
+ steps.push({title:counted?'统计查询结果':'列出查询结果',tool:ot.apiName,detail:message+
+  (!counted&&rows.length>records.length?' · 显示前 '+records.length+' 个':''),records})
+ return {message,aggregate,records,steps,leases:[],candidates:[]}
+}
+async function aipRequest(path,data){
+ if(location.protocol!=='http:'&&location.protocol!=='https:')throw Error('请从本地工作台服务打开 AIP 面板。')
+ let response
+ try{
+  response=await fetch('/api/aip/'+path,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:undefined)
+ }catch{throw Error('无法连接本地 AIP 服务。')}
+ if(!response.headers.get('Content-Type')?.includes('application/json'))throw Error('当前页面未连接本地 AIP 服务。')
+ const result=await response.json()
+ if(!response.ok)throw Error(result.error||'AIP 查询失败。')
+ return result
+}
+async function checkAipConnection(){
+ if(aipConnection!==null||route()[0]!=='aip')return
+ aipConnection={checking:true}
+ try{aipConnection=await aipRequest('config')}catch(error){aipConnection={error:error.message}}
+ if(route()[0]==='aip')render()
+}
+function aipResultForModel(result,asOf){
+ if(result.aggregate)return {
+  asOf,summary:result.message,...result.aggregate,
+  objects:result.records.map(({id,label,attributes})=>({id,name:String(label).slice(0,100),attributes}))
+ }
+ return {asOf,summary:result.message,object:result.focus||null,
+  view:result.view?{name:result.view.name,total:result.view.total,
+   rows:result.view.items.map(row=>row.map(({label,value})=>({label,value}))),
+   excludedTotal:result.view.excludedTotal,
+   excluded:result.view.excluded.map(({record,facts,reasons})=>({id:record.id,facts,reasons}))}:null}
+}
+async function submitAip(question,selectedLookup,asOf=aipState().asOf){
+ question=question.trim()
+ const aip=aipState()
+ if(!question||aip.busy)return
+ const turn={question,asOf,message:'等待模型选择工具…',steps:[],candidates:[],records:[]}
+ aip.turns.push(turn)
+ if(aip.turns.length>15)aip.turns.shift()
+ aip.selected=aip.turns.length-1
+ aip.busy=true
+ render()
+ focusAipReply()
+ try{
+  if(!aipDate(asOf))throw Error('请选择有效的查询日期。')
+  const scope=ontologyReadScope()
+  const plan=await aipRequest('plan',{question,asOf,selectedLookup,
+   workspace:{name:WORKSPACE.name},conversation:aipConversation(aip),
+   objectTypes:aipCatalog(scope),views:aipViewCatalog(scope),actions:aipActionCatalog(scope)})
+  if(S.ui.aip!==aip||S.user!==aip.user)return
+  turn.model=plan.model
+  if(plan.tool==='prepare_action'){
+   const read=ontologyReadScope(),proposal=aipMakeActionProposal(plan.action,question,read,aip)
+   if(aip.pending) aip.pending.superseded=true
+   aip.pending=proposal
+   turn.proposal=proposal
+   turn.message=proposal.mode==='revise'?'已更新「'+proposal.name+'」草稿，原有的其他参数已保留。':'已准备「'+proposal.name+'」草稿。请核对参数后提交。'
+   turn.steps.push({title:proposal.mode==='revise'?'修改待确认草稿':'模型准备 Action',tool:proposal.apiName,detail:USERS[read.user].name+' · 等待用户确认',records:[]})
+   for(const target of proposal.resolution)turn.steps.push({title:'定位'+target.field,tool:target.via||target.record.typeId,
+    detail:'已匹配 '+target.record.id,records:[target.record]})
+   return
+  }
+  if(!plan.toolId){
+   turn.message=plan.answer
+   return
+  }
+  const read=ontologyReadScope()
+  const generic=plan.tool==='query_ontology'
+  const result=generic?aipOntologyQuery(plan.query,asOf,read):aipRunView(plan.view,asOf,read)
+  Object.assign(turn,result)
+  turn.steps.unshift({
+   title:generic?'模型调用 Ontology 查询工具':'模型运行配置的查询视图',tool:plan.tool,
+   detail:plan.model+(generic?' · 对象类型 '+result.aggregate.objectType:' · 查找 '+plan.view.lookup)+' · 查询日 '+asOf,records:[]
+  })
+  if(result.focus)aip.focus=result.focus
+  if(result.candidates.length)return
+  turn.message='查询完成，模型正在整理回答…'
+  if(route()[0]==='aip')render()
+  try{
+   const reply=await aipRequest('answer',{toolId:plan.toolId,result:aipResultForModel(result,asOf)})
+   turn.message=reply.answer
+   turn.steps.push({title:'模型根据查询结果回答',tool:reply.model,detail:'模型根据工作台返回的查询结果生成回答。',records:[]})
+  }catch(error){
+   turn.message=result.message
+   turn.error='对象查询已完成。模型回答失败：'+error.message
+  }
+ }catch(error){
+  turn.message='这次请求未完成。'
+  turn.error=error.message
+ }finally{
+  aip.busy=false
+  if(S.ui.aip===aip&&S.user===aip.user&&route()[0]==='aip'){
+   render()
+   focusAipReply()
+  }
+ }
+}
+function aipSamplePlan(){
+ if(diff().length)return null
+ const onto=C()
+ if(Object.values(onto).every(group=>!Object.keys(group).length)&&!S.logs.length&&!Object.keys(S.edits).length){
+  if(['Tenant','House','Agent','Lease'].every(id=>JSON.stringify(S.datasets[id]?.fields)===JSON.stringify(SEED_DS[id].fields)&&
+   JSON.stringify(S.datasets[id]?.rows)===JSON.stringify(SEED_DS[id].rows)))return 'blank'
+ }
+ if(onto.actionTypes['sign-lease']&&onto.objectTypes.tenant?.apiName==='Tenant'&&onto.objectTypes.lease?.apiName==='Lease'&&
+  onto.objectTypes.house?.apiName==='House'&&titleOf('tenant',findObj('tenant','T01',onto))==='张三'&&
+  titleOf('house',findObj('house','H01',onto))==='海淀区学区房'&&findObj('agent','A01',onto)&&
+  aipLeaseLink(onto,onto.objectTypes.lease,onto.objectTypes.tenant,'tenant_id','lease-tenant')&&
+  aipLeaseLink(onto,onto.objectTypes.lease,onto.objectTypes.house,'house_id','lease-house')&&
+  !objectsOf('lease',onto).length&&!S.edits.lease?.deleted?.includes('L-AIP-001'))return 'configured'
+ return null
+}
+function loadAipSample(){
+ const plan=aipSamplePlan()
+ if(!plan)throw Error('当前工作区已有租约或其他配置。可以直接查询现有数据。')
+ const asOf=aipState().asOf
+ if(!aipDate(asOf))throw Error('请选择有效的查询日期。')
+ const snapshot=clone(S)
+ try{
+  if(plan==='blank')loadSample()
+  const relative=offset=>{const date=new Date(asOf+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+offset);return date.toISOString().slice(0,10)}
+  const start=relative(-14),end=relative(180),leaseId='L-AIP-001'
+  const at=C().actionTypes['sign-lease']
+  if(at.rules.some(rule=>!['create','modify'].includes(rule.type)))throw Error('当前签约动作包含其他规则，无法载入标准查询样例。')
+  const params={lease_id:leaseId,house:'H01',tenant:'T01',agent:'A01',start,end,monthly_rent:'8500',deposit:'17000'}
+  const preview=evaluateAction(at,params,C(),{dry:true})
+  if(preview.failures.length)throw Error(preview.failures.join(' '))
+  const leaseEdit=preview.edits.find(e=>e.type==='create'&&e.ot==='lease'&&e.pk===leaseId)
+  const houseEdit=preview.edits.find(e=>e.type==='modify'&&e.ot==='house'&&e.pk==='H01')
+  if(preview.edits.length!==2||leaseEdit?.after.tenant_id!=='T01'||leaseEdit.after.house_id!=='H01'||
+   leaseEdit.after.start!==start||leaseEdit.after.end!==end||leaseEdit.after.status!=='有效'||
+   houseEdit?.after.current_tenant_id!=='T01'||houseEdit.after.status!=='已出租'){
+   throw Error('当前签约动作与样例不一致，未写入租约。')
+  }
+  const applied=evaluateAction(at,params,C(),{dry:false})
+  if(applied.failures.length)throw Error(applied.failures.join(' '))
+ }catch(e){S=snapshot;throw e}
+ submitAip(AIP_QUESTION)
+ toast('已通过签订租约动作创建查询样例。')
+}
+const aipObjectLink=(record,label)=>'<a href="#/explorer/'+encodeURIComponent(record.typeId)+'/'+encodeURIComponent(record.id)+'">'+esc(label??record.label)+'</a>'
+function renderAipProposal(proposal,index,busy){
+ if(!proposal)return ''
+ if(proposal.submitted)return '<div class="aip-record" style="margin-bottom:8px">'+badge('已提交','ok')+' '+esc(proposal.name)+'</div>'
+ if(proposal.superseded)return '<div class="aip-record" style="margin-bottom:8px">'+esc(proposal.name)+' · 已有更新的草稿</div>'
+ const filled=proposal.fields.length?'<p>'+proposal.fields.map(field=>esc(field.name)+' '+esc(field.value)).join(' · ')+'</p>':''
+ const options=proposal.choices
+ const choices=options?'<p class="small-t">可选'+esc(options.label)+' · '+options.total+' 个</p>'+
+  (options.records.length?'<div class="aip-turn-tools" style="margin:0 0 8px">'+options.records.map(record=>
+   B('aipPickOption',esc(record.label),'small',JSON.stringify([index,record.id]),'aria-pressed="'+(String(proposal.vals[options.parameter])===record.id)+'" '+(busy?'disabled':''))
+  ).join('')+'</div>':''):''
+ return '<div class="aip-record" style="margin-bottom:8px"><p><strong>'+esc(proposal.name)+'</strong> · 待确认</p>'+filled+choices+
+  proposal.warnings.map(warning=>'<p class="small-t">'+esc(warning)+'</p>').join('')+
+  B('aipOpenAction','打开确认表单','primary small',index,busy?'disabled':'')+'</div>'
+}
+function renderAipTurn(turn,index,selected,busy){
+ const viewRows=turn.view?.items.map(row=>'<li>'+row.map(cell=>esc(cell.label)+' '+(cell.record?aipObjectLink(cell.record,cell.value):
+  '<strong>'+esc(cell.value||'未关联')+'</strong>')).join(' · ')+'</li>').join('')||''
+ const controls=turn.candidates.map(record=>B('aipChooseObject',esc(record.label+' · '+record.id),'small',JSON.stringify([index,record.id]),busy?'disabled':'')).join('')
+ const aggregate=turn.aggregate?'<div class="aip-record" style="margin:0 0 8px"><strong>'+turn.aggregate.total+'</strong> 个'+esc(turn.aggregate.label)+'对象 <span>· '+esc(turn.aggregate.basis)+'</span></div>':''
+ const records=turn.records?.length?'<ul>'+turn.records.map(record=>'<li>'+aipObjectLink(record)+(record.detail?' · '+esc(record.detail):'')+'</li>').join('')+'</ul>':''
+ const excluded=turn.view?.excludedTotal?'<div class="aip-record" style="margin-bottom:8px"><strong>找到但被筛选排除的记录 · '+
+  turn.view.excludedTotal+' 条</strong><ul>'+turn.view.excluded.map(({record})=>
+   '<li>'+aipObjectLink(record)+' · '+esc(record.detail)+'</li>').join('')+'</ul></div>':''
+ return '<article class="aip-turn"><div class="aip-question">'+esc(turn.question)+'</div><div class="aip-reply">'+
+  '<p class="aip-message">'+esc(turn.message)+'</p>'+(turn.error?'<p class="aip-model-error" role="alert">'+esc(turn.error)+'</p>':'')+renderAipProposal(turn.proposal,index,busy)+aggregate+records+(viewRows?'<ul>'+viewRows+'</ul>':'')+excluded+
+  '<div class="aip-turn-tools">'+controls+B('aipTrace',index===selected?'正在查看轨迹':'查看轨迹','small',index,'aria-pressed="'+(index===selected)+'"')+'</div></div></article>'
+}
+function pageAip(){
+ const aip=aipState(),turn=aip.turns[aip.selected],plan=aipSamplePlan()
+ const actions=aipActionCatalog(ontologyReadScope()),canPrepare=actions.length>0
+ const disabled=aip.busy?'disabled':''
+ const modelLabel=aipConnection?.configured?aipConnection.model+(canPrepare?' · 操作需确认':' · 只读'):aipConnection?.checking||!aipConnection?'正在检查模型配置':'模型服务未配置'
+ const examples=WORKSPACE.examples.filter(example=>(!example.action||actions.some(action=>action.apiName===example.action))&&(!example.whenDraft||aip.pending))
+ const workspaces=Object.entries(AGENT_WORKSPACES).filter(([id])=>id!==WORKSPACE_ID).map(([id,w])=>
+  '<a href="?workspace='+encodeURIComponent(id)+'#/aip">'+esc(w.name)+'</a>').join('')
+ const sample=plan?'<div class="card aip-ready row spread"><p>'+(plan==='blank'?'样例会加载租赁模型，并为张三签订一份当前有效租约。':'已有租赁模型，样例会为张三签订一份当前有效租约。')+'</p>'+
+  B('loadAipSample','加载查询样例','','',disabled)+'</div>':''
+ const trace=turn?.steps.length?'<ol class="aip-trace">'+turn.steps.map((step,i)=>
+  '<li><span aria-hidden="true" class="aip-step-num">'+(i+1)+'</span><div class="aip-step-head"><strong>'+esc(step.title)+'</strong><code>'+esc(step.tool)+'</code></div>'+
+  '<p class="aip-step-detail">'+esc(step.detail)+'</p>'+(step.records.length?'<div class="aip-records">'+step.records.map(record=>
+   '<div class="aip-record">'+aipObjectLink(record)+(record.label!==record.id?' <span>'+esc(record.id)+'</span>':'')+(record.detail?' <span>· '+esc(record.detail)+'</span>':'')+'</div>').join('')+'</div>':'')+'</li>').join('')+'</ol>':
+  '<div class="aip-empty-trace">'+(turn?'这次没有执行工具。':'发送问题后，这里会显示所用的工具、查询对象和操作状态。')+'</div>'
+ return head('AIP · '+esc(WORKSPACE.name),'基于当前 Ontology、角色和对话上下文工作。',workspaces+badge(modelLabel,'gray'))+
+  sample+'<div class="aip-grid"><section class="aip-card" aria-labelledby="aip-chat-heading"><header class="aip-card-head"><div>'+
+  '<h2 id="aip-chat-heading">对话</h2><p>使用已保存的 Ontology 和当前对象数据</p>'+(aipConnection?.error?'<p>'+esc(aipConnection.error)+'</p>':'')+'</div>'+
+  '<label class="fld"><span>查询基准日</span><input id="aipAsOf" type="date" value="'+esc(aip.asOf)+'" required form="aipForm"></label></header>'+
+  '<div id="aipTranscript" class="aip-transcript" role="log" aria-label="对话记录">'+(aip.turns.length?aip.turns.map((item,i)=>renderAipTurn(item,i,aip.selected,aip.busy)).join(''):
+   '<p class="aip-empty">可以查询业务数据，也可以接着上一轮继续办理。</p>')+'</div>'+
+  '<form id="aipForm" class="aip-form"><div class="row">'+examples.map(example=>
+   B('aipExample',esc(example.text),'aip-example',example.text,disabled)).join('')+'</div>'+
+  '<div class="aip-input-row"><input id="aipQuestion" aria-label="业务问题" placeholder="输入业务问题…" value="'+esc(aip.draft)+'" autocomplete="off" required maxlength="240"><button type="submit" class="primary" '+disabled+'>'+(aip.busy?'处理中':'发送')+'</button></div>'+
+  '<p class="aip-notice">'+(aipConnection?.provider==='codex'?'本机 Codex 使用当前 ChatGPT 登录处理问题和必要的查询结果。':'问题和回答所需的查询结果会发送给模型服务。')+'</p></form></section>'+
+  '<section class="aip-card" aria-labelledby="aip-trace-heading"><header class="aip-card-head"><div><h2 id="aip-trace-heading">'+(turn?.proposal?'操作轨迹':'查询轨迹')+'</h2><p>'+
+  (turn?.proposal?'准备草稿 → 用户确认 → 提交 Action':turn?'查询基准日 '+esc(turn.asOf):'当前用户 '+esc(USERS[S.user]?.name))+'</p></div></header>'+trace+'</section></div>'
+}
+function focusAipReply(){
+ requestAnimationFrame(()=>{
+  const transcript=$('#aipTranscript')
+  if(transcript)transcript.scrollTop=transcript.scrollHeight
+  $('#aipQuestion')?.focus({preventScroll:true})
+ })
+}
+Object.assign(ACT,{
+ aipExample(text){if(WORKSPACE.examples.some(example=>example.text===text))void submitAip(text)},
+ aipOpenAction(index){
+  const aip=aipState(),proposal=aip.turns[index]?.proposal
+  if(!proposal||aip.pending!==proposal||aip.busy)return
+  const read=ontologyReadScope(),at=aipActionType(read,proposal.apiName)
+  if(!at||at.id!==proposal.id||at.version!==proposal.version)throw Error('当前权限或 Action 配置已变化，请重新发送请求。')
+  aip.selected=Number(index)
+  openActionForm(proposal.id,'','',proposal.vals)
+  for(const p of at.parameters)if(p.default?.kind==='objprop'&&proposal.vals[p.id]===undefined)
+   S.ui.modal.vals[p.id]=paramProp(at,S.ui.modal.vals,p.default.value,read.onto)??''
+  S.ui.modal.aipTurn=Number(index)
+  S.ui.modal.aipProposal=proposal
+ },
+ aipPickOption(arg){
+  const [index,id]=JSON.parse(arg),aip=aipState(),turn=aip.turns[index],proposal=turn?.proposal
+  if(!proposal||aip.pending!==proposal||aip.busy)return
+  const read=ontologyReadScope(),at=aipActionType(read,proposal.apiName)
+  if(!at||at.version!==proposal.version)throw Error('当前权限或 Action 配置已变化。')
+  const choices=aipDraftOptions(proposal,at,read),record=choices?.records.find(r=>r.id===id)
+  if(!record)throw Error('该选项当前已不可用。')
+  aipSetActionValue(at,proposal.vals,choices.parameter,id)
+  aipRefreshProposal(proposal,at,read)
+  aip.selected=Number(index)
+  turn.steps.push({title:'用户更新草稿参数',tool:at.apiName,detail:choices.label+' '+record.label,records:[record]})
+ },
+ aipTrace(index){if(aipState().turns[index])aipState().selected=Number(index)},
+ aipChooseObject(arg){
+  const [index,id]=JSON.parse(arg),turn=aipState().turns[index]
+  if(turn?.viewId&&turn.candidates.some(record=>record.id===id))void submitAip(turn.question,{id:turn.viewId,lookup:id},turn.asOf)
+ },
+ loadAipSample(){loadAipSample()}
+})
+document.addEventListener('input',e=>{
+ if(e.target.id==='aipAsOf')aipState().asOf=e.target.value
+ if(e.target.id==='aipQuestion')aipState().draft=e.target.value
+})
+document.addEventListener('submit',e=>{
+ if(e.target.id!=='aipForm')return
+ e.preventDefault()
+ if(aipState().busy)return
+ const question=$('#aipQuestion').value.trim()
+ if(!question)return
+ aipState().draft=''
+ void submitAip(question)
+})
 window.addEventListener('pagehide',persist)
 if(restore())toast('已恢复上次的工作区。')
+else loadConfiguredWorkspace()
+document.title=WORKSPACE.name+' · Ontology Lab'
+if(location.hash.startsWith('#/'))ROUTE=location.hash.slice(2)
 render()
+void checkAipConnection()
 </script>
 </body>
 </html>

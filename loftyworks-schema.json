@@ -1,0 +1,8442 @@
+{
+  "tables": [
+    {
+      "id": "accounting:accounting.pl_backfill_audit_20260728",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "pl_backfill_audit_20260728",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "2026-07-28 房产-房东回填的审计备份。",
+      "rows": 124,
+      "exact": false,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pl_id"
+      ],
+      "cols": [
+        [
+          "pl_id",
+          "uuid"
+        ],
+        [
+          "pl_p_id",
+          "uuid"
+        ],
+        [
+          "pl_usr_id",
+          "uuid"
+        ],
+        [
+          "organisation_id",
+          "character varying"
+        ],
+        [
+          "landlord_source",
+          "character varying"
+        ],
+        [
+          "inserted_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.bank_statement_embeddings",
+      "db": "accounting",
+      "s": "ai",
+      "t": "bank_statement_embeddings",
+      "dom": "ai",
+      "cn": "流水向量",
+      "desc": "银行流水文本的向量，用于智能匹配付款人。",
+      "rows": 9354,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "bse_id"
+      ],
+      "cols": [
+        [
+          "bse_id",
+          "uuid"
+        ],
+        [
+          "bse_bsl_id",
+          "uuid"
+        ],
+        [
+          "bse_embedding",
+          "accounting.vector(512)"
+        ],
+        [
+          "bse_text_source",
+          "text"
+        ],
+        [
+          "bse_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "bse_model_version",
+          "character varying(50)"
+        ],
+        [
+          "bse_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bse_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payout",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payout",
+      "dom": "payout",
+      "cn": "出款单",
+      "desc": "付给房东、押金机构、HMRC 等的款项汇总：本期收入、支出、NRL 税、结转、净额。类型最多的是 LANDLORD_PAYOUT。",
+      "rows": 10380,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "po_id"
+      ],
+      "cols": [
+        [
+          "po_id",
+          "uuid"
+        ],
+        [
+          "po_bsl_id",
+          "uuid"
+        ],
+        [
+          "po_landlord_id",
+          "uuid"
+        ],
+        [
+          "po_payout_date",
+          "timestamp with time zone"
+        ],
+        [
+          "po_total_income",
+          "numeric(10,2)"
+        ],
+        [
+          "po_total_expenses",
+          "numeric(10,2)"
+        ],
+        [
+          "po_balance_carry_forward",
+          "numeric(10,2)"
+        ],
+        [
+          "po_nrl_tax",
+          "numeric(10,2)"
+        ],
+        [
+          "po_net_payout",
+          "numeric(10,2)"
+        ],
+        [
+          "po_payout_status",
+          "character varying(50)"
+        ],
+        [
+          "po_created_by",
+          "uuid"
+        ],
+        [
+          "po_updated_by",
+          "uuid"
+        ],
+        [
+          "po_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "po_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "po_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "po_p_id",
+          "uuid"
+        ],
+        [
+          "po_ba_id",
+          "uuid"
+        ],
+        [
+          "po_auto_send_statement",
+          "boolean"
+        ],
+        [
+          "po_landlord_statement",
+          "text"
+        ],
+        [
+          "po_type",
+          "character varying(255)"
+        ],
+        [
+          "po_sequence_number",
+          "integer"
+        ],
+        [
+          "po_reference_number",
+          "character varying(20)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.pl_backfill_live_audit_20260729",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "pl_backfill_live_audit_20260729",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "2026-07-29 房产-房东回填的审计备份。",
+      "rows": 0,
+      "exact": false,
+      "owner": "loftyworks-accounting",
+      "pk": [],
+      "cols": [
+        [
+          "pl_id",
+          "uuid"
+        ],
+        [
+          "pl_p_id",
+          "uuid"
+        ],
+        [
+          "pl_usr_id",
+          "uuid"
+        ],
+        [
+          "org",
+          "character varying"
+        ],
+        [
+          "inserted_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.recurring_invoice_template_line_item",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "recurring_invoice_template_line_item",
+      "dom": "billing",
+      "cn": "周期模板明细",
+      "desc": "周期账单模板的收费项。",
+      "rows": 180,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ritli_id"
+      ],
+      "cols": [
+        [
+          "ritli_id",
+          "uuid"
+        ],
+        [
+          "ritli_rit_id",
+          "uuid"
+        ],
+        [
+          "ritli_gross_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "ritli_net_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "ritli_tax_rate",
+          "smallint"
+        ],
+        [
+          "ritli_description",
+          "character varying"
+        ],
+        [
+          "ritli_id_type",
+          "character varying(50)"
+        ],
+        [
+          "ritli_p_id",
+          "uuid"
+        ],
+        [
+          "ritli_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ritli_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.recurring_invoice_template",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "recurring_invoice_template",
+      "dom": "billing",
+      "cn": "周期账单模板",
+      "desc": "租金以外的定期收费（如每月服务费），按频率自动生成账单。",
+      "rows": 180,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "rit_id"
+      ],
+      "cols": [
+        [
+          "rit_id",
+          "uuid"
+        ],
+        [
+          "rit_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "rit_template_name",
+          "character varying(255)"
+        ],
+        [
+          "rit_payee_usr_id",
+          "uuid"
+        ],
+        [
+          "rit_payer_usr_id",
+          "uuid"
+        ],
+        [
+          "rit_p_id",
+          "uuid"
+        ],
+        [
+          "rit_frequency",
+          "character varying(20)"
+        ],
+        [
+          "rit_start_date",
+          "date"
+        ],
+        [
+          "rit_payment_term_in_days",
+          "integer"
+        ],
+        [
+          "rit_end_condition",
+          "character varying(50)"
+        ],
+        [
+          "rit_end_date",
+          "date"
+        ],
+        [
+          "rit_occurrence_limit",
+          "integer"
+        ],
+        [
+          "rit_occurrence_count",
+          "integer"
+        ],
+        [
+          "rit_status",
+          "character varying(25)"
+        ],
+        [
+          "rit_gross_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "rit_net_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "rit_tax_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "rit_currency",
+          "character varying(25)"
+        ],
+        [
+          "rit_description",
+          "character varying"
+        ],
+        [
+          "rit_note",
+          "text"
+        ],
+        [
+          "rit_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "rit_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "rit_invoice_date",
+          "date"
+        ],
+        [
+          "rit_due_date",
+          "date"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.candidate_embeddings",
+      "db": "accounting",
+      "s": "ai",
+      "t": "candidate_embeddings",
+      "dom": "ai",
+      "cn": "候选对象向量",
+      "desc": "租客、房东、房产等候选对象的向量，用来和流水做相似度匹配。",
+      "rows": 61792,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "ce_id"
+      ],
+      "cols": [
+        [
+          "ce_id",
+          "uuid"
+        ],
+        [
+          "ce_embedding",
+          "accounting.vector(512)"
+        ],
+        [
+          "ce_model_version",
+          "character varying(50)"
+        ],
+        [
+          "ce_text_source",
+          "text"
+        ],
+        [
+          "ce_entity_type",
+          "character varying(50)"
+        ],
+        [
+          "ce_entity_id",
+          "uuid"
+        ],
+        [
+          "ce_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ce_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ce_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.tenancy_period",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "tenancy_period",
+      "dom": "tenancy",
+      "cn": "租期段",
+      "desc": "同一租约内的分段：续约或调租后的新租金、新租金日。",
+      "rows": 6767,
+      "exact": false,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "tp_id"
+      ],
+      "cols": [
+        [
+          "tp_id",
+          "uuid"
+        ],
+        [
+          "tp_t_id",
+          "uuid"
+        ],
+        [
+          "tp_status",
+          "text"
+        ],
+        [
+          "tp_validity",
+          "daterange"
+        ],
+        [
+          "tp_rent_amount",
+          "numeric(12,2)"
+        ],
+        [
+          "tp_rent_currency",
+          "character varying(3)"
+        ],
+        [
+          "tp_rent_payment_schedule",
+          "text"
+        ],
+        [
+          "tp_rent_day",
+          "smallint"
+        ],
+        [
+          "tp_source",
+          "text"
+        ],
+        [
+          "tp_source_ref_id",
+          "uuid"
+        ],
+        [
+          "tp_note",
+          "text"
+        ],
+        [
+          "tp_auto_schedule_next",
+          "boolean"
+        ],
+        [
+          "tp_cancelled_at",
+          "timestamp with time zone"
+        ],
+        [
+          "tp_cancelled_by",
+          "text"
+        ],
+        [
+          "tp_cancel_reason",
+          "text"
+        ],
+        [
+          "tp_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "tp_created_by",
+          "text"
+        ],
+        [
+          "tp_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "tp_updated_by",
+          "text"
+        ],
+        [
+          "tp_active_from",
+          "date"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.tenancy_period_landlord",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "tenancy_period_landlord",
+      "dom": "tenancy",
+      "cn": "租期段房东",
+      "desc": "某个租期段的房东及分成（目前无数据）。",
+      "rows": 0,
+      "exact": false,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "tpl_id"
+      ],
+      "cols": [
+        [
+          "tpl_id",
+          "uuid"
+        ],
+        [
+          "tpl_tp_id",
+          "uuid"
+        ],
+        [
+          "tpl_usr_id",
+          "uuid"
+        ],
+        [
+          "tpl_split",
+          "numeric(5,2)"
+        ],
+        [
+          "tpl_primary",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.ledger_identifier",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "ledger_identifier",
+      "dom": "ledger",
+      "cn": "分类账",
+      "desc": "\"这笔钱属于谁\"：机构 + 租约 + 房产 + 租客/房东/供应商的组合，一个组合对应一个分类账。",
+      "rows": 15467,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "li_id"
+      ],
+      "cols": [
+        [
+          "li_id",
+          "uuid"
+        ],
+        [
+          "li_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "li_tenancy_id",
+          "uuid"
+        ],
+        [
+          "li_p_id",
+          "uuid"
+        ],
+        [
+          "li_tenant_usr_id",
+          "uuid"
+        ],
+        [
+          "li_landlord_usr_id",
+          "uuid"
+        ],
+        [
+          "li_supplier_id",
+          "uuid"
+        ],
+        [
+          "li_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "li_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.tenancy",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "tenancy",
+      "dom": "tenancy",
+      "cn": "租约",
+      "desc": "租约主表：租金、收租周期、租金日、起止日期、状态、是否自动开租金账单、管理费规则。t_status 和 t_end_date 决定每天的自动收租跑批会不会处理它。",
+      "rows": 31706,
+      "exact": true,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "t_id"
+      ],
+      "cols": [
+        [
+          "t_id",
+          "uuid"
+        ],
+        [
+          "t_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "t_auto_invoice_rent",
+          "boolean"
+        ],
+        [
+          "t_address",
+          "character varying(200)"
+        ],
+        [
+          "t_address2",
+          "character varying(200)"
+        ],
+        [
+          "t_city",
+          "character varying(32)"
+        ],
+        [
+          "t_country",
+          "character varying(32)"
+        ],
+        [
+          "t_status",
+          "character varying(32)"
+        ],
+        [
+          "t_rent",
+          "numeric(20,2)"
+        ],
+        [
+          "t_currency",
+          "character varying(25)"
+        ],
+        [
+          "t_period",
+          "character varying(100)"
+        ],
+        [
+          "t_property_id",
+          "uuid"
+        ],
+        [
+          "t_start_date",
+          "timestamp with time zone"
+        ],
+        [
+          "t_end_date",
+          "timestamp with time zone"
+        ],
+        [
+          "t_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "t_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "t_automatic_allocation_of_tenant_funds",
+          "boolean"
+        ],
+        [
+          "t_property_manager_id",
+          "uuid"
+        ],
+        [
+          "t_management_fee_enabled",
+          "boolean"
+        ],
+        [
+          "t_management_fee_trigger",
+          "text"
+        ],
+        [
+          "t_management_fee_calculation_strategy",
+          "text"
+        ],
+        [
+          "t_management_fee_calculation_fixed",
+          "numeric(15,2)"
+        ],
+        [
+          "t_is_rent_guarantee_required",
+          "boolean"
+        ],
+        [
+          "t_reference",
+          "character varying(100)"
+        ],
+        [
+          "t_management_fee_calculation_percentage",
+          "numeric(5,2)"
+        ],
+        [
+          "t_is_ready",
+          "boolean"
+        ],
+        [
+          "t_ledger_status",
+          "character varying(10)"
+        ],
+        [
+          "t_rent_day",
+          "integer"
+        ],
+        [
+          "t_asking_price",
+          "numeric(20,2)"
+        ],
+        [
+          "t_legacy_deposit_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "t_auto_deposit_triggered",
+          "boolean"
+        ],
+        [
+          "t_last_applied_period_id",
+          "uuid"
+        ],
+        [
+          "t_last_applied_at",
+          "timestamp with time zone"
+        ],
+        [
+          "t_backfill_dismissed_start_date",
+          "date"
+        ],
+        [
+          "t_backfill_dismissed_periods_hash",
+          "character varying(64)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bak_let6543_settlement_backfill",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bak_let6543_settlement_backfill",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "一次数据修复（LET-6543）留下的备份表。",
+      "rows": 125,
+      "exact": false,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "inv_id"
+      ],
+      "cols": [
+        [
+          "inv_id",
+          "uuid"
+        ],
+        [
+          "inv_organisation_id",
+          "text"
+        ],
+        [
+          "previous_settlement_date",
+          "timestamp with time zone"
+        ],
+        [
+          "previous_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "written_settlement_date",
+          "timestamp with time zone"
+        ],
+        [
+          "backed_up_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.property_landlord",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "property_landlord",
+      "dom": "property",
+      "cn": "房产-房东",
+      "desc": "一套房的房东及持有份额。支持多房东按比例分账，按有效期留版本。",
+      "rows": 7182,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pl_id"
+      ],
+      "cols": [
+        [
+          "pl_id",
+          "uuid"
+        ],
+        [
+          "pl_p_id",
+          "uuid"
+        ],
+        [
+          "pl_usr_id",
+          "uuid"
+        ],
+        [
+          "pl_shares",
+          "numeric(5,2)"
+        ],
+        [
+          "pl_is_primary",
+          "boolean"
+        ],
+        [
+          "pl_valid_from",
+          "timestamp with time zone"
+        ],
+        [
+          "pl_valid_to",
+          "timestamp with time zone"
+        ],
+        [
+          "pl_version",
+          "integer"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.credit_note",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "credit_note",
+      "dom": "billing",
+      "cn": "贷记单",
+      "desc": "冲减或退还已开出的账单（Credit Note），可触发给租客退款。",
+      "rows": 26,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "cn_id"
+      ],
+      "cols": [
+        [
+          "cn_id",
+          "uuid"
+        ],
+        [
+          "cn_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "cn_status",
+          "character varying(30)"
+        ],
+        [
+          "cn_number",
+          "character varying(100)"
+        ],
+        [
+          "cn_date_of_issue",
+          "timestamp with time zone"
+        ],
+        [
+          "cn_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "cn_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "cn_issued_object",
+          "character varying(100)"
+        ],
+        [
+          "cn_invoice_id",
+          "uuid"
+        ],
+        [
+          "cn_chart_of_accounts_id",
+          "uuid"
+        ],
+        [
+          "cn_user_id",
+          "uuid"
+        ],
+        [
+          "cn_property_id",
+          "uuid"
+        ],
+        [
+          "cn_reason",
+          "text"
+        ],
+        [
+          "cn_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "cn_processing_type",
+          "character varying(30)"
+        ],
+        [
+          "cn_sequence_number",
+          "integer"
+        ],
+        [
+          "cn_tenancy_id",
+          "uuid"
+        ],
+        [
+          "cn_ledger_type",
+          "character varying(20)"
+        ],
+        [
+          "cn_created_by",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.tenancy_event_outbox",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "tenancy_event_outbox",
+      "dom": "tenancy",
+      "cn": "租约事件发件箱",
+      "desc": "待发往事件总线的租约变更事件，保证\"改库\"和\"发事件\"一致。",
+      "rows": 0,
+      "exact": false,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "teo_id"
+      ],
+      "cols": [
+        [
+          "teo_id",
+          "uuid"
+        ],
+        [
+          "teo_aggregate_id",
+          "uuid"
+        ],
+        [
+          "teo_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "teo_detail_type",
+          "character varying(64)"
+        ],
+        [
+          "teo_source",
+          "character varying(64)"
+        ],
+        [
+          "teo_payload",
+          "jsonb"
+        ],
+        [
+          "teo_status",
+          "character varying(20)"
+        ],
+        [
+          "teo_attempts",
+          "integer"
+        ],
+        [
+          "teo_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "teo_next_attempt_at",
+          "timestamp with time zone"
+        ],
+        [
+          "teo_published_at",
+          "timestamp with time zone"
+        ],
+        [
+          "teo_last_error",
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.property_float_target",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "property_float_target",
+      "dom": "property",
+      "cn": "房产备用金",
+      "desc": "每套房在账上保留、不付给房东的备用金额度，用来垫付维修等支出。",
+      "rows": 5370,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pft_id"
+      ],
+      "cols": [
+        [
+          "pft_id",
+          "uuid"
+        ],
+        [
+          "pft_p_id",
+          "uuid"
+        ],
+        [
+          "pft_amount",
+          "numeric(10,2)"
+        ],
+        [
+          "pft_user_id",
+          "uuid"
+        ],
+        [
+          "pft_created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.chat_memory",
+      "db": "accounting",
+      "s": "ai",
+      "t": "chat_memory",
+      "dom": "ai",
+      "cn": "对话记忆",
+      "desc": "AI 对话上下文。",
+      "rows": 8,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "cm_memory_id"
+      ],
+      "cols": [
+        [
+          "cm_memory_id",
+          "character varying(300)"
+        ],
+        [
+          "cm_messages_json",
+          "text"
+        ],
+        [
+          "cm_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.private_note",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "private_note",
+      "dom": "tenancy",
+      "cn": "租约内部备注",
+      "desc": "只给内部员工看的备注。",
+      "rows": 0,
+      "exact": false,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "pn_id"
+      ],
+      "cols": [
+        [
+          "pn_id",
+          "uuid"
+        ],
+        [
+          "pn_t_id",
+          "uuid"
+        ],
+        [
+          "pn_note",
+          "character varying(4000)"
+        ],
+        [
+          "pn_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pn_created_by",
+          "text"
+        ],
+        [
+          "pn_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pn_updated_by",
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:banking_facade.bf_payment",
+      "db": "accounting",
+      "s": "banking_facade",
+      "t": "bf_payment",
+      "dom": "gateway",
+      "cn": "支付指令",
+      "desc": "发往银行的每一笔付款（ISO 20022 字段），带幂等键和状态。系统出款和 TLP 后台付款都经过这里。",
+      "rows": 91225,
+      "exact": true,
+      "owner": "银行网关（accounting 与 TLP Payouts 共用）",
+      "pk": [
+        "bf_payment_id"
+      ],
+      "cols": [
+        [
+          "bf_payment_id",
+          "uuid"
+        ],
+        [
+          "bf_connection_id",
+          "uuid"
+        ],
+        [
+          "bf_provider",
+          "character varying(50)"
+        ],
+        [
+          "bf_client_context",
+          "character varying(100)"
+        ],
+        [
+          "bf_idempotency_key",
+          "character varying(255)"
+        ],
+        [
+          "bf_external_payment_id",
+          "character varying(255)"
+        ],
+        [
+          "bf_instruction_id",
+          "character varying(35)"
+        ],
+        [
+          "bf_end_to_end_id",
+          "character varying(35)"
+        ],
+        [
+          "bf_status",
+          "character varying(50)"
+        ],
+        [
+          "bf_status_reason",
+          "text"
+        ],
+        [
+          "bf_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "bf_currency",
+          "character varying(3)"
+        ],
+        [
+          "bf_debtor_account_iban",
+          "character varying(34)"
+        ],
+        [
+          "bf_debtor_agent_bic",
+          "character varying(11)"
+        ],
+        [
+          "bf_creditor_name",
+          "character varying(140)"
+        ],
+        [
+          "bf_creditor_account_iban",
+          "character varying(34)"
+        ],
+        [
+          "bf_creditor_agent_bic",
+          "character varying(11)"
+        ],
+        [
+          "bf_remittance_info_unstructured",
+          "character varying(140)"
+        ],
+        [
+          "bf_initiated_by_user_login",
+          "character varying(320)"
+        ],
+        [
+          "bf_approved_by_user_login",
+          "character varying(320)"
+        ],
+        [
+          "bf_received_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_submitted_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_completed_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_debtor_account_sortcode",
+          "character varying(8)"
+        ],
+        [
+          "bf_debtor_account_number",
+          "character varying(34)"
+        ],
+        [
+          "bf_creditor_account_sortcode",
+          "character varying(8)"
+        ],
+        [
+          "bf_creditor_account_number",
+          "character varying(34)"
+        ],
+        [
+          "bf_creditor_country",
+          "character varying(2)"
+        ],
+        [
+          "bf_creditor_town",
+          "character varying(35)"
+        ],
+        [
+          "bf_creditor_post_code",
+          "character varying(16)"
+        ],
+        [
+          "bf_creditor_address_line_1",
+          "character varying(70)"
+        ],
+        [
+          "bf_creditor_address_line_2",
+          "character varying(70)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payment_run_items_v2",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payment_run_items_v2",
+      "dom": "payout",
+      "cn": "付款明细",
+      "desc": "每一笔真正要打出去的钱：付房东、付管理费、付供应商、付押金机构、付 NRL 税/HMRC、租客退款。",
+      "rows": 23600,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pri_id"
+      ],
+      "cols": [
+        [
+          "pri_id",
+          "uuid"
+        ],
+        [
+          "pri_parent_id",
+          "uuid"
+        ],
+        [
+          "pri_external_payment_id",
+          "character varying(100)"
+        ],
+        [
+          "pri_bsl_id",
+          "uuid"
+        ],
+        [
+          "pri_property_name",
+          "character varying(500)"
+        ],
+        [
+          "pri_type",
+          "character varying(100)"
+        ],
+        [
+          "pri_user_id",
+          "uuid"
+        ],
+        [
+          "pri_p_id",
+          "uuid"
+        ],
+        [
+          "pri_desc",
+          "character varying(500)"
+        ],
+        [
+          "pri_amount",
+          "numeric(10,2)"
+        ],
+        [
+          "pri_currency",
+          "character varying(100)"
+        ],
+        [
+          "pri_debtor_user_id",
+          "uuid"
+        ],
+        [
+          "pri_debtor_ba_id",
+          "uuid"
+        ],
+        [
+          "pri_debtor_bank_name",
+          "character varying(100)"
+        ],
+        [
+          "pri_debtor_sort_code",
+          "character varying(100)"
+        ],
+        [
+          "pri_debtor_bank_account_number",
+          "character varying(100)"
+        ],
+        [
+          "pri_debtor_iban",
+          "character varying(100)"
+        ],
+        [
+          "pri_creditor_user_id",
+          "uuid"
+        ],
+        [
+          "pri_creditor_name",
+          "character varying(500)"
+        ],
+        [
+          "pri_creditor_bank_name",
+          "character varying(100)"
+        ],
+        [
+          "pri_creditor_sort_code",
+          "character varying(100)"
+        ],
+        [
+          "pri_creditor_bank_account_number",
+          "character varying(100)"
+        ],
+        [
+          "pri_creditor_iban",
+          "character varying(100)"
+        ],
+        [
+          "pri_swift_bic",
+          "text"
+        ],
+        [
+          "pri_creditor_international_account_number",
+          "text"
+        ],
+        [
+          "pri_creditor_processing_method",
+          "character varying(10)"
+        ],
+        [
+          "pri_status",
+          "character varying(50)"
+        ],
+        [
+          "pri_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pri_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pri_inv_id",
+          "uuid"
+        ],
+        [
+          "pri_payment_provider_error_details",
+          "text"
+        ],
+        [
+          "pri_payment_provider_error_code",
+          "character varying(4)"
+        ],
+        [
+          "pri_error_details",
+          "text"
+        ],
+        [
+          "pri_payout_id",
+          "uuid"
+        ],
+        [
+          "pri_tenancy_id",
+          "uuid"
+        ],
+        [
+          "pri_credit_note_id",
+          "uuid"
+        ],
+        [
+          "pri_float_part",
+          "numeric(10,2)"
+        ],
+        [
+          "pri_creditor_country",
+          "character varying(2)"
+        ],
+        [
+          "pri_creditor_address_line_1",
+          "character varying(70)"
+        ],
+        [
+          "pri_creditor_address_line_2",
+          "character varying(70)"
+        ],
+        [
+          "pri_creditor_town",
+          "character varying(35)"
+        ],
+        [
+          "pri_creditor_post_code",
+          "character varying(16)"
+        ],
+        [
+          "pri_creditor_routing_number",
+          "character varying(35)"
+        ],
+        [
+          "pri_creditor_account_type",
+          "character varying(20)"
+        ],
+        [
+          "pri_payment_reference",
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bank_statement_line_matched",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bank_statement_line_matched",
+      "dom": "bank",
+      "cn": "流水匹配结果",
+      "desc": "一笔流水匹配到了哪张账单、哪笔付款、哪个分类账。",
+      "rows": 35577,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "bslm_id"
+      ],
+      "cols": [
+        [
+          "bslm_id",
+          "uuid"
+        ],
+        [
+          "bslm_bank_statement_id",
+          "uuid"
+        ],
+        [
+          "bslm_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "bslm_invoice_id",
+          "uuid"
+        ],
+        [
+          "bslm_status",
+          "character varying(100)"
+        ],
+        [
+          "bslm_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bslm_payment_run_item_id",
+          "uuid"
+        ],
+        [
+          "bslm_payment_run_item_v2_id",
+          "uuid"
+        ],
+        [
+          "bslm_li_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.agency_income_rollup",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "agency_income_rollup",
+      "dom": "billing",
+      "cn": "中介收入月汇总",
+      "desc": "按机构、按月汇总的中介收入（管理费等），含税/不含税。",
+      "rows": 281,
+      "exact": false,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "air_id"
+      ],
+      "cols": [
+        [
+          "air_id",
+          "uuid"
+        ],
+        [
+          "air_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "air_year",
+          "integer"
+        ],
+        [
+          "air_month",
+          "integer"
+        ],
+        [
+          "air_net_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "air_vat_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "air_gross_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "air_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.invoice",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "invoice",
+      "dom": "billing",
+      "cn": "账单（费用）",
+      "desc": "所有应收应付。OUTBOUND = 向租客收（租金、押金、杂费），INBOUND = 要付给供应商的账单。状态 UNPAID → PARTIALLY_RECONCILED → RECONCILED。inv_created_by 为系统用户 0000…0001 表示自动开出。",
+      "rows": 96478,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "inv_id"
+      ],
+      "cols": [
+        [
+          "inv_id",
+          "uuid"
+        ],
+        [
+          "inv_payee_usr_id",
+          "uuid"
+        ],
+        [
+          "inv_payer_usr_id",
+          "uuid"
+        ],
+        [
+          "inv_gross_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "inv_net_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "inv_tax_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "inv_bill_date",
+          "timestamp with time zone"
+        ],
+        [
+          "inv_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "inv_due_date",
+          "timestamp with time zone"
+        ],
+        [
+          "inv_id_type",
+          "character varying(50)"
+        ],
+        [
+          "inv_is_funded",
+          "boolean"
+        ],
+        [
+          "inv_item_id",
+          "uuid"
+        ],
+        [
+          "inv_item_name",
+          "character varying(255)"
+        ],
+        [
+          "inv_note",
+          "text"
+        ],
+        [
+          "inv_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "inv_parent_id",
+          "uuid"
+        ],
+        [
+          "inv_payment_cycle_type",
+          "character varying(50)"
+        ],
+        [
+          "inv_reference_id",
+          "character varying(200)"
+        ],
+        [
+          "inv_remain_amount",
+          "numeric(20,2)"
+        ],
+        [
+          "inv_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "inv_type",
+          "character varying(255)"
+        ],
+        [
+          "inv_p_id",
+          "uuid"
+        ],
+        [
+          "inv_status",
+          "character varying(255)"
+        ],
+        [
+          "inv_description",
+          "character varying"
+        ],
+        [
+          "inv_payee_usr_hist_id",
+          "uuid"
+        ],
+        [
+          "inv_payer_usr_hist_id",
+          "uuid"
+        ],
+        [
+          "inv_currency",
+          "character varying(25)"
+        ],
+        [
+          "inv_rent_guarantee",
+          "boolean"
+        ],
+        [
+          "inv_recurring_invoice",
+          "boolean"
+        ],
+        [
+          "inv_tenancy_id",
+          "uuid"
+        ],
+        [
+          "inv_payee_usr_history_json",
+          "jsonb"
+        ],
+        [
+          "inv_payer_usr_history_json",
+          "jsonb"
+        ],
+        [
+          "inv_deduplication_id",
+          "uuid"
+        ],
+        [
+          "inv_rit_id",
+          "uuid"
+        ],
+        [
+          "inv_settlement_date",
+          "timestamp with time zone"
+        ],
+        [
+          "inv_payee_type",
+          "character varying(20)"
+        ],
+        [
+          "inv_period_id",
+          "uuid"
+        ],
+        [
+          "inv_created_by",
+          "uuid"
+        ],
+        [
+          "inv_updated_by",
+          "uuid"
+        ],
+        [
+          "inv_auto_allocation_hold",
+          "boolean"
+        ],
+        [
+          "inv_billing_period_start",
+          "date"
+        ],
+        [
+          "inv_billing_period_end",
+          "date"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.reconciliation",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "reconciliation",
+      "dom": "bank",
+      "cn": "对账记录",
+      "desc": "账单、银行流水、记账交易三者的对账结果。",
+      "rows": 11017,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "rec_id"
+      ],
+      "cols": [
+        [
+          "rec_id",
+          "uuid"
+        ],
+        [
+          "rec_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "rec_date",
+          "timestamp with time zone"
+        ],
+        [
+          "rec_status",
+          "character varying(50)"
+        ],
+        [
+          "rec_inv_id",
+          "uuid"
+        ],
+        [
+          "rec_tr_id",
+          "uuid"
+        ],
+        [
+          "rec_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "rec_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "rec_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "rec_bsl_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.tenant_arrears",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "tenant_arrears",
+      "dom": "billing",
+      "cn": "欠租跟进",
+      "desc": "每个租约的催租设置，以及最近一次提醒、催缴信的时间。",
+      "rows": 105,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ta_id"
+      ],
+      "cols": [
+        [
+          "ta_id",
+          "uuid"
+        ],
+        [
+          "ta_tenancy_id",
+          "uuid"
+        ],
+        [
+          "ta_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ta_last_dedup_id",
+          "uuid"
+        ],
+        [
+          "ta_last_dedup_set_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ta_last_reminder_date",
+          "timestamp with time zone"
+        ],
+        [
+          "ta_last_arrears_letter_date",
+          "timestamp with time zone"
+        ],
+        [
+          "ta_debt_chasing_enabled",
+          "boolean"
+        ],
+        [
+          "ta_note",
+          "text"
+        ],
+        [
+          "ta_last_dedup_owner",
+          "uuid"
+        ],
+        [
+          "ta_last_reminder_status",
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payout_carried_balance",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payout_carried_balance",
+      "dom": "payout",
+      "cn": "结转余额",
+      "desc": "本次未付完、结转到下期的金额及说明。",
+      "rows": 14,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pcb_id"
+      ],
+      "cols": [
+        [
+          "pcb_id",
+          "uuid"
+        ],
+        [
+          "pcb_po_id",
+          "uuid"
+        ],
+        [
+          "pcb_description",
+          "text"
+        ],
+        [
+          "pcb_amount",
+          "numeric(10,2)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.privileges",
+      "db": "accounting",
+      "s": "users",
+      "t": "privileges",
+      "dom": "org",
+      "cn": "权限点",
+      "desc": "系统里可授予的操作权限清单。",
+      "rows": 56,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "pr_id"
+      ],
+      "cols": [
+        [
+          "pr_id",
+          "uuid"
+        ],
+        [
+          "pr_name",
+          "character varying(100)"
+        ],
+        [
+          "pr_description",
+          "text"
+        ],
+        [
+          "pr_created_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.users",
+      "db": "accounting",
+      "s": "users",
+      "t": "users",
+      "dom": "org",
+      "cn": "用户",
+      "desc": "平台上所有参与方，用 usr_type 区分：租客、房东、供应商、员工、担保人、押金保管机构等。含房东非居民税(NRL)资料、收款账户、付款模式。注意：这里只同步了资金相关的用户，用户主数据在主应用。",
+      "rows": 33806,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "usr_id"
+      ],
+      "cols": [
+        [
+          "usr_id",
+          "uuid"
+        ],
+        [
+          "usr_first_name",
+          "character varying(200)"
+        ],
+        [
+          "usr_last_name",
+          "character varying(200)"
+        ],
+        [
+          "usr_company_name",
+          "character varying(200)"
+        ],
+        [
+          "usr_type",
+          "character varying(100)"
+        ],
+        [
+          "usr_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "usr_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "usr_sort_code",
+          "character varying(20)"
+        ],
+        [
+          "usr_account_number",
+          "character varying(20)"
+        ],
+        [
+          "usr_active",
+          "boolean"
+        ],
+        [
+          "usr_landlord_non_resident_landlord",
+          "boolean"
+        ],
+        [
+          "usr_landlord_hmrc_approval_number_obtained",
+          "boolean"
+        ],
+        [
+          "usr_landlord_hmrc_approval_number",
+          "text"
+        ],
+        [
+          "usr_landlord_hmrc_approval_effective_date",
+          "date"
+        ],
+        [
+          "usr_landlord_hmrc_approval_withdrawal_date",
+          "date"
+        ],
+        [
+          "usr_initial_roles_sync",
+          "boolean"
+        ],
+        [
+          "usr_vat_number",
+          "text"
+        ],
+        [
+          "usr_consolidated_bulk_payment",
+          "boolean"
+        ],
+        [
+          "usr_payments_blocked",
+          "boolean"
+        ],
+        [
+          "usr_home_address_line_1",
+          "character varying(200)"
+        ],
+        [
+          "usr_home_address_line_2",
+          "character varying(200)"
+        ],
+        [
+          "usr_home_city",
+          "character varying(200)"
+        ],
+        [
+          "usr_home_postcode",
+          "character varying(200)"
+        ],
+        [
+          "usr_partial_payments",
+          "boolean"
+        ],
+        [
+          "usr_payout_mode",
+          "character varying(20)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.user_bank_details",
+      "db": "accounting",
+      "s": "users",
+      "t": "user_bank_details",
+      "dom": "org",
+      "cn": "用户收款账户",
+      "desc": "房东、供应商等的收款银行信息（UK sort code + 账号，或 IBAN）。",
+      "rows": 13121,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "ubd_id"
+      ],
+      "cols": [
+        [
+          "ubd_id",
+          "uuid"
+        ],
+        [
+          "ubd_user_id",
+          "uuid"
+        ],
+        [
+          "ubd_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ubd_bank_details_type",
+          "character varying(20)"
+        ],
+        [
+          "ubd_sort_code",
+          "character varying(6)"
+        ],
+        [
+          "ubd_account_number",
+          "character varying(8)"
+        ],
+        [
+          "ubd_iban",
+          "character varying(50)"
+        ],
+        [
+          "ubd_swift_bic",
+          "character varying(11)"
+        ],
+        [
+          "ubd_international_account_number",
+          "character varying(50)"
+        ],
+        [
+          "ubd_is_primary",
+          "boolean"
+        ],
+        [
+          "ubd_country",
+          "character varying(2)"
+        ],
+        [
+          "ubd_address_line_1",
+          "character varying(70)"
+        ],
+        [
+          "ubd_address_line_2",
+          "character varying(70)"
+        ],
+        [
+          "ubd_town",
+          "character varying(35)"
+        ],
+        [
+          "ubd_post_code",
+          "character varying(16)"
+        ],
+        [
+          "ubd_routing_number",
+          "character varying(35)"
+        ],
+        [
+          "ubd_account_type",
+          "character varying(20)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.allocation_priorities",
+      "db": "accounting",
+      "s": "users",
+      "t": "allocation_priorities",
+      "dom": "org",
+      "cn": "来款分配优先级",
+      "desc": "机构配置：租客的钱进来后，先抵哪类费用（租金、押金、杂费…）。",
+      "rows": 1567,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "ap_id"
+      ],
+      "cols": [
+        [
+          "ap_id",
+          "uuid"
+        ],
+        [
+          "ap_org_id",
+          "character varying(100)"
+        ],
+        [
+          "ap_charge_type",
+          "character varying(100)"
+        ],
+        [
+          "ap_priority",
+          "integer"
+        ],
+        [
+          "ap_enabled",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.flyway_schema_history",
+      "db": "accounting",
+      "s": "users",
+      "t": "flyway_schema_history",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "数据库迁移版本记录（工程用）。",
+      "rows": 66,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "installed_rank"
+      ],
+      "cols": [
+        [
+          "installed_rank",
+          "integer"
+        ],
+        [
+          "version",
+          "character varying(50)"
+        ],
+        [
+          "description",
+          "character varying(200)"
+        ],
+        [
+          "type",
+          "character varying(20)"
+        ],
+        [
+          "script",
+          "character varying(1000)"
+        ],
+        [
+          "checksum",
+          "integer"
+        ],
+        [
+          "installed_by",
+          "character varying(100)"
+        ],
+        [
+          "installed_on",
+          "timestamp without time zone"
+        ],
+        [
+          "execution_time",
+          "integer"
+        ],
+        [
+          "success",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.entity_embeddings",
+      "db": "accounting",
+      "s": "ai",
+      "t": "entity_embeddings",
+      "dom": "ai",
+      "cn": "实体向量",
+      "desc": "实体文本向量（目前无数据）。",
+      "rows": 0,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "ee_id"
+      ],
+      "cols": [
+        [
+          "ee_id",
+          "uuid"
+        ],
+        [
+          "ee_entity_type",
+          "character varying(50)"
+        ],
+        [
+          "ee_entity_id",
+          "uuid"
+        ],
+        [
+          "ee_tenancy_id",
+          "uuid"
+        ],
+        [
+          "ee_user_id",
+          "uuid"
+        ],
+        [
+          "ee_property_id",
+          "uuid"
+        ],
+        [
+          "ee_embedding",
+          "accounting.vector(1024)"
+        ],
+        [
+          "ee_text_representation",
+          "text"
+        ],
+        [
+          "ee_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ee_metadata",
+          "jsonb"
+        ],
+        [
+          "ee_model_version",
+          "character varying(50)"
+        ],
+        [
+          "ee_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ee_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.match_results",
+      "db": "accounting",
+      "s": "ai",
+      "t": "match_results",
+      "dom": "ai",
+      "cn": "AI 匹配结果",
+      "desc": "AI 判断一笔银行流水属于哪个用户/房产，以及置信度和理由。",
+      "rows": 0,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "mr_id"
+      ],
+      "cols": [
+        [
+          "mr_id",
+          "uuid"
+        ],
+        [
+          "mr_bank_statement_line_id",
+          "uuid"
+        ],
+        [
+          "mr_user_id",
+          "uuid"
+        ],
+        [
+          "mr_property_id",
+          "uuid"
+        ],
+        [
+          "mr_confidence",
+          "numeric(5,4)"
+        ],
+        [
+          "mr_match_type",
+          "character varying(50)"
+        ],
+        [
+          "mr_explanation",
+          "text"
+        ],
+        [
+          "mr_matched",
+          "boolean"
+        ],
+        [
+          "mr_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "mr_created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ledgers.chart_of_account",
+      "db": "accounting",
+      "s": "ledgers",
+      "t": "chart_of_account",
+      "dom": "ledger",
+      "cn": "会计科目",
+      "desc": "客户资金科目表，如 1000 客户资金银行账户、2000 租客余额、2100 房东余额、2300 押金、2540 NRL 税。",
+      "rows": 24,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "coa_id"
+      ],
+      "cols": [
+        [
+          "coa_id",
+          "uuid"
+        ],
+        [
+          "coa_name",
+          "character varying(255)"
+        ],
+        [
+          "coa_code",
+          "character varying(255)"
+        ],
+        [
+          "coa_type",
+          "character varying(255)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ledgers.transaction_types",
+      "db": "accounting",
+      "s": "ledgers",
+      "t": "transaction_types",
+      "dom": "ledger",
+      "cn": "交易类型",
+      "desc": "每种业务动作对应的借方/贷方科目，如 RENT_RECEIVED_BANK（收到租金）、PAY_LANDLORD（付房东）。",
+      "rows": 98,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "tt_id"
+      ],
+      "cols": [
+        [
+          "tt_id",
+          "uuid"
+        ],
+        [
+          "tt_name",
+          "character varying(100)"
+        ],
+        [
+          "tt_desc",
+          "character varying(1000)"
+        ],
+        [
+          "tt_debit_coa_id",
+          "uuid"
+        ],
+        [
+          "tt_credit_coa_id",
+          "uuid"
+        ],
+        [
+          "tt_active",
+          "boolean"
+        ],
+        [
+          "tt_code",
+          "character varying"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.users_history",
+      "db": "accounting",
+      "s": "users",
+      "t": "users_history",
+      "dom": "org",
+      "cn": "用户历史快照",
+      "desc": "用户资料每次变更都存一份快照。账单引用的是开票当时的付款方/收款方信息，事后改资料不影响旧账单。",
+      "rows": 125970,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "usr_hist_id"
+      ],
+      "cols": [
+        [
+          "usr_hist_id",
+          "uuid"
+        ],
+        [
+          "usr_id",
+          "uuid"
+        ],
+        [
+          "usr_first_name",
+          "character varying(200)"
+        ],
+        [
+          "usr_last_name",
+          "character varying(200)"
+        ],
+        [
+          "usr_company_name",
+          "character varying(200)"
+        ],
+        [
+          "usr_type",
+          "character varying(100)"
+        ],
+        [
+          "usr_sort_code",
+          "character varying(8)"
+        ],
+        [
+          "usr_account_number",
+          "character varying(8)"
+        ],
+        [
+          "usr_active",
+          "boolean"
+        ],
+        [
+          "usr_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "usr_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "usr_landlord_non_resident_landlord",
+          "boolean"
+        ],
+        [
+          "usr_landlord_hmrc_approval_number_obtained",
+          "boolean"
+        ],
+        [
+          "usr_landlord_hmrc_approval_number",
+          "text"
+        ],
+        [
+          "usr_landlord_hmrc_approval_effective_date",
+          "date"
+        ],
+        [
+          "usr_landlord_hmrc_approval_withdrawal_date",
+          "date"
+        ],
+        [
+          "usr_home_address_line_1",
+          "character varying(200)"
+        ],
+        [
+          "usr_home_address_line_2",
+          "character varying(200)"
+        ],
+        [
+          "usr_home_city",
+          "character varying(200)"
+        ],
+        [
+          "usr_home_postcode",
+          "character varying(200)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bank_payment_tracking",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bank_payment_tracking",
+      "dom": "payout",
+      "cn": "银行付款回执",
+      "desc": "付款指令在银行侧的状态（成功/失败原因）。",
+      "rows": 1757,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "bpt_id"
+      ],
+      "cols": [
+        [
+          "bpt_id",
+          "text"
+        ],
+        [
+          "bpt_organisation_id",
+          "text"
+        ],
+        [
+          "bpt_batch_id",
+          "text"
+        ],
+        [
+          "bpt_envelope_id",
+          "text"
+        ],
+        [
+          "bpt_external_payment_id",
+          "text"
+        ],
+        [
+          "bpt_bank_integration",
+          "text"
+        ],
+        [
+          "bpt_status",
+          "text"
+        ],
+        [
+          "bpt_business_ref",
+          "text"
+        ],
+        [
+          "bpt_debtor_bban",
+          "text"
+        ],
+        [
+          "bpt_creditor_bban",
+          "text"
+        ],
+        [
+          "bpt_debtor_iban",
+          "text"
+        ],
+        [
+          "bpt_creditor_iban",
+          "text"
+        ],
+        [
+          "bpt_amount",
+          "numeric(19,2)"
+        ],
+        [
+          "bpt_status_reason",
+          "text"
+        ],
+        [
+          "bpt_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bpt_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bpt_payment_run_item_id",
+          "uuid"
+        ],
+        [
+          "bpt_currency",
+          "character varying(3)"
+        ],
+        [
+          "bpt_creditor_bic",
+          "text"
+        ],
+        [
+          "bpt_creditor_account_number",
+          "text"
+        ],
+        [
+          "bpt_instr_id",
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.approval_history",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "approval_history",
+      "dom": "payout",
+      "cn": "审批历史",
+      "desc": "审批上每一次操作的记录。",
+      "rows": 20601,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ah_id"
+      ],
+      "cols": [
+        [
+          "ah_id",
+          "uuid"
+        ],
+        [
+          "ah_approval_id",
+          "uuid"
+        ],
+        [
+          "ah_action",
+          "character varying(50)"
+        ],
+        [
+          "ah_performed_by",
+          "uuid"
+        ],
+        [
+          "ah_performed_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.general_ledger_log",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "general_ledger_log",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "旧总账日志（已被 ledgers.general_ledger 取代）。",
+      "rows": 2202,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [],
+      "cols": [
+        [
+          "gl_id",
+          "uuid"
+        ],
+        [
+          "gl_coa_id",
+          "uuid"
+        ],
+        [
+          "gl_tr_id",
+          "uuid"
+        ],
+        [
+          "gl_tenant_usr_id",
+          "uuid"
+        ],
+        [
+          "gl_landlord_usr_id",
+          "uuid"
+        ],
+        [
+          "gl_p_id",
+          "uuid"
+        ],
+        [
+          "gl_date",
+          "date"
+        ],
+        [
+          "gl_debit",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_credit",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_balance",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gl_description",
+          "text"
+        ],
+        [
+          "gl_supplier_id",
+          "uuid"
+        ],
+        [
+          "gl_organisation_id",
+          "character varying(100)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.invoice_line_items",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "invoice_line_items",
+      "dom": "billing",
+      "cn": "账单明细行",
+      "desc": "一张账单的各个收费项，含税率与未付金额。",
+      "rows": 96482,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ili_id"
+      ],
+      "cols": [
+        [
+          "ili_id",
+          "uuid"
+        ],
+        [
+          "ili_gross_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "ili_net_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "ili_tax_rate",
+          "smallint"
+        ],
+        [
+          "ili_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ili_description",
+          "character varying"
+        ],
+        [
+          "ili_id_type",
+          "character varying(50)"
+        ],
+        [
+          "ili_p_id",
+          "uuid"
+        ],
+        [
+          "ili_remain_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "ili_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ili_inv_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.operation_lock",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "operation_lock",
+      "dom": "payout",
+      "cn": "操作锁",
+      "desc": "防止同一机构并发执行同类资金操作。",
+      "rows": 65,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ol_organisation_id",
+        "ol_operation_type"
+      ],
+      "cols": [
+        [
+          "ol_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ol_operation_type",
+          "character varying(255)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payout_approval",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payout_approval",
+      "dom": "payout",
+      "cn": "出款审批",
+      "desc": "出款需要的审批：要求的角色、金额、批准/驳回人和原因。",
+      "rows": 10286,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pa_id"
+      ],
+      "cols": [
+        [
+          "pa_id",
+          "uuid"
+        ],
+        [
+          "pa_payout_id",
+          "uuid"
+        ],
+        [
+          "pa_status",
+          "character varying(20)"
+        ],
+        [
+          "pa_required_role",
+          "character varying(20)"
+        ],
+        [
+          "pa_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "pa_created_by",
+          "uuid"
+        ],
+        [
+          "pa_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pa_approved_by",
+          "uuid"
+        ],
+        [
+          "pa_approved_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pa_rejected_by",
+          "uuid"
+        ],
+        [
+          "pa_rejected_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pa_rejection_reason",
+          "text"
+        ],
+        [
+          "pa_expires_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pa_organisation_id",
+          "character varying(100)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payout_parties",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payout_parties",
+      "dom": "payout",
+      "cn": "出款涉及账单",
+      "desc": "一张出款单结清了哪些账单（如供应商账单）。",
+      "rows": 481,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pp_id"
+      ],
+      "cols": [
+        [
+          "pp_id",
+          "uuid"
+        ],
+        [
+          "pp_po_id",
+          "uuid"
+        ],
+        [
+          "pp_inv_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payout_source",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payout_source",
+      "dom": "payout",
+      "cn": "出款资金来源",
+      "desc": "一张出款单由哪些总账分录构成。",
+      "rows": 11500,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ps_id"
+      ],
+      "cols": [
+        [
+          "ps_id",
+          "uuid"
+        ],
+        [
+          "ps_po_id",
+          "uuid"
+        ],
+        [
+          "ps_gl_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.allocation_transaction",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "allocation_transaction",
+      "dom": "ledger",
+      "cn": "分配交易",
+      "desc": "出款与记账交易的关联（目前无数据）。",
+      "rows": 0,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "at_id"
+      ],
+      "cols": [
+        [
+          "at_id",
+          "uuid"
+        ],
+        [
+          "at_po_id",
+          "uuid"
+        ],
+        [
+          "at_transaction_id",
+          "uuid"
+        ],
+        [
+          "at_reverted_transaction_id",
+          "uuid"
+        ],
+        [
+          "at_type",
+          "character varying(20)"
+        ],
+        [
+          "at_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "at_created_by",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bank_statement_embeddings",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bank_statement_embeddings",
+      "dom": "ai",
+      "cn": "流水向量（旧位置）",
+      "desc": "与 ai.bank_statement_embeddings 同用途，较早的一份。",
+      "rows": 1257,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "bse_id"
+      ],
+      "cols": [
+        [
+          "bse_id",
+          "uuid"
+        ],
+        [
+          "bse_bsl_id",
+          "uuid"
+        ],
+        [
+          "bse_embedding",
+          "accounting.vector(512)"
+        ],
+        [
+          "bse_model_version",
+          "character varying(50)"
+        ],
+        [
+          "bse_text_source",
+          "text"
+        ],
+        [
+          "bse_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "bse_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bse_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bank_statements_duplicates",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bank_statements_duplicates",
+      "dom": "bank",
+      "cn": "重复流水",
+      "desc": "银行重复推送的流水，留存比对用。",
+      "rows": 17,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "bsd_id"
+      ],
+      "cols": [
+        [
+          "bsd_id",
+          "uuid"
+        ],
+        [
+          "bsd_external_id",
+          "character varying(255)"
+        ],
+        [
+          "bsd_existing_json",
+          "json"
+        ],
+        [
+          "bsd_incoming_json",
+          "json"
+        ],
+        [
+          "bsd_timestamp",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bank_statements_sync",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bank_statements_sync",
+      "dom": "bank",
+      "cn": "流水同步批次",
+      "desc": "每次从银行拉流水的记录，以及系统余额与银行余额的核对结果。",
+      "rows": 15735,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "bss_id"
+      ],
+      "cols": [
+        [
+          "bss_id",
+          "uuid"
+        ],
+        [
+          "bss_date",
+          "timestamp with time zone"
+        ],
+        [
+          "bss_provider",
+          "character varying(100)"
+        ],
+        [
+          "bss_status",
+          "character varying(100)"
+        ],
+        [
+          "bss_ba_id",
+          "uuid"
+        ],
+        [
+          "bss_final_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "bss_lw_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "bss_bank_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "bss_currency",
+          "character varying(3)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.candidate_embeddings",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "candidate_embeddings",
+      "dom": "ai",
+      "cn": "候选向量（旧位置）",
+      "desc": "与 ai.candidate_embeddings 同用途，较早的一份。",
+      "rows": 20829,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ce_id"
+      ],
+      "cols": [
+        [
+          "ce_id",
+          "uuid"
+        ],
+        [
+          "ce_embedding",
+          "accounting.vector(512)"
+        ],
+        [
+          "ce_model_version",
+          "character varying(50)"
+        ],
+        [
+          "ce_text_source",
+          "text"
+        ],
+        [
+          "ce_entity_type",
+          "character varying(50)"
+        ],
+        [
+          "ce_entity_id",
+          "uuid"
+        ],
+        [
+          "ce_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ce_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ce_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bank_statements_lines",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bank_statements_lines",
+      "dom": "bank",
+      "cn": "银行流水",
+      "desc": "账户上的每一笔进出账。来款要匹配到租约/账单后才能入账；出账要对上出款单。",
+      "rows": 140236,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "bsl_id"
+      ],
+      "cols": [
+        [
+          "bsl_id",
+          "uuid"
+        ],
+        [
+          "bsl_bss_id",
+          "uuid"
+        ],
+        [
+          "bsl_ba_id",
+          "uuid"
+        ],
+        [
+          "bsl_external_id",
+          "character varying(255)"
+        ],
+        [
+          "bsl_debtor_iban",
+          "character varying(100)"
+        ],
+        [
+          "bsl_creditor_iban",
+          "character varying(100)"
+        ],
+        [
+          "bsl_debtor_name",
+          "character varying(255)"
+        ],
+        [
+          "bsl_creditor_name",
+          "character varying(255)"
+        ],
+        [
+          "bsl_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "bsl_currency",
+          "character varying(25)"
+        ],
+        [
+          "bsl_bank_code",
+          "character varying(100)"
+        ],
+        [
+          "bsl_proprietary_bank_code",
+          "character varying(100)"
+        ],
+        [
+          "bsl_booking_date",
+          "timestamp with time zone"
+        ],
+        [
+          "bsl_value_date",
+          "timestamp with time zone"
+        ],
+        [
+          "bsl_additional_info",
+          "text"
+        ],
+        [
+          "bsl_original_json",
+          "json"
+        ],
+        [
+          "bsl_status",
+          "character varying(100)"
+        ],
+        [
+          "bsl_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bsl_created_by",
+          "character varying(100)"
+        ],
+        [
+          "bf_inv_id",
+          "uuid"
+        ],
+        [
+          "bf_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bsl_description",
+          "character varying"
+        ],
+        [
+          "bsl_debtor_sort_code",
+          "character varying(20)"
+        ],
+        [
+          "bsl_debtor_account_number",
+          "character varying(50)"
+        ],
+        [
+          "bsl_creditor_sort_code",
+          "character varying(20)"
+        ],
+        [
+          "bsl_creditor_account_number",
+          "character varying(50)"
+        ],
+        [
+          "bsl_pri_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.entity_embeddings",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "entity_embeddings",
+      "dom": "ai",
+      "cn": "实体向量（旧位置）",
+      "desc": "目前无数据。",
+      "rows": 0,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ee_id"
+      ],
+      "cols": [
+        [
+          "ee_id",
+          "uuid"
+        ],
+        [
+          "ee_entity_type",
+          "character varying(50)"
+        ],
+        [
+          "ee_entity_id",
+          "uuid"
+        ],
+        [
+          "ee_tenancy_id",
+          "uuid"
+        ],
+        [
+          "ee_user_id",
+          "uuid"
+        ],
+        [
+          "ee_property_id",
+          "uuid"
+        ],
+        [
+          "ee_embedding",
+          "accounting.vector(1024)"
+        ],
+        [
+          "ee_text_representation",
+          "text"
+        ],
+        [
+          "ee_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ee_metadata",
+          "jsonb"
+        ],
+        [
+          "ee_model_version",
+          "character varying(100)"
+        ],
+        [
+          "ee_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ee_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.deduplication",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "deduplication",
+      "dom": "billing",
+      "cn": "去重标记",
+      "desc": "防止同一操作被重复执行的幂等记录。",
+      "rows": 1224,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "d_id"
+      ],
+      "cols": [
+        [
+          "d_id",
+          "uuid"
+        ],
+        [
+          "d_created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.flyway_schema_history",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "flyway_schema_history",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "数据库迁移版本记录（工程用）。",
+      "rows": 222,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "installed_rank"
+      ],
+      "cols": [
+        [
+          "installed_rank",
+          "integer"
+        ],
+        [
+          "version",
+          "character varying(50)"
+        ],
+        [
+          "description",
+          "character varying(200)"
+        ],
+        [
+          "type",
+          "character varying(20)"
+        ],
+        [
+          "script",
+          "character varying(1000)"
+        ],
+        [
+          "checksum",
+          "integer"
+        ],
+        [
+          "installed_by",
+          "character varying(100)"
+        ],
+        [
+          "installed_on",
+          "timestamp without time zone"
+        ],
+        [
+          "execution_time",
+          "integer"
+        ],
+        [
+          "success",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.general_ledger_log2",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "general_ledger_log2",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "旧总账日志副本。",
+      "rows": 2198,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [],
+      "cols": [
+        [
+          "gl_id",
+          "uuid"
+        ],
+        [
+          "gl_coa_id",
+          "uuid"
+        ],
+        [
+          "gl_tr_id",
+          "uuid"
+        ],
+        [
+          "gl_tenant_usr_id",
+          "uuid"
+        ],
+        [
+          "gl_landlord_usr_id",
+          "uuid"
+        ],
+        [
+          "gl_p_id",
+          "uuid"
+        ],
+        [
+          "gl_date",
+          "date"
+        ],
+        [
+          "gl_debit",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_credit",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_balance",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gl_description",
+          "text"
+        ],
+        [
+          "gl_supplier_id",
+          "uuid"
+        ],
+        [
+          "gl_organisation_id",
+          "character varying(100)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payment_run",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payment_run",
+      "dom": "payout",
+      "cn": "付款批次（旧）",
+      "desc": "旧版的付款批次。",
+      "rows": 445,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pr_id"
+      ],
+      "cols": [
+        [
+          "pr_id",
+          "uuid"
+        ],
+        [
+          "pr_po_id",
+          "uuid"
+        ],
+        [
+          "pr_date",
+          "timestamp with time zone"
+        ],
+        [
+          "pr_executed_by",
+          "uuid"
+        ],
+        [
+          "pr_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "pr_ba_id",
+          "uuid"
+        ],
+        [
+          "pr_bank_name",
+          "character varying(100)"
+        ],
+        [
+          "pr_bank_account_number",
+          "character varying(100)"
+        ],
+        [
+          "pr_status",
+          "character varying(50)"
+        ],
+        [
+          "pr_created_by",
+          "character varying(100)"
+        ],
+        [
+          "pr_updated_by",
+          "character varying(100)"
+        ],
+        [
+          "pr_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pr_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pr_sort_code",
+          "character varying(300)"
+        ],
+        [
+          "pr_iban",
+          "character varying(50)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payment_run_items",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payment_run_items",
+      "dom": "payout",
+      "cn": "付款明细（旧）",
+      "desc": "旧版付款明细，已被 v2 取代。",
+      "rows": 941,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pri_id"
+      ],
+      "cols": [
+        [
+          "pri_id",
+          "uuid"
+        ],
+        [
+          "pri_external_payment_id",
+          "character varying(100)"
+        ],
+        [
+          "pri_pr_id",
+          "uuid"
+        ],
+        [
+          "pri_recipient_name",
+          "character varying(500)"
+        ],
+        [
+          "pri_recipient_type",
+          "character varying(100)"
+        ],
+        [
+          "pri_user_id",
+          "uuid"
+        ],
+        [
+          "pri_property_name",
+          "character varying(500)"
+        ],
+        [
+          "pri_p_id",
+          "uuid"
+        ],
+        [
+          "pri_desc",
+          "character varying(500)"
+        ],
+        [
+          "pri_amount",
+          "numeric(10,2)"
+        ],
+        [
+          "pri_currency",
+          "character varying(100)"
+        ],
+        [
+          "pri_bank_account_number",
+          "character varying(100)"
+        ],
+        [
+          "pri_sort_code",
+          "character varying(100)"
+        ],
+        [
+          "pri_iban",
+          "character varying(100)"
+        ],
+        [
+          "pri_status",
+          "character varying(50)"
+        ],
+        [
+          "pri_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pri_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "pri_inv_id",
+          "uuid"
+        ],
+        [
+          "pri_payment_provider_error_details",
+          "text"
+        ],
+        [
+          "pri_payment_provider_error_code",
+          "character varying(4)"
+        ],
+        [
+          "pri_landlord_user_id",
+          "uuid"
+        ],
+        [
+          "pri_supplier_user_id",
+          "uuid"
+        ],
+        [
+          "pri_bsl_id",
+          "uuid"
+        ],
+        [
+          "pri_error_details",
+          "text"
+        ],
+        [
+          "pri_parent_id",
+          "uuid"
+        ],
+        [
+          "pri_swift_bic",
+          "text"
+        ],
+        [
+          "pri_international_account_number",
+          "text"
+        ],
+        [
+          "pri_processing_method",
+          "character varying(10)"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.bank_account",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "bank_account",
+      "dom": "bank",
+      "cn": "银行账户",
+      "desc": "机构的客户资金账户（Client Money）。通过 Open Banking 连上后自动拉流水。",
+      "rows": 152,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ba_id"
+      ],
+      "cols": [
+        [
+          "ba_id",
+          "uuid"
+        ],
+        [
+          "ba_user_id",
+          "uuid"
+        ],
+        [
+          "ba_coa_id",
+          "uuid"
+        ],
+        [
+          "ba_name",
+          "character varying(300)"
+        ],
+        [
+          "ba_number",
+          "character varying(300)"
+        ],
+        [
+          "ba_sort_code",
+          "character varying(300)"
+        ],
+        [
+          "ba_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ba_connected_with",
+          "character varying(200)"
+        ],
+        [
+          "ac_external_id",
+          "character varying(200)"
+        ],
+        [
+          "ba_gre_id",
+          "uuid"
+        ],
+        [
+          "ba_default",
+          "boolean"
+        ],
+        [
+          "ba_iban",
+          "character varying(50)"
+        ],
+        [
+          "ba_current_balance",
+          "numeric(15,2)"
+        ],
+        [
+          "ba_currency",
+          "character varying(3)"
+        ],
+        [
+          "ba_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ba_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ba_status",
+          "character varying(16)"
+        ],
+        [
+          "ba_bank_provider",
+          "text"
+        ],
+        [
+          "ba_last_connection",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.property",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "property",
+      "dom": "property",
+      "cn": "房产",
+      "desc": "财务侧的房产档案：地址、主房东。房产主数据在主应用，这里是同步副本。",
+      "rows": 19172,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "p_id"
+      ],
+      "cols": [
+        [
+          "p_id",
+          "uuid"
+        ],
+        [
+          "p_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "p_name",
+          "character varying(200)"
+        ],
+        [
+          "p_address_line1",
+          "character varying(200)"
+        ],
+        [
+          "p_address_line2",
+          "character varying(200)"
+        ],
+        [
+          "p_city",
+          "character varying(200)"
+        ],
+        [
+          "p_zip",
+          "character varying(200)"
+        ],
+        [
+          "p_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "p_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "p_status",
+          "character varying(255)"
+        ],
+        [
+          "p_primary_landlord_usr_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.audit_invoice",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "audit_invoice",
+      "dom": "billing",
+      "cn": "账单变更审计",
+      "desc": "账单每次修改的记录。",
+      "rows": 72003,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "ai_id"
+      ],
+      "cols": [
+        [
+          "ai_id",
+          "uuid"
+        ],
+        [
+          "ai_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ai_invoice_id",
+          "uuid"
+        ],
+        [
+          "ai_user_id",
+          "uuid"
+        ],
+        [
+          "ai_ts",
+          "timestamp with time zone"
+        ],
+        [
+          "ai_change",
+          "jsonb"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.agent_definitions",
+      "db": "accounting",
+      "s": "ai",
+      "t": "agent_definitions",
+      "dom": "ai",
+      "cn": "AI 助手定义",
+      "desc": "AI 助手的提示词、模型、工具、定时任务。",
+      "rows": 5,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "ad_id"
+      ],
+      "cols": [
+        [
+          "ad_id",
+          "character varying(100)"
+        ],
+        [
+          "ad_name",
+          "character varying(255)"
+        ],
+        [
+          "ad_description",
+          "text"
+        ],
+        [
+          "ad_system_prompt",
+          "text"
+        ],
+        [
+          "ad_model_id",
+          "character varying(100)"
+        ],
+        [
+          "ad_model_tier",
+          "character varying(20)"
+        ],
+        [
+          "ad_tools",
+          "text[]"
+        ],
+        [
+          "ad_role",
+          "character varying(20)"
+        ],
+        [
+          "ad_schedule",
+          "character varying(100)"
+        ],
+        [
+          "ad_scheduled_prompt",
+          "text"
+        ],
+        [
+          "ad_enabled",
+          "boolean"
+        ],
+        [
+          "ad_max_tokens",
+          "integer"
+        ],
+        [
+          "ad_temperature",
+          "double precision"
+        ],
+        [
+          "ad_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ad_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.llm_interactions",
+      "db": "accounting",
+      "s": "ai",
+      "t": "llm_interactions",
+      "dom": "ai",
+      "cn": "模型调用记录",
+      "desc": "每次调用大模型的请求、回复、token 用量。",
+      "rows": 91,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "li_id"
+      ],
+      "cols": [
+        [
+          "li_id",
+          "uuid"
+        ],
+        [
+          "li_task_id",
+          "uuid"
+        ],
+        [
+          "li_agent_id",
+          "character varying(100)"
+        ],
+        [
+          "li_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "li_model_id",
+          "character varying(100)"
+        ],
+        [
+          "li_request_prompt",
+          "text"
+        ],
+        [
+          "li_response_text",
+          "text"
+        ],
+        [
+          "li_tool_calls",
+          "text"
+        ],
+        [
+          "li_input_tokens",
+          "bigint"
+        ],
+        [
+          "li_output_tokens",
+          "bigint"
+        ],
+        [
+          "li_duration_ms",
+          "bigint"
+        ],
+        [
+          "li_finish_reason",
+          "character varying(50)"
+        ],
+        [
+          "li_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "li_request_messages",
+          "text"
+        ],
+        [
+          "li_thinking_content",
+          "text"
+        ],
+        [
+          "li_tool_results",
+          "text"
+        ],
+        [
+          "li_error",
+          "text"
+        ],
+        [
+          "li_execution_id",
+          "character varying(200)"
+        ],
+        [
+          "li_turn_number",
+          "integer"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.agent_conversations",
+      "db": "accounting",
+      "s": "ai",
+      "t": "agent_conversations",
+      "dom": "ai",
+      "cn": "AI 会话",
+      "desc": "AI 助手的会话。",
+      "rows": 8,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "ac_id"
+      ],
+      "cols": [
+        [
+          "ac_id",
+          "uuid"
+        ],
+        [
+          "ac_agent_id",
+          "character varying(100)"
+        ],
+        [
+          "ac_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "ac_title",
+          "character varying(500)"
+        ],
+        [
+          "ac_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "ac_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.payout_statement_snapshot",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "payout_statement_snapshot",
+      "dom": "payout",
+      "cn": "房东对账单快照",
+      "desc": "出款时生成的房东对账单（Landlord Statement）内容快照。",
+      "rows": 4642,
+      "exact": false,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "pss_po_id"
+      ],
+      "cols": [
+        [
+          "pss_po_id",
+          "uuid"
+        ],
+        [
+          "pss_snapshot",
+          "jsonb"
+        ],
+        [
+          "pss_created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:accounting.gocardless_requisition",
+      "db": "accounting",
+      "s": "accounting",
+      "t": "gocardless_requisition",
+      "dom": "bank",
+      "cn": "Open Banking 授权",
+      "desc": "通过 GoCardless 连接银行的授权记录。授权有有效期，到期需机构重新确认。",
+      "rows": 174,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "gre_id"
+      ],
+      "cols": [
+        [
+          "gre_id",
+          "uuid"
+        ],
+        [
+          "gre_requisition_id",
+          "uuid"
+        ],
+        [
+          "gre_agreement",
+          "uuid"
+        ],
+        [
+          "gre_user_id",
+          "uuid"
+        ],
+        [
+          "gre_status",
+          "character varying(50)"
+        ],
+        [
+          "gre_reference",
+          "character varying(200)"
+        ],
+        [
+          "gre_link",
+          "character varying(200)"
+        ],
+        [
+          "gre_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gre_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gre_expires_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gre_days_valid",
+          "integer"
+        ],
+        [
+          "gre_deleted",
+          "boolean"
+        ],
+        [
+          "gre_institution_id",
+          "text"
+        ],
+        [
+          "gre_reconfirmation_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gre_reconfirmation_url",
+          "character varying(2048)"
+        ],
+        [
+          "gre_reconfirmation_url_expire_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gre_reconfirmation_url_valid_from",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.schema_snapshots",
+      "db": "accounting",
+      "s": "ai",
+      "t": "schema_snapshots",
+      "dom": "ai",
+      "cn": "库结构快照",
+      "desc": "数据库结构快照，供 AI 了解表结构。",
+      "rows": 361,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "ss_id"
+      ],
+      "cols": [
+        [
+          "ss_id",
+          "uuid"
+        ],
+        [
+          "ss_schema_data",
+          "jsonb"
+        ],
+        [
+          "ss_schemas_included",
+          "text[]"
+        ],
+        [
+          "ss_table_count",
+          "integer"
+        ],
+        [
+          "ss_column_count",
+          "integer"
+        ],
+        [
+          "ss_reason",
+          "character varying(200)"
+        ],
+        [
+          "ss_created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.agent_task_queue",
+      "db": "accounting",
+      "s": "ai",
+      "t": "agent_task_queue",
+      "dom": "ai",
+      "cn": "AI 任务队列",
+      "desc": "交给 AI 助手处理的任务及结果。",
+      "rows": 28,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "atq_id"
+      ],
+      "cols": [
+        [
+          "atq_id",
+          "uuid"
+        ],
+        [
+          "atq_target_agent_id",
+          "character varying(100)"
+        ],
+        [
+          "atq_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "atq_prompt",
+          "text"
+        ],
+        [
+          "atq_result",
+          "text"
+        ],
+        [
+          "atq_status",
+          "character varying(20)"
+        ],
+        [
+          "atq_source",
+          "character varying(50)"
+        ],
+        [
+          "atq_claimed_at",
+          "timestamp with time zone"
+        ],
+        [
+          "atq_completed_at",
+          "timestamp with time zone"
+        ],
+        [
+          "atq_error",
+          "text"
+        ],
+        [
+          "atq_created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ai.flyway_schema_history",
+      "db": "accounting",
+      "s": "ai",
+      "t": "flyway_schema_history",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "数据库迁移版本记录（工程用）。",
+      "rows": 26,
+      "exact": true,
+      "owner": "AI 匹配 / 助手模块",
+      "pk": [
+        "installed_rank"
+      ],
+      "cols": [
+        [
+          "installed_rank",
+          "integer"
+        ],
+        [
+          "version",
+          "character varying(50)"
+        ],
+        [
+          "description",
+          "character varying(200)"
+        ],
+        [
+          "type",
+          "character varying(20)"
+        ],
+        [
+          "script",
+          "character varying(1000)"
+        ],
+        [
+          "checksum",
+          "integer"
+        ],
+        [
+          "installed_by",
+          "character varying(100)"
+        ],
+        [
+          "installed_on",
+          "timestamp without time zone"
+        ],
+        [
+          "execution_time",
+          "integer"
+        ],
+        [
+          "success",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:banking_facade.bf_connection",
+      "db": "accounting",
+      "s": "banking_facade",
+      "t": "bf_connection",
+      "dom": "gateway",
+      "cn": "银行连接",
+      "desc": "与银行支付 API 的连接和授权（Consent）。",
+      "rows": 2,
+      "exact": true,
+      "owner": "银行网关（accounting 与 TLP Payouts 共用）",
+      "pk": [
+        "bf_connection_id"
+      ],
+      "cols": [
+        [
+          "bf_connection_id",
+          "uuid"
+        ],
+        [
+          "bf_provider",
+          "character varying(50)"
+        ],
+        [
+          "bf_client_context",
+          "character varying(100)"
+        ],
+        [
+          "bf_display_name",
+          "character varying(255)"
+        ],
+        [
+          "bf_external_account_id",
+          "character varying(255)"
+        ],
+        [
+          "bf_consent_id",
+          "character varying(255)"
+        ],
+        [
+          "bf_consent_expires_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_webhook_url",
+          "character varying(1024)"
+        ],
+        [
+          "bf_status",
+          "character varying(50)"
+        ],
+        [
+          "bf_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:banking_facade.bf_event",
+      "db": "accounting",
+      "s": "banking_facade",
+      "t": "bf_event",
+      "dom": "gateway",
+      "cn": "支付事件日志",
+      "desc": "与银行 API 的每次请求、响应和回调。排查付款问题首先看这里。",
+      "rows": 182478,
+      "exact": true,
+      "owner": "银行网关（accounting 与 TLP Payouts 共用）",
+      "pk": [
+        "bf_event_id"
+      ],
+      "cols": [
+        [
+          "bf_event_id",
+          "uuid"
+        ],
+        [
+          "bf_occurred_at",
+          "timestamp with time zone"
+        ],
+        [
+          "bf_direction",
+          "character varying(20)"
+        ],
+        [
+          "bf_event_type",
+          "character varying(100)"
+        ],
+        [
+          "bf_provider",
+          "character varying(50)"
+        ],
+        [
+          "bf_connection_id",
+          "uuid"
+        ],
+        [
+          "bf_payment_id",
+          "uuid"
+        ],
+        [
+          "bf_external_payment_id",
+          "character varying(255)"
+        ],
+        [
+          "bf_actor_user_login",
+          "character varying(320)"
+        ],
+        [
+          "bf_correlation_id",
+          "uuid"
+        ],
+        [
+          "bf_http_method",
+          "character varying(10)"
+        ],
+        [
+          "bf_http_status",
+          "integer"
+        ],
+        [
+          "bf_request_payload",
+          "jsonb"
+        ],
+        [
+          "bf_response_payload",
+          "jsonb"
+        ],
+        [
+          "bf_error_code",
+          "character varying(100)"
+        ],
+        [
+          "bf_error_message",
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ledgers.transaction",
+      "db": "accounting",
+      "s": "ledgers",
+      "t": "transaction",
+      "dom": "ledger",
+      "cn": "记账交易",
+      "desc": "一次业务动作（收租、分配给房东、扣管理费、付款…）。可被冲正，冲正记录指回原交易。",
+      "rows": 150574,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "tra_id"
+      ],
+      "cols": [
+        [
+          "tra_id",
+          "uuid"
+        ],
+        [
+          "tra_date",
+          "timestamp with time zone"
+        ],
+        [
+          "tra_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "tra_desc",
+          "text"
+        ],
+        [
+          "tra_tt_id",
+          "uuid"
+        ],
+        [
+          "tra_amount",
+          "numeric(15,2)"
+        ],
+        [
+          "tra_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "tra_usr_id",
+          "uuid"
+        ],
+        [
+          "tra_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "tra_bsl_id",
+          "uuid"
+        ],
+        [
+          "tra_invoice_id",
+          "uuid"
+        ],
+        [
+          "tra_reversal_parent_id",
+          "uuid"
+        ],
+        [
+          "tra_reverted",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:ledgers.general_ledger",
+      "db": "accounting",
+      "s": "ledgers",
+      "t": "general_ledger",
+      "dom": "ledger",
+      "cn": "总账分录",
+      "desc": "复式记账分录：每笔交易拆成借、贷两边，记在某个科目和某个分类账上。余额从这里算。",
+      "rows": 301010,
+      "exact": true,
+      "owner": "loftyworks-accounting",
+      "pk": [
+        "gl_id"
+      ],
+      "cols": [
+        [
+          "gl_id",
+          "uuid"
+        ],
+        [
+          "gl_coa_id",
+          "uuid"
+        ],
+        [
+          "gl_tr_id",
+          "uuid"
+        ],
+        [
+          "gl_date",
+          "date"
+        ],
+        [
+          "gl_debit",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_credit",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_balance",
+          "numeric(10,2)"
+        ],
+        [
+          "gl_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "gl_description",
+          "text"
+        ],
+        [
+          "gl_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "gl_li_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:public.v_tt_id",
+      "db": "accounting",
+      "s": "public",
+      "t": "v_tt_id",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "临时表。",
+      "rows": 0,
+      "exact": true,
+      "owner": "临时表",
+      "pk": [],
+      "cols": [
+        [
+          "tt_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:public.invoices_to_delete",
+      "db": "accounting",
+      "s": "public",
+      "t": "invoices_to_delete",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "一次性清理用的临时表。",
+      "rows": 52,
+      "exact": true,
+      "owner": "临时表",
+      "pk": [],
+      "cols": [
+        [
+          "inv_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.job_run",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "job_run",
+      "dom": "tenancy",
+      "cn": "定时跑批",
+      "desc": "每天的批处理：AUTO_TENANT_RENT_INVOICE（自动开租金账单）、AUTO_ALLOCATION_OF_TENANT_FUNDS_TO_RENT（自动把租客余额抵租金）、MANUAL_RENT_INVOICE。",
+      "rows": 1170,
+      "exact": true,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "jr_id"
+      ],
+      "cols": [
+        [
+          "jr_id",
+          "uuid"
+        ],
+        [
+          "jr_name",
+          "character varying(100)"
+        ],
+        [
+          "jr_status",
+          "character varying(20)"
+        ],
+        [
+          "jr_created",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.job_run_items",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "job_run_items",
+      "dom": "tenancy",
+      "cn": "跑批明细",
+      "desc": "每条租约在一次跑批里的处理结果和返回。被 SQL 条件直接排除的租约不会在这里留下记录。",
+      "rows": 226142,
+      "exact": true,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "jri_id"
+      ],
+      "cols": [
+        [
+          "jri_id",
+          "uuid"
+        ],
+        [
+          "jri_jr_id",
+          "uuid"
+        ],
+        [
+          "jri_status",
+          "character varying(20)"
+        ],
+        [
+          "jri_payload",
+          "jsonb"
+        ],
+        [
+          "jri_response",
+          "jsonb"
+        ],
+        [
+          "jri_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "jri_updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.flyway_schema_history",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "flyway_schema_history",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "数据库迁移版本记录（工程用）。",
+      "rows": 31,
+      "exact": true,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "installed_rank"
+      ],
+      "cols": [
+        [
+          "installed_rank",
+          "integer"
+        ],
+        [
+          "version",
+          "character varying(50)"
+        ],
+        [
+          "description",
+          "character varying(200)"
+        ],
+        [
+          "type",
+          "character varying(20)"
+        ],
+        [
+          "script",
+          "character varying(1000)"
+        ],
+        [
+          "checksum",
+          "integer"
+        ],
+        [
+          "installed_by",
+          "character varying(100)"
+        ],
+        [
+          "installed_on",
+          "timestamp without time zone"
+        ],
+        [
+          "execution_time",
+          "integer"
+        ],
+        [
+          "success",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.tenancy_user",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "tenancy_user",
+      "dom": "tenancy",
+      "cn": "租约参与人",
+      "desc": "租约里的租客、房东、担保人，以及房东分成比例。",
+      "rows": 64928,
+      "exact": true,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "tu_id"
+      ],
+      "cols": [
+        [
+          "tu_id",
+          "uuid"
+        ],
+        [
+          "tu_t_id",
+          "uuid"
+        ],
+        [
+          "tu_usr_id",
+          "uuid"
+        ],
+        [
+          "tu_user_type",
+          "character varying(20)"
+        ],
+        [
+          "tu_primary",
+          "boolean"
+        ],
+        [
+          "tu_landlord_split",
+          "numeric(5,2)"
+        ],
+        [
+          "tu_bank_account_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:tenancy.tenancy_audit",
+      "db": "accounting",
+      "s": "tenancy",
+      "t": "tenancy_audit",
+      "dom": "tenancy",
+      "cn": "租约变更审计",
+      "desc": "谁在什么时候改了租约的哪些字段。",
+      "rows": 4635,
+      "exact": true,
+      "owner": "loftyworks-tenancy-service",
+      "pk": [
+        "ta_id"
+      ],
+      "cols": [
+        [
+          "ta_id",
+          "uuid"
+        ],
+        [
+          "ta_action_id",
+          "uuid"
+        ],
+        [
+          "ta_action_type",
+          "text"
+        ],
+        [
+          "ta_entity_type",
+          "text"
+        ],
+        [
+          "ta_entity_id",
+          "uuid"
+        ],
+        [
+          "ta_tenancy_id",
+          "uuid"
+        ],
+        [
+          "ta_organisation_id",
+          "text"
+        ],
+        [
+          "ta_operation",
+          "text"
+        ],
+        [
+          "ta_changed_fields",
+          "jsonb"
+        ],
+        [
+          "ta_actor_id",
+          "text"
+        ],
+        [
+          "ta_actor_type",
+          "text"
+        ],
+        [
+          "ta_source",
+          "text"
+        ],
+        [
+          "ta_source_event_id",
+          "text"
+        ],
+        [
+          "ta_request_id",
+          "text"
+        ],
+        [
+          "ta_created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.user_roles",
+      "db": "accounting",
+      "s": "users",
+      "t": "user_roles",
+      "dom": "org",
+      "cn": "用户角色",
+      "desc": "某用户在某机构下担任什么角色。",
+      "rows": 3265,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "ur_user_id",
+        "ur_role_id",
+        "ur_org_id"
+      ],
+      "cols": [
+        [
+          "ur_user_id",
+          "uuid"
+        ],
+        [
+          "ur_role_id",
+          "uuid"
+        ],
+        [
+          "ur_org_id",
+          "character varying(100)"
+        ],
+        [
+          "ur_created_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.users_organisation",
+      "db": "accounting",
+      "s": "users",
+      "t": "users_organisation",
+      "dom": "org",
+      "cn": "用户-机构",
+      "desc": "用户属于哪些机构（多对多）。",
+      "rows": 34710,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "uo_id"
+      ],
+      "cols": [
+        [
+          "uo_id",
+          "uuid"
+        ],
+        [
+          "uo_org_id",
+          "character varying(100)"
+        ],
+        [
+          "uo_usr_id",
+          "uuid"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.role_privileges",
+      "db": "accounting",
+      "s": "users",
+      "t": "role_privileges",
+      "dom": "org",
+      "cn": "角色-权限",
+      "desc": "每个角色拥有哪些权限点。",
+      "rows": 131,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "rp_role_id",
+        "rp_privilege_id"
+      ],
+      "cols": [
+        [
+          "rp_role_id",
+          "uuid"
+        ],
+        [
+          "rp_privilege_id",
+          "uuid"
+        ],
+        [
+          "rp_created_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.roles",
+      "db": "accounting",
+      "s": "users",
+      "t": "roles",
+      "dom": "org",
+      "cn": "角色",
+      "desc": "目前 4 个角色：TLP Manager、TLP Staff、Letting Agent、Super Admin。",
+      "rows": 4,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "r_id"
+      ],
+      "cols": [
+        [
+          "r_id",
+          "uuid"
+        ],
+        [
+          "r_name",
+          "character varying(50)"
+        ],
+        [
+          "r_description",
+          "text"
+        ],
+        [
+          "r_created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "r_organisation_id",
+          "character varying(100)"
+        ],
+        [
+          "r_note",
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "accounting:users.organisation",
+      "db": "accounting",
+      "s": "users",
+      "t": "organisation",
+      "dom": "org",
+      "cn": "机构",
+      "desc": "中介公司 / 工作区。org_id 是 slug（如 sinnot）。机构级开关：是否自动开租金账单、是否自动把租客来款分配到租金、付款是否需要双因素等。",
+      "rows": 237,
+      "exact": true,
+      "owner": "loftyworks-user-service",
+      "pk": [
+        "org_id"
+      ],
+      "cols": [
+        [
+          "org_id",
+          "character varying(100)"
+        ],
+        [
+          "org_updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "org_created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "org_auto_rent_invoice",
+          "boolean"
+        ],
+        [
+          "org_auto_rent_invoice_time",
+          "time with time zone"
+        ],
+        [
+          "org_automatic_allocation_of_tenant_funds_to_rent_time",
+          "time with time zone"
+        ],
+        [
+          "org_payments_enabled",
+          "boolean"
+        ],
+        [
+          "org_automatic_allocation_of_tenant_funds_enabled",
+          "boolean"
+        ],
+        [
+          "org_automatic_allocation_of_tenant_funds_type",
+          "character varying(100)"
+        ],
+        [
+          "org_automatic_allocation_of_tenant_funds_days_before_due_date",
+          "integer"
+        ],
+        [
+          "org_commission_bill_vat_number",
+          "text"
+        ],
+        [
+          "org_two_fa_payment_enabled",
+          "boolean"
+        ],
+        [
+          "org_deleted_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.document_template_type",
+      "db": "lw",
+      "s": "public",
+      "t": "document_template_type",
+      "dom": "docs",
+      "cn": "文档类型",
+      "desc": "机构自定义的文档分类。",
+      "rows": 5075,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "character varying(64)"
+        ],
+        [
+          "name",
+          "character varying(128)"
+        ],
+        [
+          "index",
+          "integer"
+        ],
+        [
+          "organisation_id",
+          "character varying(64)"
+        ],
+        [
+          "created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.permission",
+      "db": "lw",
+      "s": "public",
+      "t": "permission",
+      "dom": "docs",
+      "cn": "访问权限组",
+      "desc": "各类对象的可见用户组。",
+      "rows": 16089,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "character varying(64)"
+        ],
+        [
+          "item_type",
+          "character varying(32)"
+        ],
+        [
+          "groups",
+          "character varying(64)[]"
+        ],
+        [
+          "created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.document",
+      "db": "lw",
+      "s": "public",
+      "t": "document",
+      "dom": "docs",
+      "cn": "文档",
+      "desc": "挂在房产、租约、供应商、机构上的文件，带到期日和完成标记（如安全证书等合规文件）。",
+      "rows": 24070,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "character varying(64)"
+        ],
+        [
+          "key",
+          "character varying(512)"
+        ],
+        [
+          "name",
+          "character varying(512)"
+        ],
+        [
+          "type",
+          "character varying(32)"
+        ],
+        [
+          "status",
+          "character varying(16)"
+        ],
+        [
+          "description",
+          "text"
+        ],
+        [
+          "mime_type",
+          "character varying(128)"
+        ],
+        [
+          "archived",
+          "boolean"
+        ],
+        [
+          "created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp without time zone"
+        ],
+        [
+          "expiry",
+          "timestamp without time zone"
+        ],
+        [
+          "done",
+          "boolean"
+        ],
+        [
+          "mutator",
+          "character varying(64)"
+        ],
+        [
+          "document_tenancy_id",
+          "character varying(64)"
+        ],
+        [
+          "document_property_id",
+          "character varying(64)"
+        ],
+        [
+          "document_supplier_organisation_id",
+          "character varying(64)"
+        ],
+        [
+          "document_organisation_id",
+          "character varying(64)"
+        ],
+        [
+          "document_user_id",
+          "character varying(64)"
+        ],
+        [
+          "document_conversation_id",
+          "character varying(64)"
+        ],
+        [
+          "document_email_attachment_id",
+          "character varying(64)"
+        ],
+        [
+          "image_task_id",
+          "character varying(64)"
+        ],
+        [
+          "general_document",
+          "boolean"
+        ],
+        [
+          "is_parent_property_document_shared",
+          "boolean"
+        ],
+        [
+          "image_organisation_id",
+          "character varying(64)"
+        ],
+        [
+          "parent_property_entity_id",
+          "character varying(64)"
+        ],
+        [
+          "document_permission_id",
+          "character varying(64)"
+        ],
+        [
+          "document_task_id",
+          "character varying(64)"
+        ],
+        [
+          "document_line_item_id",
+          "character varying(64)"
+        ],
+        [
+          "valid_from",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.document_supplier",
+      "db": "lw",
+      "s": "public",
+      "t": "document_supplier",
+      "dom": "docs",
+      "cn": "文档-供应商",
+      "desc": "文档共享给哪些供应商。",
+      "rows": 0,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "character varying(64)"
+        ],
+        [
+          "user_id",
+          "character varying(64)"
+        ],
+        [
+          "document_id",
+          "character varying(64)"
+        ],
+        [
+          "organisation_id",
+          "character varying(64)"
+        ],
+        [
+          "created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.chatbot_conversation",
+      "db": "lw",
+      "s": "public",
+      "t": "chatbot_conversation",
+      "dom": "docs",
+      "cn": "聊天机器人会话",
+      "desc": "应用内聊天机器人的会话。",
+      "rows": 19,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "user_id",
+          "character varying(255)"
+        ],
+        [
+          "organisation_id",
+          "character varying(255)"
+        ],
+        [
+          "variables",
+          "jsonb"
+        ],
+        [
+          "created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "flow_conversation_id",
+          "character varying(255)"
+        ],
+        [
+          "latest_tool_output",
+          "jsonb"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.document_template",
+      "db": "lw",
+      "s": "public",
+      "t": "document_template",
+      "dom": "docs",
+      "cn": "合同模板",
+      "desc": "租约等合同模板，可对接 DocuSign 签署。",
+      "rows": 24,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "text"
+        ],
+        [
+          "title",
+          "character varying(64)"
+        ],
+        [
+          "type",
+          "character varying(128)"
+        ],
+        [
+          "other",
+          "character varying(64)[]"
+        ],
+        [
+          "status",
+          "character varying(32)"
+        ],
+        [
+          "contract_types",
+          "character varying(32)[]"
+        ],
+        [
+          "organisation_id",
+          "character varying(64)"
+        ],
+        [
+          "user_id",
+          "character varying(64)"
+        ],
+        [
+          "docusign_template_id",
+          "character varying(64)"
+        ],
+        [
+          "created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.end_of_tenancy",
+      "db": "lw",
+      "s": "public",
+      "t": "end_of_tenancy",
+      "dom": "docs",
+      "cn": "租约到期处理",
+      "desc": "租约到期前的续租/退租流程：给房东和租客的信、续租报价、最终租金和期限、所处阶段。",
+      "rows": 6344,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "character varying(64)"
+        ],
+        [
+          "property_id",
+          "character varying(64)"
+        ],
+        [
+          "address",
+          "character varying(64)"
+        ],
+        [
+          "organisation_id",
+          "character varying(64)"
+        ],
+        [
+          "landlord_id",
+          "character varying(64)"
+        ],
+        [
+          "landlord_letter",
+          "text"
+        ],
+        [
+          "landlord_confirmation",
+          "text"
+        ],
+        [
+          "tenant_id",
+          "character varying(64)"
+        ],
+        [
+          "primary_tenant_name",
+          "character varying(128)"
+        ],
+        [
+          "tenant_letter",
+          "text"
+        ],
+        [
+          "tenant_confirmation",
+          "text"
+        ],
+        [
+          "end_date",
+          "timestamp without time zone"
+        ],
+        [
+          "stage",
+          "character varying(64)"
+        ],
+        [
+          "reference",
+          "character varying(128)"
+        ],
+        [
+          "old_price",
+          "character varying(128)"
+        ],
+        [
+          "proposal_price",
+          "character varying(128)"
+        ],
+        [
+          "status",
+          "character varying(64)"
+        ],
+        [
+          "created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp without time zone"
+        ],
+        [
+          "tenancy_id",
+          "character varying(64)"
+        ],
+        [
+          "task_ids",
+          "text[]"
+        ],
+        [
+          "final_price",
+          "character varying(64)"
+        ],
+        [
+          "final_term",
+          "character varying(64)"
+        ],
+        [
+          "final_confirmation",
+          "text"
+        ],
+        [
+          "final_letter",
+          "text"
+        ],
+        [
+          "created_by",
+          "character varying(64)"
+        ],
+        [
+          "address_line2",
+          "character varying(64)"
+        ],
+        [
+          "address_line3",
+          "character varying(64)"
+        ],
+        [
+          "city",
+          "character varying(64)"
+        ],
+        [
+          "country",
+          "character varying(64)"
+        ],
+        [
+          "postcode",
+          "character varying(64)"
+        ],
+        [
+          "envelope_id",
+          "character varying(64)"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.chatbot_message",
+      "db": "lw",
+      "s": "public",
+      "t": "chatbot_message",
+      "dom": "docs",
+      "cn": "聊天机器人消息",
+      "desc": "会话里的每条消息及 token 用量。",
+      "rows": 110,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "conversation_id",
+          "uuid"
+        ],
+        [
+          "type",
+          "character varying(10)"
+        ],
+        [
+          "content",
+          "text"
+        ],
+        [
+          "total_tokens",
+          "integer"
+        ],
+        [
+          "prompt_tokens",
+          "integer"
+        ],
+        [
+          "completion_tokens",
+          "integer"
+        ],
+        [
+          "created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp with time zone"
+        ],
+        [
+          "tool_outputs",
+          "jsonb"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.dashboard_skip_item",
+      "db": "lw",
+      "s": "public",
+      "t": "dashboard_skip_item",
+      "dom": "docs",
+      "cn": "首页提醒忽略",
+      "desc": "用户在首页忽略掉的提醒项（如合规到期）。",
+      "rows": 105,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "character varying(64)"
+        ],
+        [
+          "user_id",
+          "character varying(64)"
+        ],
+        [
+          "type",
+          "character varying(50)"
+        ],
+        [
+          "item_id",
+          "character varying(64)"
+        ],
+        [
+          "compliance_type",
+          "character varying(50)"
+        ],
+        [
+          "created_at",
+          "timestamp without time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "lw:public.feedback",
+      "db": "lw",
+      "s": "public",
+      "t": "feedback",
+      "dom": "docs",
+      "cn": "用户反馈",
+      "desc": "用户提交的反馈文字。",
+      "rows": 14,
+      "exact": false,
+      "owner": "主应用（main service）",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "character varying(64)"
+        ],
+        [
+          "text",
+          "text"
+        ],
+        [
+          "created_at",
+          "timestamp(6) without time zone"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.statement_movements",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "statement_movements",
+      "dom": "tlp",
+      "cn": "对账单明细",
+      "desc": "对账单中每个账户的每一笔变动。",
+      "rows": 17467,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "statement_balance_id",
+          "uuid"
+        ],
+        [
+          "ordinal",
+          "integer"
+        ],
+        [
+          "posting_date",
+          "date"
+        ],
+        [
+          "amount",
+          "numeric(19,4)"
+        ],
+        [
+          "amount_scale",
+          "smallint"
+        ],
+        [
+          "balance",
+          "numeric(19,4)"
+        ],
+        [
+          "balance_scale",
+          "smallint"
+        ],
+        [
+          "transaction_detail",
+          "character varying(255)"
+        ],
+        [
+          "source_type",
+          "character varying(64)"
+        ],
+        [
+          "narrative_1",
+          "character varying(64)"
+        ],
+        [
+          "narrative_2",
+          "character varying(64)"
+        ],
+        [
+          "narrative_3",
+          "character varying(64)"
+        ],
+        [
+          "narrative_4",
+          "character varying(64)"
+        ],
+        [
+          "narrative_5",
+          "character varying(64)"
+        ],
+        [
+          "transaction_type",
+          "character varying(16)"
+        ],
+        [
+          "account_short_name",
+          "character varying(64)"
+        ],
+        [
+          "currency",
+          "character varying(8)"
+        ],
+        [
+          "account_type",
+          "character varying(64)"
+        ],
+        [
+          "bic",
+          "character varying(16)"
+        ],
+        [
+          "bank_name",
+          "character varying(128)"
+        ],
+        [
+          "branch_name",
+          "character varying(128)"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.flyway_schema_history",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "flyway_schema_history",
+      "dom": "infra",
+      "cn": "运维 / 备份",
+      "desc": "数据库迁移版本记录（工程用）。",
+      "rows": 29,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "installed_rank"
+      ],
+      "cols": [
+        [
+          "installed_rank",
+          "integer"
+        ],
+        [
+          "version",
+          "character varying(50)"
+        ],
+        [
+          "description",
+          "character varying(200)"
+        ],
+        [
+          "type",
+          "character varying(20)"
+        ],
+        [
+          "script",
+          "character varying(1000)"
+        ],
+        [
+          "checksum",
+          "integer"
+        ],
+        [
+          "installed_by",
+          "character varying(100)"
+        ],
+        [
+          "installed_on",
+          "timestamp without time zone"
+        ],
+        [
+          "execution_time",
+          "integer"
+        ],
+        [
+          "success",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.payment_files",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "payment_files",
+      "dom": "tlp",
+      "cn": "付款文件",
+      "desc": "财务上传的批量付款文件：笔数、总额、状态。",
+      "rows": 9750,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "filename",
+          "character varying(255)"
+        ],
+        [
+          "uploaded_at",
+          "timestamp with time zone"
+        ],
+        [
+          "uploaded_by",
+          "character varying(255)"
+        ],
+        [
+          "payment_count",
+          "integer"
+        ],
+        [
+          "batch_total",
+          "numeric(19,2)"
+        ],
+        [
+          "status",
+          "character varying(20)"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.manual_payment_templates",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "manual_payment_templates",
+      "dom": "tlp",
+      "cn": "手工付款模板",
+      "desc": "常用的手工转账模板（收款人、账号、备注）。",
+      "rows": 156,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "description",
+          "character varying(255)"
+        ],
+        [
+          "source_sort_code",
+          "character varying(6)"
+        ],
+        [
+          "source_account_number",
+          "character varying(8)"
+        ],
+        [
+          "destination_sort_code",
+          "character varying(6)"
+        ],
+        [
+          "destination_account_number",
+          "character varying(8)"
+        ],
+        [
+          "payee_name",
+          "character varying(255)"
+        ],
+        [
+          "reference",
+          "character varying(255)"
+        ],
+        [
+          "status",
+          "character varying(20)"
+        ],
+        [
+          "created_by",
+          "character varying(255)"
+        ],
+        [
+          "approved_by",
+          "character varying(255)"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.statement_uploads",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "statement_uploads",
+      "dom": "tlp",
+      "cn": "对账单上传",
+      "desc": "某日上传的银行对账单文件。",
+      "rows": 12,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "statement_day_id",
+          "uuid"
+        ],
+        [
+          "bank",
+          "character varying(16)"
+        ],
+        [
+          "filename",
+          "character varying(255)"
+        ],
+        [
+          "uploaded_by",
+          "character varying(255)"
+        ],
+        [
+          "uploaded_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.statement_balances",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "statement_balances",
+      "dom": "tlp",
+      "cn": "对账单余额",
+      "desc": "对账单中每个账户的期末余额。",
+      "rows": 2190,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "statement_upload_id",
+          "uuid"
+        ],
+        [
+          "ordinal",
+          "integer"
+        ],
+        [
+          "sort_code",
+          "character varying(6)"
+        ],
+        [
+          "account_number",
+          "character varying(34)"
+        ],
+        [
+          "bank_account_name",
+          "character varying(255)"
+        ],
+        [
+          "closing_balance",
+          "numeric(19,4)"
+        ],
+        [
+          "closing_balance_scale",
+          "smallint"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.role_limits",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "role_limits",
+      "dom": "tlp",
+      "cn": "角色限额",
+      "desc": "各角色可审批的文件总额、单笔上限。",
+      "rows": 3,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "bigint"
+        ],
+        [
+          "role_name",
+          "character varying(255)"
+        ],
+        [
+          "file_total_limit",
+          "numeric(12,2)"
+        ],
+        [
+          "line_item_limit",
+          "numeric(12,2)"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.users",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "users",
+      "dom": "tlp",
+      "cn": "TLP 后台用户",
+      "desc": "TLP 财务后台的操作员账号，带 TOTP 双因素。",
+      "rows": 25,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "bigint"
+        ],
+        [
+          "username",
+          "character varying(255)"
+        ],
+        [
+          "password",
+          "character varying(255)"
+        ],
+        [
+          "first_name",
+          "character varying(255)"
+        ],
+        [
+          "second_name",
+          "character varying(255)"
+        ],
+        [
+          "email",
+          "character varying(255)"
+        ],
+        [
+          "phone_number",
+          "character varying(255)"
+        ],
+        [
+          "role",
+          "character varying(255)"
+        ],
+        [
+          "entra_oid",
+          "character varying(64)"
+        ],
+        [
+          "totp_secret_encrypted",
+          "character varying(128)"
+        ],
+        [
+          "totp_enrolled_at",
+          "timestamp with time zone"
+        ],
+        [
+          "totp_last_used_window",
+          "bigint"
+        ],
+        [
+          "totp_failed_attempts",
+          "integer"
+        ],
+        [
+          "totp_failed_window_start",
+          "timestamp with time zone"
+        ],
+        [
+          "totp_locked_until",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.account_list_entries",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "account_list_entries",
+      "dom": "tlp",
+      "cn": "账户名单",
+      "desc": "允许或需要特殊处理的账户清单，及是否需要对账单。",
+      "rows": 394,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "list_type",
+          "character varying(255)"
+        ],
+        [
+          "account_value",
+          "character varying(255)"
+        ],
+        [
+          "label",
+          "character varying(255)"
+        ],
+        [
+          "sort_code",
+          "character varying(6)"
+        ],
+        [
+          "statement_required",
+          "boolean"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.payment_records",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "payment_records",
+      "dom": "tlp",
+      "cn": "付款记录",
+      "desc": "付款文件里的每一笔付款。审批后经银行网关发出，并回写网关状态。",
+      "rows": 91453,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "record_type",
+          "character varying(255)"
+        ],
+        [
+          "source_account",
+          "character varying(255)"
+        ],
+        [
+          "amount",
+          "numeric(19,2)"
+        ],
+        [
+          "payment_date",
+          "timestamp with time zone"
+        ],
+        [
+          "sort_code",
+          "character varying(255)"
+        ],
+        [
+          "destination_account",
+          "character varying(255)"
+        ],
+        [
+          "payee_name",
+          "character varying(255)"
+        ],
+        [
+          "reference",
+          "character varying(255)"
+        ],
+        [
+          "status",
+          "character varying(255)"
+        ],
+        [
+          "source_filename",
+          "character varying(255)"
+        ],
+        [
+          "uploaded_at",
+          "timestamp with time zone"
+        ],
+        [
+          "uploaded_by",
+          "character varying(255)"
+        ],
+        [
+          "approved_by",
+          "character varying(255)"
+        ],
+        [
+          "banking_facade_payment_id",
+          "uuid"
+        ],
+        [
+          "banking_facade_idempotency_key",
+          "character varying(255)"
+        ],
+        [
+          "banking_facade_external_payment_id",
+          "character varying(255)"
+        ],
+        [
+          "banking_facade_status",
+          "character varying(50)"
+        ],
+        [
+          "banking_facade_status_reason",
+          "text"
+        ],
+        [
+          "banking_facade_submitted_at",
+          "timestamp with time zone"
+        ],
+        [
+          "banking_facade_last_polled_at",
+          "timestamp with time zone"
+        ],
+        [
+          "banking_facade_webhook_deadline_at",
+          "timestamp with time zone"
+        ],
+        [
+          "banking_facade_confirmed_at",
+          "timestamp with time zone"
+        ],
+        [
+          "banking_facade_stuck_alerted_at",
+          "timestamp with time zone"
+        ],
+        [
+          "failure_notified_at",
+          "timestamp with time zone"
+        ],
+        [
+          "first_approved_by",
+          "character varying(255)"
+        ],
+        [
+          "payment_file_id",
+          "uuid"
+        ],
+        [
+          "source_sort_code",
+          "character varying(8)"
+        ],
+        [
+          "category",
+          "character varying(100)"
+        ],
+        [
+          "address",
+          "character varying(255)"
+        ],
+        [
+          "banking_facade_submit_attempted_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.statement_days",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "statement_days",
+      "dom": "tlp",
+      "cn": "对账单日",
+      "desc": "按日生成银行对账单的任务。",
+      "rows": 6,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "posting_date",
+          "date"
+        ],
+        [
+          "created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "delivered_at",
+          "timestamp with time zone"
+        ],
+        [
+          "run_state",
+          "character varying(16)"
+        ],
+        [
+          "run_force",
+          "boolean"
+        ],
+        [
+          "run_requested_at",
+          "timestamp with time zone"
+        ],
+        [
+          "run_requested_by",
+          "character varying(255)"
+        ],
+        [
+          "run_started_at",
+          "timestamp with time zone"
+        ],
+        [
+          "run_finished_at",
+          "timestamp with time zone"
+        ],
+        [
+          "run_account_files",
+          "integer"
+        ],
+        [
+          "run_delivered_to",
+          "character varying(1024)"
+        ],
+        [
+          "run_error",
+          "character varying(1024)"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.payment_pay_otp",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "payment_pay_otp",
+      "dom": "tlp",
+      "cn": "付款验证码",
+      "desc": "确认付款时的一次性验证码。",
+      "rows": 7,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "requester_id",
+          "bigint"
+        ],
+        [
+          "code_hash",
+          "character varying(64)"
+        ],
+        [
+          "code_salt",
+          "character varying(32)"
+        ],
+        [
+          "attempts",
+          "integer"
+        ],
+        [
+          "max_attempts",
+          "integer"
+        ],
+        [
+          "expires_at",
+          "timestamp with time zone"
+        ],
+        [
+          "used_at",
+          "timestamp with time zone"
+        ],
+        [
+          "locked_at",
+          "timestamp with time zone"
+        ],
+        [
+          "created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.bank_holidays",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "bank_holidays",
+      "dom": "tlp",
+      "cn": "银行假日",
+      "desc": "英国银行假日，用于计算付款日。",
+      "rows": 83,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "holiday_date",
+          "date"
+        ],
+        [
+          "title",
+          "character varying(128)"
+        ],
+        [
+          "created_at",
+          "timestamp with time zone"
+        ],
+        [
+          "updated_at",
+          "timestamp with time zone"
+        ]
+      ]
+    },
+    {
+      "id": "tlp_payouts:public.mfa_step_up",
+      "db": "tlp_payouts",
+      "s": "public",
+      "t": "mfa_step_up",
+      "dom": "tlp",
+      "cn": "二次验证",
+      "desc": "敏感操作前的再次身份验证记录。",
+      "rows": 505,
+      "exact": true,
+      "owner": "tlp-payouts",
+      "pk": [
+        "id"
+      ],
+      "cols": [
+        [
+          "id",
+          "uuid"
+        ],
+        [
+          "user_id",
+          "bigint"
+        ],
+        [
+          "action",
+          "character varying(16)"
+        ],
+        [
+          "target_ids",
+          "text"
+        ],
+        [
+          "expires_at",
+          "timestamp with time zone"
+        ],
+        [
+          "used_at",
+          "timestamp with time zone"
+        ],
+        [
+          "created_at",
+          "timestamp with time zone"
+        ]
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "src": "accounting:accounting.ledger_identifier",
+      "tgt": "accounting:users.organisation",
+      "col": "li_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.bank_statement_line_matched",
+      "tgt": "accounting:accounting.ledger_identifier",
+      "col": "bslm_li_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:banking_facade.bf_event",
+      "tgt": "accounting:banking_facade.bf_connection",
+      "col": "bf_connection_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.ledger_identifier",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "li_tenancy_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.ledger_identifier",
+      "tgt": "accounting:accounting.property",
+      "col": "li_p_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:banking_facade.bf_event",
+      "tgt": "accounting:banking_facade.bf_payment",
+      "col": "bf_payment_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:users.users",
+      "col": "inv_created_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.ledger_identifier",
+      "tgt": "accounting:users.users",
+      "col": "li_tenant_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.ledger_identifier",
+      "tgt": "accounting:users.users",
+      "col": "li_landlord_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.ledger_identifier",
+      "tgt": "accounting:users.users",
+      "col": "li_supplier_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.transaction_types",
+      "tgt": "accounting:ledgers.chart_of_account",
+      "col": "tt_credit_coa_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.transaction_types",
+      "tgt": "accounting:ledgers.chart_of_account",
+      "col": "tt_debit_coa_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.transaction",
+      "tgt": "accounting:users.organisation",
+      "col": "tra_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:ledgers.transaction",
+      "tgt": "accounting:users.users",
+      "col": "tra_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.transaction",
+      "tgt": "accounting:ledgers.transaction",
+      "col": "tra_reversal_parent_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.transaction",
+      "tgt": "accounting:ledgers.transaction_types",
+      "col": "tra_tt_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.general_ledger",
+      "tgt": "accounting:ledgers.chart_of_account",
+      "col": "gl_coa_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.general_ledger",
+      "tgt": "accounting:users.organisation",
+      "col": "gl_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.bank_account",
+      "tgt": "accounting:users.users",
+      "col": "ba_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.allocation_transaction",
+      "tgt": "accounting:users.users",
+      "col": "at_created_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.allocation_transaction",
+      "tgt": "accounting:accounting.payout",
+      "col": "at_po_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.allocation_transaction",
+      "tgt": "accounting:ledgers.transaction",
+      "col": "at_reverted_transaction_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.allocation_transaction",
+      "tgt": "accounting:ledgers.transaction",
+      "col": "at_transaction_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:users.organisation",
+      "col": "inv_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.approval_history",
+      "tgt": "accounting:accounting.payout_approval",
+      "col": "ah_approval_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.approval_history",
+      "tgt": "accounting:users.users",
+      "col": "ah_performed_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.bank_account",
+      "tgt": "accounting:ledgers.chart_of_account",
+      "col": "ba_coa_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_account",
+      "tgt": "accounting:accounting.gocardless_requisition",
+      "col": "ba_gre_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_account",
+      "tgt": "accounting:users.organisation",
+      "col": "ba_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:accounting.credit_note",
+      "col": "pri_credit_note_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statements_lines",
+      "tgt": "accounting:accounting.invoice",
+      "col": "bf_inv_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statements_lines",
+      "tgt": "accounting:accounting.bank_account",
+      "col": "bsl_ba_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statements_lines",
+      "tgt": "accounting:accounting.bank_statements_sync",
+      "col": "bsl_bss_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statements_lines",
+      "tgt": "accounting:accounting.payment_run_items",
+      "col": "bsl_pri_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statements_sync",
+      "tgt": "accounting:accounting.bank_account",
+      "col": "bss_ba_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice_line_items",
+      "tgt": "accounting:accounting.property",
+      "col": "ili_p_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.credit_note",
+      "tgt": "accounting:ledgers.chart_of_account",
+      "col": "cn_chart_of_accounts_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.credit_note",
+      "tgt": "accounting:accounting.invoice",
+      "col": "cn_invoice_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.credit_note",
+      "tgt": "accounting:users.organisation",
+      "col": "cn_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.credit_note",
+      "tgt": "accounting:accounting.property",
+      "col": "cn_property_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.credit_note",
+      "tgt": "accounting:users.users",
+      "col": "cn_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statement_line_matched",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "bslm_bank_statement_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statement_line_matched",
+      "tgt": "accounting:accounting.invoice",
+      "col": "bslm_invoice_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statement_line_matched",
+      "tgt": "accounting:users.organisation",
+      "col": "bslm_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.bank_statement_line_matched",
+      "tgt": "accounting:accounting.payment_run_items",
+      "col": "bslm_payment_run_item_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_statement_line_matched",
+      "tgt": "accounting:accounting.payment_run_items_v2",
+      "col": "bslm_payment_run_item_v2_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:users.users",
+      "col": "inv_updated_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.bank_statement_embeddings",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "bse_bsl_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.recurring_invoice_template",
+      "tgt": "accounting:users.organisation",
+      "col": "rit_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:users.users",
+      "col": "inv_payee_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:users.users",
+      "col": "inv_payer_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:accounting.property",
+      "col": "inv_p_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:accounting.invoice",
+      "col": "inv_parent_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:users.users_history",
+      "col": "inv_payee_usr_hist_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:users.users_history",
+      "col": "inv_payer_usr_hist_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice_line_items",
+      "tgt": "accounting:accounting.invoice",
+      "col": "ili_inv_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.recurring_invoice_template",
+      "tgt": "accounting:users.users",
+      "col": "rit_payee_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.recurring_invoice_template",
+      "tgt": "accounting:users.users",
+      "col": "rit_payer_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.recurring_invoice_template",
+      "tgt": "accounting:accounting.property",
+      "col": "rit_p_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.recurring_invoice_template_line_item",
+      "tgt": "accounting:accounting.recurring_invoice_template",
+      "col": "ritli_rit_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "pri_bsl_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run",
+      "tgt": "accounting:users.organisation",
+      "col": "pr_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items",
+      "tgt": "accounting:accounting.invoice",
+      "col": "pri_inv_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items",
+      "tgt": "accounting:users.users",
+      "col": "pri_landlord_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items",
+      "tgt": "accounting:accounting.payment_run_items",
+      "col": "pri_parent_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items",
+      "tgt": "accounting:accounting.payment_run",
+      "col": "pri_pr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items",
+      "tgt": "accounting:users.users",
+      "col": "pri_supplier_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "pri_bsl_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:users.users",
+      "col": "pri_creditor_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:accounting.bank_account",
+      "col": "pri_debtor_ba_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:users.users",
+      "col": "pri_debtor_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:accounting.invoice",
+      "col": "pri_inv_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:accounting.payment_run_items_v2",
+      "col": "pri_parent_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:accounting.payout",
+      "col": "pri_payout_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run",
+      "tgt": "accounting:accounting.bank_account",
+      "col": "pr_ba_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payment_run",
+      "tgt": "accounting:accounting.payout",
+      "col": "pr_po_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_approval",
+      "tgt": "accounting:users.users",
+      "col": "pa_approved_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.payout_approval",
+      "tgt": "accounting:users.users",
+      "col": "pa_created_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "pri_tenancy_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.recurring_invoice_template_line_item",
+      "tgt": "accounting:accounting.property",
+      "col": "ritli_p_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:accounting.recurring_invoice_template",
+      "col": "inv_rit_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_approval",
+      "tgt": "accounting:accounting.payout",
+      "col": "pa_payout_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_approval",
+      "tgt": "accounting:users.users",
+      "col": "pa_rejected_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.payout_carried_balance",
+      "tgt": "accounting:accounting.payout",
+      "col": "pcb_po_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_parties",
+      "tgt": "accounting:accounting.invoice",
+      "col": "pp_inv_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_parties",
+      "tgt": "accounting:accounting.payout",
+      "col": "pp_po_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout",
+      "tgt": "accounting:accounting.bank_account",
+      "col": "po_ba_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "po_bsl_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout",
+      "tgt": "accounting:users.users",
+      "col": "po_created_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:accounting.payout",
+      "tgt": "accounting:users.users",
+      "col": "po_landlord_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout",
+      "tgt": "accounting:users.organisation",
+      "col": "po_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:ledgers.general_ledger",
+      "tgt": "accounting:ledgers.transaction",
+      "col": "gl_tr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout",
+      "tgt": "accounting:accounting.property",
+      "col": "po_p_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout",
+      "tgt": "accounting:users.users",
+      "col": "po_updated_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:users.roles",
+      "tgt": "accounting:users.organisation",
+      "col": "r_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:banking_facade.bf_payment",
+      "tgt": "accounting:banking_facade.bf_connection",
+      "col": "bf_connection_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_source",
+      "tgt": "accounting:ledgers.general_ledger",
+      "col": "ps_gl_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_source",
+      "tgt": "accounting:accounting.payout",
+      "col": "ps_po_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.property_landlord",
+      "tgt": "accounting:accounting.property",
+      "col": "pl_p_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.property_landlord",
+      "tgt": "accounting:users.users",
+      "col": "pl_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.property",
+      "tgt": "accounting:users.organisation",
+      "col": "p_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.reconciliation",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "rec_bsl_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.reconciliation",
+      "tgt": "accounting:accounting.invoice",
+      "col": "rec_inv_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.reconciliation",
+      "tgt": "accounting:users.organisation",
+      "col": "rec_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.reconciliation",
+      "tgt": "accounting:ledgers.transaction",
+      "col": "rec_tr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.tenant_arrears",
+      "tgt": "accounting:users.organisation",
+      "col": "ta_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.tenant_arrears",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "ta_tenancy_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.job_run_items",
+      "tgt": "accounting:tenancy.job_run",
+      "col": "jri_jr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy_user",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "tu_t_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:users.allocation_priorities",
+      "tgt": "accounting:users.organisation",
+      "col": "ap_org_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:users.user_bank_details",
+      "tgt": "accounting:users.organisation",
+      "col": "ubd_organisation_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:users.user_bank_details",
+      "tgt": "accounting:users.users",
+      "col": "ubd_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:users.role_privileges",
+      "tgt": "accounting:users.privileges",
+      "col": "rp_privilege_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:users.role_privileges",
+      "tgt": "accounting:users.roles",
+      "col": "rp_role_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:users.user_roles",
+      "tgt": "accounting:users.organisation",
+      "col": "ur_org_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:users.user_roles",
+      "tgt": "accounting:users.roles",
+      "col": "ur_role_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:users.user_roles",
+      "tgt": "accounting:users.users",
+      "col": "ur_user_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:users.users_organisation",
+      "tgt": "accounting:users.organisation",
+      "col": "uo_org_id",
+      "kind": "fk",
+      "role": "org"
+    },
+    {
+      "src": "accounting:users.users_organisation",
+      "tgt": "accounting:users.users",
+      "col": "uo_usr_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.transaction",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "tra_bsl_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.transaction",
+      "tgt": "accounting:accounting.invoice",
+      "col": "tra_invoice_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ai.agent_task_queue",
+      "tgt": "accounting:ai.agent_definitions",
+      "col": "atq_target_agent_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ai.llm_interactions",
+      "tgt": "accounting:ai.agent_task_queue",
+      "col": "li_task_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.credit_note",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "cn_tenancy_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.credit_note",
+      "tgt": "accounting:users.users",
+      "col": "cn_created_by",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "accounting:tenancy.private_note",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "pn_t_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.payout_statement_snapshot",
+      "tgt": "accounting:accounting.payout",
+      "col": "pss_po_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy_period",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "tp_t_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy_period_landlord",
+      "tgt": "accounting:tenancy.tenancy_period",
+      "col": "tpl_tp_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy",
+      "tgt": "accounting:tenancy.tenancy_period",
+      "col": "t_last_applied_period_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "tlp_payouts:public.payment_pay_otp",
+      "tgt": "tlp_payouts:public.users",
+      "col": "requester_id",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "tlp_payouts:public.mfa_step_up",
+      "tgt": "tlp_payouts:public.users",
+      "col": "user_id",
+      "kind": "fk",
+      "role": "audit"
+    },
+    {
+      "src": "tlp_payouts:public.statement_uploads",
+      "tgt": "tlp_payouts:public.statement_days",
+      "col": "statement_day_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "tlp_payouts:public.statement_balances",
+      "tgt": "tlp_payouts:public.statement_uploads",
+      "col": "statement_upload_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "tlp_payouts:public.statement_movements",
+      "tgt": "tlp_payouts:public.statement_balances",
+      "col": "statement_balance_id",
+      "kind": "fk",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy",
+      "tgt": "accounting:accounting.property",
+      "col": "t_property_id",
+      "kind": "inf",
+      "note": "约 83% 的租约能在 property 表找到对应房产",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy",
+      "tgt": "accounting:users.organisation",
+      "col": "t_organisation_id",
+      "kind": "inf",
+      "note": "",
+      "role": "org"
+    },
+    {
+      "src": "accounting:tenancy.tenancy",
+      "tgt": "accounting:users.users",
+      "col": "t_property_manager_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy_user",
+      "tgt": "accounting:users.users",
+      "col": "tu_usr_id",
+      "kind": "inf",
+      "note": "只有约 26% 的参与人在 users.users 中，其余用户主数据在主应用",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy_audit",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "ta_tenancy_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.tenancy_event_outbox",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "teo_aggregate_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:tenancy.job_run_items",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "jri_payload",
+      "kind": "inf",
+      "note": "明细的 payload 里记录处理的租约",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "inv_tenancy_id",
+      "kind": "inf",
+      "note": "99.98% 能对上租约",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.invoice",
+      "tgt": "accounting:accounting.deduplication",
+      "col": "inv_deduplication_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.audit_invoice",
+      "tgt": "accounting:accounting.invoice",
+      "col": "ai_invoice_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ledgers.general_ledger",
+      "tgt": "accounting:accounting.ledger_identifier",
+      "col": "gl_li_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.bank_payment_tracking",
+      "tgt": "accounting:accounting.payment_run_items_v2",
+      "col": "bpt_payment_run_item_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.property_float_target",
+      "tgt": "accounting:accounting.property",
+      "col": "pft_p_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.property",
+      "tgt": "accounting:users.users",
+      "col": "p_primary_landlord_usr_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:accounting.agency_income_rollup",
+      "tgt": "accounting:users.organisation",
+      "col": "air_organisation_id",
+      "kind": "inf",
+      "note": "",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.operation_lock",
+      "tgt": "accounting:users.organisation",
+      "col": "ol_organisation_id",
+      "kind": "inf",
+      "note": "",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.payout_approval",
+      "tgt": "accounting:users.organisation",
+      "col": "pa_organisation_id",
+      "kind": "inf",
+      "note": "",
+      "role": "org"
+    },
+    {
+      "src": "accounting:ai.bank_statement_embeddings",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "bse_bsl_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ai.match_results",
+      "tgt": "accounting:accounting.bank_statements_lines",
+      "col": "mr_bank_statement_line_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ai.match_results",
+      "tgt": "accounting:accounting.property",
+      "col": "mr_property_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ai.candidate_embeddings",
+      "tgt": "accounting:users.users",
+      "col": "ce_entity_id",
+      "kind": "inf",
+      "note": "候选对象可以是用户、房产等",
+      "role": "main"
+    },
+    {
+      "src": "accounting:ai.agent_task_queue",
+      "tgt": "accounting:users.organisation",
+      "col": "atq_organisation_id",
+      "kind": "inf",
+      "note": "",
+      "role": "org"
+    },
+    {
+      "src": "accounting:accounting.payment_run_items_v2",
+      "tgt": "accounting:accounting.property",
+      "col": "pri_p_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "tlp_payouts:public.payment_records",
+      "tgt": "accounting:banking_facade.bf_payment",
+      "col": "banking_facade_payment_id",
+      "kind": "xdb",
+      "note": "跨库：TLP 付款经银行网关发出",
+      "role": "main"
+    },
+    {
+      "src": "tlp_payouts:public.payment_records",
+      "tgt": "tlp_payouts:public.payment_files",
+      "col": "source_filename",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "lw:public.document",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "document_tenancy_id",
+      "kind": "xdb",
+      "note": "跨库，按 ID 关联",
+      "role": "main"
+    },
+    {
+      "src": "lw:public.document",
+      "tgt": "accounting:accounting.property",
+      "col": "document_property_id",
+      "kind": "xdb",
+      "note": "跨库，按 ID 关联",
+      "role": "main"
+    },
+    {
+      "src": "lw:public.document",
+      "tgt": "accounting:users.organisation",
+      "col": "document_organisation_id",
+      "kind": "xdb",
+      "note": "",
+      "role": "org"
+    },
+    {
+      "src": "lw:public.document_supplier",
+      "tgt": "lw:public.document",
+      "col": "document_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "lw:public.document_template",
+      "tgt": "lw:public.document_template_type",
+      "col": "type",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    },
+    {
+      "src": "lw:public.end_of_tenancy",
+      "tgt": "accounting:tenancy.tenancy",
+      "col": "tenancy_id",
+      "kind": "xdb",
+      "note": "跨库，按 ID 关联",
+      "role": "main"
+    },
+    {
+      "src": "lw:public.end_of_tenancy",
+      "tgt": "accounting:accounting.property",
+      "col": "property_id",
+      "kind": "xdb",
+      "note": "跨库，按 ID 关联",
+      "role": "main"
+    },
+    {
+      "src": "lw:public.end_of_tenancy",
+      "tgt": "accounting:users.organisation",
+      "col": "organisation_id",
+      "kind": "xdb",
+      "note": "",
+      "role": "org"
+    },
+    {
+      "src": "lw:public.chatbot_message",
+      "tgt": "lw:public.chatbot_conversation",
+      "col": "conversation_id",
+      "kind": "inf",
+      "note": "",
+      "role": "main"
+    }
+  ],
+  "enums": {
+    "t_status": {
+      "null": 2,
+      "ACTIVE": 7064,
+      "UNDER_OFFER": 1,
+      "VACATING": 2,
+      "VACATED": 26,
+      "RENEWED": 12,
+      "DRAFT": 2006,
+      "DELETED": 1,
+      "CANCELLED": 2806,
+      "PERIODIC": 159,
+      "ARCHIVED": 19566,
+      "ENDING": 53,
+      "APPLICATION": 4,
+      "CONTRACT": 2,
+      "TRANSFER_MONEY": 1,
+      "NOTICE_GIVEN": 1
+    },
+    "t_period": {
+      "MONTHLY": 26947,
+      "DAILY": 8,
+      "SIX_MONTHLY": 120,
+      "FIVE_YEAR": 2,
+      "FIFTEEN_YEAR": 1,
+      "QUARTERLY": 323,
+      "null": 3742,
+      "BI_ANNUALLY": 7,
+      "WEEKLY": 193,
+      "FOUR_WEEKLY": 2,
+      "UK_QUARTERLY": 51,
+      "TWO_WEEKLY": 18,
+      "ANNUALLY": 292
+    },
+    "tu_user_type": {
+      "GUARANTOR": 738,
+      "TENANT": 34274,
+      "LANDLORD": 29916
+    },
+    "inv_type": {
+      "OUTBOUND": 64409,
+      "INBOUND": 32069
+    },
+    "inv_status": {
+      "DELETED": 3752,
+      "PAID": 188,
+      "PARTIALLY_RECONCILED": 154,
+      "PAYMENT_PROCESSING": 18,
+      "RECONCILED": 82294,
+      "UNPAID": 10072
+    },
+    "inv_id_type_top": {
+      "null": 96478
+    },
+    "po_status": {
+      "PENDING": 1,
+      "AUTO_REJECTED": 73,
+      "PROCESSING": 92,
+      "FAILED": 73,
+      "COMPLETED": 9827,
+      "REJECTED": 314
+    },
+    "po_type": {
+      "TENANCY_SUPPLIER_PAYOUT": 4,
+      "LANDLORD_PAYOUT": 9967,
+      "HMRC_PAYOUT": 29,
+      "LANDLORD_CONSOLIDATED_PAYOUT": 1,
+      "DEPOSIT_PAYOUT": 357,
+      "CREDIT_NOTE_REFUND": 22
+    },
+    "usr_type": {
+      "SUPPLIER": 3969,
+      "NEW": 3454,
+      "TEAM": 469,
+      "PERMITTED_OCCUPIER": 17,
+      "APPLICANT": 1438,
+      "ADMIN": 71,
+      "TENANCY_DEPOSIT_SCHEME": 77,
+      "OTHER": 21,
+      "SYSTEM": 503,
+      "AGENT": 10,
+      "LANDLORD": 5653,
+      "DELETED": 75,
+      "INFORMAL": 714,
+      "AGENCY": 101,
+      "GUARANTOR": 2011,
+      "TENANT": 15223
+    },
+    "pri_type": {
+      "LL_PAYOUT_TO_LANDLORD_INCOMING_DEPOSIT": 14,
+      "LL_PAYOUT_TO_LANDLORD": 9902,
+      "LL_PAYOUT_TO_DEPOSIT_SCHEME": 357,
+      "LL_PAYOUT_FLOAT": 63,
+      "LL_PAYOUT_TO_MANAGEMENT": 7696,
+      "LL_PAYOUT_TO_NRL_TAX": 332,
+      "ORG_PAYOUT_TO_HMRC": 29,
+      "LL_PAYOUT_TO_SUPPLIER": 5155,
+      "CN_REFUND_TENANT": 22,
+      "LL_PAYOUT_CARRY_FORWARD": 26,
+      "TENANCY_SUPPLIER": 4
+    },
+    "coa": [
+      "1000 Client Money Bank Account (Protected Account) (Assets)",
+      "1010 Client Money Cash Account (For Handling Rent Paid in Cash) (Assets)",
+      "1020 Client Money Holding Account (Unallocated Funds) (Assets)",
+      "1030 Suspense Account (Bank Reconciliation Holding) (Liabilities)",
+      "1040 Client Money Bank Account (Interest Earned) (Assets)",
+      "2000 Tenant Balances (Rent & Deposits Held) (Liabilities)",
+      "2100 Landlord Balances (Funds Held on Behalf of Landlords) (Liabilities)",
+      "2200 Supplier Balances (Pending Supplier Payments on Behalf of Landlord) (Liabilities)",
+      "2300 Security Deposits Held (Tenant Deposits in TDS, DPS, or MyDeposits Scheme) (Liabilities)",
+      "2400 Tenancy Balances (Liabilities)",
+      "2410 Tenancy Landlord Balances (Liabilities)",
+      "2420 Property Float (Liabilities)",
+      "2430 Property Float Withdrawal (Liabilities)",
+      "2440 Agency Holding Balance (Liabilities)",
+      "2450 Agency Balance (Liabilities)",
+      "2500 Funds Allocated for Payment (Holding Liability) (Liabilities)",
+      "2510 Funds Allocated for Payment – Landlord Withdrawals (Liabilities)",
+      "2520 Funds Allocated for Payment – Supplier Payments (Liabilities)",
+      "2530 Other Client Liabilities (Refunds, Overpayments) (Liabilities)",
+      "2540 NRL Tax Account (Funds Allocated for NRL Tax) (Liabilities)",
+      "2545 NRL Agency Tax Account (Funds Allocated for NRL Tax for Agency) (Liabilities)",
+      "2550 Funds allocated for Payment - HMRC Payments (Liabilities)",
+      "2560 Funds Allocated for Payment – Tenant Payments (Liabilities)",
+      "2570 Funds Allocated for Payment – Agency Payments (Liabilities)"
+    ],
+    "tt": [
+      "AGENCY_HOLDING_TO_AGENCY_BALANCE Allocate Agency Holding Balance to Agency Balance",
+      "AGENCY_NRL_TO_HMRC_PAYMENTS Allocate Agency NRL Tax to HMRC Payments Account",
+      "BALANCE_CARRIED_FORWARD Balance Carried Forward",
+      "DEPOSIT_TO_LANDLORD Transfer deposit to Landlord",
+      "DEPOSIT_TO_TENANCY_LANDLORD Transfer deposit to Tenancy Landlord Balance",
+      "FLOAT_FUNDING Float Funding",
+      "FLOAT_RELEASE Float Release",
+      "FLOAT_UTILIZATION Float Utilization",
+      "FLOAT_WITHDRAWAL_SETTLEMENT Float Withdrawal Settlement",
+      "LANDLORD_DEPOSIT Allocate Funds from Landlord to Deposit",
+      "LANDLORD_MANAGEMENT_FEE Allocate Funds from Landlord for Management Fee",
+      "LANDLORD_NRL_TO_AGENCY_NRL Allocate Landlord NRL Tax to Agency NRL Tax Account",
+      "LANDLORD_TENANT Allocate Funds from Landlord to Tenant Balance",
+      "LANDLORD_TO_NRL_TAX Allocate Funds to cover Landlord NRL Tax",
+      "LANDLORD_TO_SUPPLIER Allocate Funds from Landlord to Supplier Balance",
+      "MANUAL_DEALLOCATE User support manual transaction - deallocate from bank balance",
+      "MANUAL_ENTRY Manual Entry",
+      "MANUAL_TRANSFER_TO_CUSTODIAL_DEPOSIT User support manual transaction - pay to custodial deposit",
+      "PAY_AGENCY Pay Agency",
+      "PAY_CUSTODIAL Pay Custodial",
+      "PAY_HMRC_NRL_TAX Pay HMRC",
+      "PAY_LANDLORD Pay Landlord",
+      "PAYMENT_RECEIVED_BANK Payment Received on Bank Account",
+      "PAYMENT_RECEIVED_BANK_DEPOSIT Payment Received on Bank Account and Allocation to Landlord Ledger",
+      "PAYMENT_RECEIVED_BANK_LL Payment Received on Bank Account and Allocation to Landlord Ledger",
+      "PAYMENT_RECEIVED_BANK_SUP Payment Received on Bank Account and Allocation to Supplier Ledger",
+      "PAYMENT_RECEIVED_BANK_TENANCY Payment Received on Bank Account and Allocation to Tenancy Ledger",
+      "PAYMENT_RECEIVED_BANK_TENANCY_LANDLORD Payment Received on Bank Account and Allocation to Tenancy Landlord Ledger",
+      "PAYMENT_RECEIVED_CASH Payment Received in Cash",
+      "PAY_NRL_TAX TLP NRL TAX Transfer",
+      "PAY_PROPERTY_MANAGEMENT Pay Property Management",
+      "PAY_SUPPLIER Pay Supplier",
+      "PAY_TENANT Pay Tenant",
+      "RAISE_PAY_AGENCY Raise Payment to Agency",
+      "RAISE_PAY_CUSTODIAL Raise Payment for Custodial",
+      "RAISE_PAY_LANDLORD Raise Payment for Landlord",
+      "RAISE_PAY_MANAGEMENT_FEE Raise Payment for Management Fee",
+      "RAISE_PAY_SUPPLIER Raise Payment for Supplier",
+      "RAISE_PAY_TENANT Raise Payment For Tenant",
+      "REFUND Refund Payment",
+      "REFUND_LANDLORD Refund Landlord",
+      "REFUND_SUPPLIER Refund Supplier",
+      "REFUND_TENANT Refund Tenant",
+      "REJECT_AGENCY_NRL_TO_HMRC_PAYMENTS Reject Allocate Agency NRL Tax to HMRC Payments Account",
+      "REJECT_FLOAT_FUNDING Float Funding Reversal",
+      "REJECT_FLOAT_RELEASE Reject Float Release",
+      "REJECT_FLOAT_UTILIZATION Reject Float Utilization",
+      "REJECT_LANDLORD_NRL_TO_AGENCY_NRL Reject Allocate Landlord NRL Tax to Agency NRL Tax Account",
+      "REJECT_LANDLORD_TO_NRL_TAX Reject Allocate Funds to cover Landlord NRL Tax",
+      "REJECT_LANDLORD_TO_SUPPLIER Reject Allocate Funds from Landlord to Supplier Balance",
+      "REJECT_RAISE_PAY_AGENCY Reject Raise Payment to Agency",
+      "REJECT_RAISE_PAY_CUSTODIAL Reject Raise Payment for Custodial",
+      "REJECT_RAISE_PAY_LANDLORD Reject Raise Payment for Landlord",
+      "REJECT_RAISE_PAY_MANAGEMENT_FEE Reject Raise Payment for Management Fee",
+      "REJECT_RAISE_PAY_SUPPLIER Reject Raise Payment for Supplier",
+      "REJECT_RAISE_PAY_TENANT Reject Raise Payment For Tenant",
+      "REJECT_TENANCY_LANDLORD_TO_AGENCY_HOLDING Reject Allocate Tenancy-Landlord to Agency Holding Balance",
+      "REJECT_TENANCY_LANDLORD_TO_LANDLORD Reject allocate Funds from Tenancy Landlord Balance to Landlord Balance",
+      "REJECT_TENANCY_LANDLORD_TO_MANAGEMENT_FEE Reject allocate Funds from Tenancy Landlord Balance to Management Fee",
+      "REJECT_TENANCY_LANDLORD_TO_SUPPLIER Reject allocate Funds from Tenancy Landlord Balance to Supplier",
+      "REJECT_TENANCY_TO_SUPPLIER Reject Allocate Funds from Tenancy Balance to Supplier Balance",
+      "REJECT_TENANCY_TO_TENANT Reject Transfer From Tenancy To Tenant",
+      "RENT_RECEIVED_BANK Rent Received on Bank Account",
+      "RENT_RECEIVED_CASH Rent Received in Cash",
+      "RETURN_DEPOSIT_TO_TENANT Return deposit to Tenant",
+      "REVERT_ALLOCATE_FUNDS_FROM_TENANT_TO_LANDLORD Revert Allocate Funds from Tenant to Landlord",
+      "REVERT_PAYMENT_RECEIVED_BANK Revert Payment Received on Bank Account",
+      "REVERT_PAYMENT_RECEIVED_BANK_LL Revert Payment Received on Bank Account and Allocation to Landlord Ledger",
+      "REVERT_PAYMENT_RECEIVED_BANK_SUP Revert Payment Received on Bank Account and Allocation to Supplier Ledger",
+      "REVERT_PAYMENT_RECEIVED_BANK_TENANCY Revert Payment Received on Bank Account and Allocation to Tenancy Ledger",
+      "REVERT_TENANCY_TO_LANDLORD Revert Allocate Funds from Tenancy to Landlord",
+      "REVERT_TENANCY_TO_SECURITY_DEPOSIT Revert Allocate Funds from Tenancy to Security Deposit",
+      "REVERT_TENANCY_TO_TENANCY_LANDLORD Revert Allocate Funds from Tenancy to Tenancy Landlord",
+      "REVERT_TENANT_TO_TENANCY Revert Allocation Funds from Tenant Balance to Tenancy Balance",
+      "SECURITY_DEPOSIT_TO_TENANCY Allocate Funds from Security Deposit to Tenancy Account",
+      "SUSPENSE Allocate Funds to Suspense Account",
+      "SUSPENSE_TO_LANDLORD Allocate Funds from Suspense Account to Landlord",
+      "SUSPENSE_TO_REFUND Allocate Funds from Suspense Account for a Refund",
+      "SUSPENSE_TO_SUPPLIER Allocate Funds from Suspense Account to Supplier",
+      "SUSPENSE_TO_TENANCY Allocate Funds from Suspense Account to Tenancy Ledger",
+      "SUSPENSE_TO_TENANCY_LANDLORD Allocate Funds from Suspense Account to Tenancy Landlord Ledger",
+      "SUSPENSE_TO_TENANT Allocate Funds from Suspense Account to Tenant",
+      "TENANCY_LANDLORD_CARRY_FORWARD Carry Forward Tenancy Landlord Balance",
+      "TENANCY_LANDLORD_TO_AGENCY_HOLDING Allocate Tenancy-Landlord to Agency Holding Balance",
+      "TENANCY_LANDLORD_TO_LANDLORD Allocate Funds from Tenancy Landlord Balance to Landlord Balance",
+      "TENANCY_LANDLORD_TO_MANAGEMENT_FEE Allocate Funds from Tenancy Landlord Balance to Management Fee",
+      "TENANCY_LANDLORD_TO_SUPPLIER Allocate Funds from Tenancy Landlord Balance to Supplier",
+      "TENANCY_TO_LANDLORD Allocate Funds from Tenancy Account to Landlord",
+      "TENANCY_TO_SECURITY_DEPOSIT Allocate Funds from Tenancy Account to Security Deposit",
+      "TENANCY_TO_SUPPLIER Allocate Funds from Tenancy Balance to Supplier Balance",
+      "TENANCY_TO_TENANCY_LANDLORD Allocate Funds from Tenancy Balance to Tenancy Landlord Balance",
+      "TENANCY_TO_TENANT Transfer refund from tenancy balance to tenant balance",
+      "TENANT_BALANCE_TO_DEPOSIT Transfer Tenant to Deposit",
+      "TENANT_TO_LANDLORD Allocate Funds from Tenant to Landlord",
+      "TENANT_TO_SUPPLIER Allocate Funds from Tenant to Supplier Balance",
+      "TENANT_TO_TENANCY Allocate Funds from Tenant Account to Tenancy Account",
+      "TRANSFER_CASH_TO_BANK Transfer Cash to Client Bank Account"
+    ],
+    "jr_name": {
+      "MANUAL_RENT_INVOICE": 36,
+      "AUTO_ALLOCATION_OF_TENANT_FUNDS_TO_RENT": 567,
+      "AUTO_TENANT_RENT_INVOICE": 567
+    },
+    "roles": [
+      "TLP Manager",
+      "TLP Staff",
+      "Letting Agent",
+      "Super Admin"
+    ],
+    "chk_t_prop": {
+      "total": 31706,
+      "matched": 26137
+    },
+    "chk_tu_usr": {
+      "total": 64928,
+      "matched": 16677
+    },
+    "chk_inv_ten": {
+      "total": 59774,
+      "matched": 59765
+    },
+    "orgs_active": 237
+  },
+  "amplify": [
+    "Account",
+    "Activity",
+    "Address",
+    "ApplicantScheduleViewing",
+    "ApplicationQuestionAnswer",
+    "ApplicationQuestionSetting",
+    "AutomatedTasks",
+    "BackendDataMonitor",
+    "Board",
+    "Business",
+    "Category",
+    "CategoryDocument",
+    "Column",
+    "ContactComment",
+    "Conversation",
+    "ConvoLink",
+    "Document",
+    "DocumentSuppliers",
+    "DocumentTemplate",
+    "DocumentTemplateTypes",
+    "DocusignSendDocumentEnvelopes",
+    "DocusignTemplates",
+    "EmailAttachment",
+    "EmailMessage",
+    "ExpiringTenancies",
+    "File",
+    "Integration",
+    "InterestedProperty",
+    "InvestigationReference",
+    "Invitation",
+    "Invoice",
+    "InvoiceAllocation",
+    "InvoiceLineItem",
+    "InvoiceProperty",
+    "InvoiceTenancy",
+    "InvoiceWebhookEvents",
+    "Journal",
+    "LandlordBill",
+    "LoftyOrganisationIntegration",
+    "LoftyPayMigrationMetadata",
+    "Message",
+    "MigrationMetadataIdMapping",
+    "Organisation",
+    "OrganisationStripeCharges",
+    "OrganisationTaskChecklist",
+    "OrganisationUser",
+    "OrganisationUserMetaData",
+    "OverPayment",
+    "ParentPropertyEntity",
+    "Payment",
+    "Permissions",
+    "PortfolioHistory",
+    "PreUser",
+    "ProblemCard",
+    "Property",
+    "PropertyApplication",
+    "PropertyAsset",
+    "PropertyBudget",
+    "PropertyEmergency",
+    "PropertyTour",
+    "Questionnaire",
+    "Reminder",
+    "RentInvoiceHistory",
+    "RentancyApiHistory",
+    "ReportingHistory",
+    "Room",
+    "ScheduledEmail",
+    "Session",
+    "Statement",
+    "SubCategory",
+    "Subscriptions",
+    "SupplierOrganisation",
+    "SupplierOrganisationTag",
+    "SupplierProperty",
+    "Task",
+    "TaskChecklist",
+    "TaskComment",
+    "TaskLabel",
+    "TaskReminder",
+    "TaskScheduler",
+    "TemplateLetter",
+    "Tenancy",
+    "TenancySettings",
+    "TenancyStreamItem",
+    "Transaction",
+    "Transfer",
+    "TypingStatusMessage",
+    "User",
+    "UserClientSettings",
+    "UserLoginRecord",
+    "UserLoginSession",
+    "UserPreferences",
+    "WorksOrder",
+    "XeroJournal"
+  ],
+  "ddbsvc": [
+    [
+      "AccountingOutbox",
+      "rentancy-api"
+    ],
+    [
+      "AccountingOutbox",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "Applications",
+      "rentancy-api"
+    ],
+    [
+      "Audit",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "BackofficeOrganisations",
+      "backoffice-resources"
+    ],
+    [
+      "BackofficeUserAccess",
+      "backoffice-resources"
+    ],
+    [
+      "Branding",
+      "loftyworks-documents-resources"
+    ],
+    [
+      "CalendarEvents",
+      "rentancy-api"
+    ],
+    [
+      "Contact",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "ContactProperty",
+      "rentancy-api"
+    ],
+    [
+      "Contacts",
+      "rentancy-api"
+    ],
+    [
+      "ConversationEvent",
+      "rentancy-api"
+    ],
+    [
+      "DepositScheme",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "Document",
+      "rentancy-api"
+    ],
+    [
+      "DocumentSignatures",
+      "loftyworks-resources"
+    ],
+    [
+      "Email",
+      "loftyworks-email-service"
+    ],
+    [
+      "EmailEvent",
+      "loftyworks-email-service"
+    ],
+    [
+      "EventAudit",
+      "loftyworks-event-bus"
+    ],
+    [
+      "Idempotency",
+      "loftyworks-documents-resources"
+    ],
+    [
+      "LandlordStatement",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "Notifications",
+      "rentancy-api"
+    ],
+    [
+      "NrlConfig",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "NrlTaxPayment",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "OrganisationIntegrations",
+      "rentancy-api"
+    ],
+    [
+      "PhoneNumberIntegration",
+      "rentancy-api"
+    ],
+    [
+      "Property",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "PropertyV2",
+      "rentancy-api"
+    ],
+    [
+      "Signatures",
+      "rentancy-api"
+    ],
+    [
+      "Tenancy",
+      "tenancy-accounting-resources"
+    ],
+    [
+      "TenancyV2",
+      "rentancy-api"
+    ],
+    [
+      "UserAccessControl",
+      "loftyworks-auth-resources"
+    ],
+    [
+      "WorkOrder",
+      "rentancy-api"
+    ]
+  ],
+  "snapshot": "2026-11-20"
+}

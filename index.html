@@ -188,6 +188,11 @@ dialog::backdrop{background:#1c2127a8}
 .action-run-steps li{padding:3px 0;overflow-wrap:anywhere}
 .action-tools{margin:0 0 12px}
 @media(max-width:540px){.action-kinds{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.aip-exposure{margin-top:14px}.aip-scope-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:14px 0}
+.aip-scope-type{border:1px solid var(--line);border-radius:6px;padding:12px;min-width:0}.aip-scope-type summary,.aip-context summary{cursor:pointer;padding:9px 0;color:var(--blue-t);font-weight:600}
+.aip-scope-choice{min-height:36px;flex-wrap:wrap;gap:6px}.aip-scope-fields{margin-bottom:12px}.aip-retrieval{border-top:1px solid var(--line);padding-top:14px;margin-bottom:12px}
+.aip-context{margin-top:16px;padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:8px}.aip-context pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;background:var(--panel2);padding:12px;font-size:12px}
 </style>
 </head>
 <body>
@@ -195,6 +200,19 @@ dialog::backdrop{background:#1c2127a8}
 <dialog id="modal" aria-labelledby="dlgTitle"></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="./agent-workspaces.js"></script>
+<script src="./rental-demo.js"></script>
+<script src="./aip-builder.js"></script>
+<script src="./uk-integration.js"></script>
+<script src="./loftyworks-workspace.js"></script>
+<script src="./loftyworks-catalog-data.js"></script>
+<script src="./loftyworks-catalog.js"></script>
+<script src="./loftyworks-operations.js"></script>
+<script src="./loftyworks-functions.js"></script>
+<script src="./loftyworks-operation-functions.js"></script>
+<script src="./loftyworks-ui.js"></script>
+<script src="./loftyworks-business-ui.js"></script>
+<script src="./loftyworks-journey.js"></script>
+<script src="./aip-exposure.js"></script>
 <script>
 'use strict'
 /* ============ 基础工具 ============ */
@@ -319,7 +337,7 @@ function objectsOf(otId,onto=C()){
  const out=[]
  if(ot.datasource&&S.datasets[ot.datasource]){
   const ds=S.datasets[ot.datasource]
-  for(const r of ds.rows){
+  for(const r of (WORKSPACE_ID==='uk-lettings'?ukDatasetRows(ot.datasource,ds):ds.rows)){
    const o={};for(const p of ot.properties)o[p.id]=p.column?(r[ds.fields.indexOf(p.column)]??''):''
    const k=String(o[ot.primaryKey])
    if(ed.deleted.includes(k))continue
@@ -571,7 +589,7 @@ function validateOnto(onto=W()){
     for(const m of r.mappings){
      if(!it.properties.some(x=>x.apiName===m.prop))E(c,k,'接口 '+it.name+' 没有属性 '+m.prop+'。')
      if(r.type==='modifyIface')for(const impl of ifaceImpls(it.id,onto))if(ifaceLocal(impl,it.id,m.prop)===impl.primaryKey)E(c,k,'接口属性 '+m.prop+' 映射到 '+impl.name+' 的主键，Modify object(s) of interface 不能修改主键。')
-     if((m.source==='param'||m.source==='objprop')&&!refOK(m.value))E(c,k,'接口属性 '+m.prop+' 映射的参数不存在。')
+     if((m.source==='param'||m.source==='objprop')&&(!refOK(m.value)||m.source==='objprop'&&!String(m.value).split('.')[1]))E(c,k,'接口属性 '+m.prop+' 映射的参数或属性未选择或已失效。')
     }
     continue
    }
@@ -590,7 +608,7 @@ function validateOnto(onto=W()){
    for(const m of r.mappings){
     if(!propOf(rot,m.prop))E(c,k,'规则映射的属性 '+rot.name+'.'+m.prop+' 不存在。')
     if(m.source==='param'&&!refOK(m.value))E(c,k,'属性 '+m.prop+' 映射的参数不存在。')
-    if(m.source==='objprop'&&!refOK(m.value))E(c,k,'属性 '+m.prop+' 映射的对象参数属性无效。')
+    if(m.source==='objprop'&&(!refOK(m.value)||!String(m.value).split('.')[1]))E(c,k,'属性 '+m.prop+' 映射的对象参数属性未选择或已失效。')
     if(m.source==='writeback'&&(writebackField(at)!==m.value||!m.value))E(c,k,'请选择有效的 Writeback response 字段。')
    }
    if(r.type==='create'&&!r.mappings.some(m=>m.prop===rot.primaryKey))E(c,k,'Create object 规则必须为主键 '+rot.primaryKey+' 提供值。')
@@ -789,6 +807,9 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
  const cache={}
  const objs=id=>cache[id]??=objectsOf(id,onto)
  vals={...vals}
+ // Identity-prefilled hidden parameters are rebound at execution, including
+ // forms opened before a role switch and AI-provided drafts.
+ for(const p of at.parameters)if(p.hidden&&p.default?.kind==='currentUser')vals[p.id]=S.user
  const ref=path=>{
   const [pid,prop]=String(path).split('.'),p=at.parameters.find(x=>x.id===pid)
   if(!p)return undefined
@@ -1000,12 +1021,14 @@ const mkParam=(id,name,type,extra={})=>({id,name,type,objectType:'',required:tru
 const mkMap=(prop,source,value='')=>({prop,source,value})
 const mkAT=o=>({rid:newRid('action-type'),description:'',status:'experimental',location:PROJECTS[0],version:0,criteriaMode:'all',criteria:[],actionLog:{enabled:true,summary:''},...o})
 function loadConfiguredWorkspace(){
+ if(WORKSPACE_ID==='rental-demo'){initializeRentalDemo();return}
  if(!WORKSPACE.types)return
  const onto=emptyOnto()
  for(const t of WORKSPACE.types){
   const {id,apiName,name,icon,properties}=t
   onto.objectTypes[id]=mkOT({id,apiName,name,plural:name,icon,color:COLORS[0],datasource:apiName,
-   primaryKey:'id',titleKey:t.title||'name',properties:properties.map(([id,label,type,extra])=>mkProp(id,label,type,extra))})
+   description:t.description||'',
+   primaryKey:t.primaryKey||'id',titleKey:t.title||'name',properties:properties.map(([id,label,type,extra])=>mkProp(id,label,type,extra))})
  }
  for(const l of WORKSPACE.links){
   const endpoint=(objectType,[displayName,apiName])=>({objectType,displayName,apiName,plural:displayName,visibility:'normal'})
@@ -1019,6 +1042,13 @@ function loadConfiguredWorkspace(){
  }
  S.committed=onto
  S.working=clone(onto)
+ if(WORKSPACE_ID==='loftyworks'){
+  const compiled=compileRepo(LOFTY_FUNCTION_SOURCE,onto)
+  if(compiled.errors.length)throw Error(compiled.errors.join('\n'))
+  S.fnRepo={source:LOFTY_FUNCTION_SOURCE,committed:LOFTY_FUNCTION_SOURCE,tags:[{version:'1.0.0',time:new Date().toISOString(),source:LOFTY_FUNCTION_SOURCE,functions:compiled.functions}]}
+  S.loftyModelVersion=LOFTY_MODEL_VERSION
+  ROUTE='loftyworks'
+ }
 }
 function buildSample(){
  const o=emptyOnto()
@@ -1156,12 +1186,14 @@ function topo(left,mid,right,leftSub,rightSub,midLabel='',rightLabel=''){
 }
 
 /* ============ 路由 ============ */
-let ROUTE='discover'
+const WORKSPACE_HOME=WORKSPACE_ID==='uk-lettings'?'object-types':'discover'
+let ROUTE=WORKSPACE_HOME
 const route=()=>(ROUTE||'discover').split('/').map(decodeURIComponent)
-function go(h){ROUTE=h;S.ui.nav=false;S.ui.newMenu=false;S.ui.more=false;S.ui.search='';const r=route();if(r[0]==='object-types'&&r[1]){S.ui.recent=[r[1],...S.ui.recent.filter(x=>x!==r[1])].slice(0,6)}render();window.scrollTo(0,0);void checkAipConnection()}
+function go(h,syncUrl=true){ROUTE=h;if(syncUrl&&typeof history!=='undefined'&&location.hash!=='#/'+h)history.pushState(null,'','#/'+h);S.ui.nav=false;S.ui.newMenu=false;S.ui.more=false;S.ui.search='';const r=route();if(r[0]==='object-types'&&r[1]){S.ui.recent=[r[1],...S.ui.recent.filter(x=>x!==r[1])].slice(0,6)}render();window.scrollTo(0,0);void checkAipConnection()}
 
 /* ============ 外壳 ============ */
 function renderHeader(){
+ if(WORKSPACE_ID==='loftyworks'&&['discover','lofty-business','lofty-operations','loftyworks','aip'].includes(route()[0]))return '<header class="top">'+B('toggleNav','☰','menu-toggle','','aria-label="打开导航" aria-expanded="'+S.ui.nav+'"')+'<div class="brand"><b>LoftyWorks</b><span>租赁业务工作台</span></div><div style="flex:1"></div><div class="top-actions"><label class="user-lbl" style="display:flex;align-items:center;gap:8px;color:#d3d8de">演示身份<select data-change="setUser" aria-label="当前用户">'+options(Object.entries(USERS).map(([k,u])=>[k,u.name]),S.user)+'</select></label></div></header>'
  const n=diff().length,{errors}=validateOnto()
  const q=S.ui.search.trim().toLowerCase()
  let results=''
@@ -1170,7 +1202,7 @@ function renderHeader(){
   for(const c in COLL)for(const [k,r] of Object.entries(W()[c])){const name=resName(c,k);if((name+' '+(r.apiName||'')+' '+k).toLowerCase().includes(q))hits.push('<a href="#/'+ROUTE_OF[c]+(c==='groups'||c==='sharedProps'?'':'/'+encodeURIComponent(k))+'"><span>'+esc(name)+'</span><span class="muted small-t">'+COLL[c]+'</span></a>')}
   results='<div class="search-res">'+(hits.slice(0,12).join('')||'<div class="muted" style="padding:10px">没有匹配的资源</div>')+'</div>'
  }
- const newItems=[['newObjectType','Object type'],['newLinkType','Link type'],['newActionType','Action type'],['-'],['newSharedProp','Shared property'],['newInterface','Interface'],['newGroup','Object type group'],['-'],['newValueType','Value type（Value Types Manager）']]
+ const newItems=[['newObjectType','Object type'],['newLinkType','Link type'],['newActionType','Action type'],['newAssistant','AIP Chatbot'],['-'],['newSharedProp','Shared property'],['newInterface','Interface'],['newGroup','Object type group'],['-'],['newValueType','Value type（Value Types Manager）']]
  return '<header class="top">'+B('toggleNav','☰','menu-toggle','','aria-label="打开导航" aria-expanded="'+S.ui.nav+'"')+
  '<div class="brand"><b>Ontology Lab</b><span>'+esc(WORKSPACE.name)+' · 本地 Ontology 工作台</span></div>'+
  '<div class="search"><input id="globalSearch" data-bind="ui.search" value="'+esc(S.ui.search)+'" placeholder="搜索对象类型、属性、关系、动作…  (Ctrl+K)" aria-label="搜索资源" autocomplete="off">'+results+'</div>'+
@@ -1183,14 +1215,24 @@ function renderHeader(){
 function renderNav(){
  const r=route()[0],cnt=c=>Object.keys(W()[c]).length
  const a=(h,l,n)=>'<a href="#/'+h+'"'+(r===h?' aria-current="page"':'')+'><span>'+l+'</span>'+(n!==undefined?'<span class="cnt">'+n+'</span>':'')+'</a>'
+ if(WORKSPACE_ID==='loftyworks')return '<nav class="side'+(S.ui.nav?' open':'')+'" aria-label="应用导航"><h6>LOFTYWORKS</h6>'+a('lofty-business','租约流程台')+a('lofty-operations','全部业务操作')+a('loftyworks','资金明细与核验')+a('aip','AI 业务助手')+a('aip-agents','AIP Chatbot Studio')+a('action-log','操作记录',S.logs.length)+'<details class="lj-admin"'+(!['lofty-business','lofty-operations','loftyworks','aip','action-log','discover'].includes(r)?' open':'')+'><summary>建模与管理</summary>'+a('explorer','Object Explorer')+a('lofty-catalog','完整来源目录')+a('datasets','Datasets',Object.keys(S.datasets).length)+a('object-types','Object types',cnt('objectTypes'))+a('link-types','Link types',cnt('linkTypes'))+a('action-types','Action types',cnt('actionTypes'))+a('functions','Functions',Object.keys(fnRegistry()).length)+a('functions-repo','Code Repositories')+a('shared-properties','Shared properties')+a('interfaces','Interfaces')+a('groups','Object type groups')+a('value-types','Value types')+'</details></nav>'
  return '<nav class="side'+(S.ui.nav?' open':'')+'" aria-label="应用导航">'+
- '<h6>Foundry 数据</h6>'+a('datasets','Datasets 数据集',Object.keys(S.datasets).length)+
+ (WORKSPACE_ID==='uk-lettings'?a('uk-integration','跨系统业务流转'):'')+
+ (WORKSPACE_ID==='loftyworks'?'<h6>LoftyWorks</h6>'+a('loftyworks','租赁资金业务台')+a('lofty-business','业务操作')+a('lofty-catalog','完整来源目录'):'')+
+ '<h6>创建与配置</h6>'+a('build','创建业务应用')+a('aip-agents','AIP Chatbot Studio')+'<h6>Foundry 数据</h6>'+a('datasets','Datasets 数据集',Object.keys(S.datasets).length)+
  '<h6>Ontology Manager</h6>'+a('discover','Discover 首页')+a('object-types','Object types',cnt('objectTypes'))+a('link-types','Link types',cnt('linkTypes'))+a('action-types','Action types',cnt('actionTypes'))+a('functions','Functions',Object.keys(fnRegistry()).length)+
  '<h6>Resources</h6>'+a('shared-properties','Shared properties',cnt('sharedProps'))+a('interfaces','Interfaces',cnt('interfaces'))+a('groups','Object type groups',cnt('groups'))+
- '<h6>其他应用</h6>'+a('value-types','Value Types Manager',Object.keys(S.valueTypes).length)+a('functions-repo','Code Repositories · 函数仓库')+a('explorer','Object Explorer · 业务台')+a('aip','AIP 租约查询')+a('action-log','Action Log',S.logs.length)+'</nav>'
+ '<h6>其他应用</h6>'+a('value-types','Value Types Manager',Object.keys(S.valueTypes).length)+a('functions-repo','Code Repositories · 函数仓库')+a('explorer','Object Explorer · 业务台')+a('aip','AIP · '+esc(WORKSPACE.name))+a('action-log','Action Log',S.logs.length)+'</nav>'
 }
 function renderPage(){
  const [p,...rest]=route()
+ if(p==='uk-integration'&&WORKSPACE_ID==='uk-lettings')return pageUkIntegration()
+ if(p==='build')return pageBuild()
+ if(p==='aip-agents')return pageAssistantBuilder()
+ if(p==='loftyworks'&&WORKSPACE_ID==='loftyworks')return pageLoftyWorks()
+ if(p==='lofty-business'&&WORKSPACE_ID==='loftyworks')return pageLoftyJourney()
+ if(p==='lofty-operations'&&WORKSPACE_ID==='loftyworks')return pageLoftyBusiness()
+ if(p==='lofty-catalog'&&WORKSPACE_ID==='loftyworks')return pageLoftyCatalog()
  const pages={discover:pageDiscover,datasets:pageDatasets,'object-types':pageObjectTypes,'link-types':pageLinkTypes,'action-types':pageActionTypes,'shared-properties':pageShared,interfaces:pageInterfaces,groups:pageGroups,'value-types':pageValueTypes,explorer:pageExplorer,aip:pageAip,'action-log':pageActionLog,functions:pageFunctions,'functions-repo':pageFnRepo}
  return (pages[p]||pageDiscover)(...rest)
 }
@@ -1198,6 +1240,7 @@ const head=(title,desc,actions='',crumb='')=>'<div class="page-head"><div>'+(cru
 
 /* ============ Discover ============ */
 function pageDiscover(){
+ if(WORKSPACE_ID==='loftyworks')return pageLoftyJourney()
  const Cn=c=>Object.keys(C()[c]).length,Wn=c=>Object.keys(W()[c]).length
  const steps=[
   ['准备数据集','在 Datasets 中导入或检查 CSV 数据。','datasets',Object.values(S.datasets).some(d=>d.rows.length)],
@@ -1229,10 +1272,10 @@ function pageDatasets(name){
  const ds=S.datasets[sel]
  const backs=n=>{const out=[];for(const ot of Object.values(W().objectTypes))if(ot.datasource===n)out.push('Object type · '+otLink(ot.id));for(const l of Object.values(W().linkTypes))if(l.mode==='join'&&l.join.dataset===n)out.push('Link type · <a href="#/link-types/'+esc(l.id)+'">'+esc(l.a.displayName+' ↔ '+l.b.displayName)+'</a>');return out}
  return head('Datasets','Foundry 数据集是对象类型和多对多关系的 backing datasource。导入带表头的 CSV；一个数据集只能支撑一个对象类型或关系。')+
- '<div class="split"><section class="card"><h3>数据集</h3>'+table(['名称','路径','行数','列数','支撑的资源'],Object.entries(S.datasets).map(([k,d])=>['<a href="#/datasets/'+encodeURIComponent(k)+'">'+(k===sel?'<b>'+esc(k)+'</b>':esc(k))+'</a>',esc(d.path),d.rows.length,d.fields.length,backs(k).join('<br>')||'<span class="muted">—</span>']))+'</section>'+
+ '<div class="split"><section class="card"><h3>数据集</h3>'+table(['名称','路径','行数','列数','支撑的资源'],Object.entries(S.datasets).map(([k,d])=>['<a href="#/datasets/'+encodeURIComponent(k)+'">'+(k===sel?'<b>'+esc(k)+'</b>':esc(k))+'</a>',esc(d.path),ukDatasetRows(k,d).length,d.fields.length,backs(k).join('<br>')||'<span class="muted">—</span>']))+'</section>'+
  '<section class="card"><h3>导入 CSV</h3><div class="grid2">'+fSel('ui.importTarget','目标数据集',[['__new','＋ 新建数据集'],...Object.keys(S.datasets).map(k=>[k,'替换 '+k])],S.ui.importTarget||'__new')+((S.ui.importTarget||'__new')==='__new'?fInp('ui.importName','新数据集名称',S.ui.importName||'','placeholder="例如 Contract"'):'')+'</div><label class="fld" style="margin-top:8px"><span>CSV 文件</span><input type="file" id="csvFile" accept=".csv,text/csv"></label><p class="muted small-t" style="margin-top:6px">替换已支撑对象类型的数据集时，已映射的列必须仍然存在；保存后需重新索引。</p></section></div>'+
  (ds?'<section class="card"><div class="spread"><h3>'+esc(sel)+' · Preview'+'</h3><div class="row"><span class="muted small-t">'+esc(ds.rid)+'</span>'+B('deleteDataset','删除数据集','small danger',sel,backs(sel).length?'disabled title="仍被对象类型或关系使用"':'')+'</div></div>'+
- table(ds.fields.map(esc),ds.rows.slice(0,50).map(r=>r.map(esc)),'数据集为空（例如 Lease 由动作写入）')+'</section>':'')
+ table(ds.fields.map(esc),ukDatasetRows(sel,ds).slice(0,50).map(r=>r.map(esc)),'数据集为空（例如 Lease 由动作写入）')+'</section>':'')
 }
 
 /* ============ Object types ============ */
@@ -1381,8 +1424,25 @@ function atOverview(at){
  fArea(P+'agent.intent','业务意图与适用边界',agent.intent||'')+
  fSel(P+'agent.replacementParameter','更换对象时使用的参数',[['','无'],...at.parameters.filter(p=>p.type==='Object reference'&&!p.hidden&&!p.multiple).map(p=>[p.id,p.name])],agent.replacementParameter||'')+'</section>'
 }
+function objectPropertyPicker(at,path,value,target,includeInterfaces=false){
+ const refs=at.parameters.filter(p=>p.type==='Object reference'||includeInterfaces&&p.type==='Interface reference')
+ const [pid,key]=String(value||'').split('.'),param=refs.find(p=>p.id===pid)
+ const resource=p=>p.type==='Interface reference'?W().interfaces[p.interface]:W().objectTypes[p.objectType]
+ const type=param&&resource(param),fields=type?.properties||[]
+ const fieldKey=p=>param?.type==='Interface reference'?p.apiName:p.id
+ const selected=fields.find(p=>fieldKey(p)===key),id='source-'+path.replace(/[^\w-]/g,'-')
+ const parameterOptions=refs.map(p=>{const t=resource(p);return [p.id,p.name+' ['+p.id+'] → '+(t?t.name+' ('+t.apiName+')':'类型已失效')+(p.type==='Interface reference'?' · Interface':'')+(p.multiple?' · 列表':'')]})
+ const propertyOptions=fields.map(p=>[pid+'.'+fieldKey(p),p.name+' ('+(p.apiName||fieldKey(p))+') · '+p.baseType+(type.primaryKey===p.id?' · 主键':'')])
+ const missingParam=pid&&!param,missingField=key&&!selected
+ if(missingParam)parameterOptions.unshift([pid,pid+'（参数已失效，请重选）'])
+ if(missingField)propertyOptions.unshift([value,key+'（属性已失效，请重选）'])
+ const summary=selected?'读取「'+param.name+'」参数所选'+type.name+'的「'+selected.name+'」，写入「'+target+'」。':missingParam||missingField?'原映射已失效，请重新选择参数和属性。':param?'请选择要从'+(type?.name||'该对象')+'读取的属性。':'先选择对象参数，再选择它的属性。'
+ return '<div class="object-property-picker" style="display:grid;gap:8px;min-width:0">'+
+  '<label class="fld"><span>① 从哪个参数取对象</span><select id="'+esc(id)+'" data-change="objectPropertyParam" data-path="'+esc(path)+'" aria-describedby="'+esc(id+'-hint')+'">'+options([['','选择对象参数'],...parameterOptions],pid||'')+'</select></label>'+
+  '<label class="fld"><span>② 读取该对象的哪个属性</span><select data-bind="'+esc(path)+'" aria-describedby="'+esc(id+'-hint')+'" '+(!type?'disabled':'')+'>'+options([[param?pid+'.':'','选择属性'],...propertyOptions],value||'')+'</select></label>'+
+  '<p id="'+esc(id+'-hint')+'" class="small-t muted" style="margin:0;overflow-wrap:anywhere">'+esc(summary)+'</p></div>'
+}
 function atRules(at){
- const objPropOpts=at.parameters.filter(p=>p.type==='Object reference').flatMap(p=>(W().objectTypes[p.objectType]?.properties||[]).map(x=>[p.id+'.'+x.id,p.name+'.'+x.name]))
  const refOpts=at.parameters.map(p=>[p.id,p.name+' ('+p.type+')'])
  return '<p class="muted small-t">Writeback 在对象编辑前调用。通知和普通 Webhook 在对象编辑后执行。</p>'+at.rules.map((r,ri)=>{
   const P='working.actionTypes.'+at.id+'.rules.'+ri+'.'
@@ -1402,7 +1462,6 @@ function atRules(at){
   if(IFACE_RULES.includes(r.type)){
    const it=W().interfaces[r.interface]
    const pOpts=type=>[['','请选择'],...at.parameters.filter(p=>p.type===type&&p.interface===r.interface).map(p=>[p.id,p.name])]
-   const iRefOpts=at.parameters.filter(p=>p.type==='Object reference'||p.type==='Interface reference').flatMap(p=>p.type==='Interface reference'?(W().interfaces[p.interface]?.properties||[]).map(x=>[p.id+'.'+x.apiName,p.name+'.'+x.name]):(W().objectTypes[p.objectType]?.properties||[]).map(x=>[p.id+'.'+x.id,p.name+'.'+x.name]))
    const unused=(it?.properties||[]).filter(x=>!r.mappings.some(m=>m.prop===x.apiName))
    return '<section class="card"><div class="spread"><h3>Rule '+(ri+1)+' · '+esc(RULES[r.type][0])+' · '+esc(it?.name||r.interface)+'</h3>'+ruleBtns+'</div><p class="muted small-t">'+esc(RULES[r.type][1])+'</p>'+
     (r.type==='createIface'?fSel(P+'typeParam','Object type 参数',pOpts('Object type'),r.typeParam):fSel(P+'objectParam','interface reference 参数',pOpts('Interface reference'),r.objectParam))+
@@ -1410,7 +1469,7 @@ function atRules(at){
      const M=P+'mappings.'+mi+'.',ip=it?.properties.find(x=>x.apiName===m.prop)
      let val=''
      if(m.source==='param')val='<select data-bind="'+esc(M+'value')+'" aria-label="参数">'+options([['','请选择参数'],...at.parameters.map(p=>[p.id,p.name+' ('+p.type+')'])],m.value)+'</select>'
-     else if(m.source==='objprop')val='<select data-bind="'+esc(M+'value')+'" aria-label="对象参数属性">'+options([['','请选择'],...iRefOpts],m.value)+'</select>'
+     else if(m.source==='objprop')val=objectPropertyPicker(at,M+'value',m.value,(it?.name||r.interface)+' / '+(ip?.name||m.prop),true)
      else if(m.source==='static')val='<input data-bind="'+esc(M+'value')+'" value="'+esc(m.value)+'" aria-label="静态值">'
      else val='<span class="muted small-t">'+{user:'提交人 ID（执行开始时）',time:'执行开始时间'}[m.source]+'</span>'
      return '<tr><td>'+esc(ip?.name||m.prop)+' <code>'+esc(m.prop)+'</code></td><td><select data-bind="'+esc(M+'source')+'" data-after="mapSource" data-arg="'+esc(at.id+'|'+ri+'|'+mi)+'" aria-label="来源">'+options(SOURCES,m.source)+'</select></td><td class="wrap" style="min-width:180px">'+val+'</td><td>'+B('removeMapping','移除','small ghost',at.id+'|'+ri+'|'+mi)+'</td></tr>'}).join('')+'</tbody></table></div>'+
@@ -1434,7 +1493,7 @@ function atRules(at){
    const srcs=response||m.source==='writeback'?[...SOURCES,['writeback','Writeback response']]:SOURCES
    let val=''
    if(m.source==='param')val='<select data-bind="'+esc(M+'value')+'" aria-label="参数">'+options([['','请选择参数'],...refOpts],m.value)+'</select>'
-   else if(m.source==='objprop')val='<select data-bind="'+esc(M+'value')+'" aria-label="对象参数属性">'+options([['','请选择'],...objPropOpts],m.value)+'</select>'
+   else if(m.source==='objprop')val=objectPropertyPicker(at,M+'value',m.value,(rot?.name||'对象')+' / '+(prop?.name||m.prop))
    else if(m.source==='static')val='<input data-bind="'+esc(M+'value')+'" value="'+esc(m.value)+'" placeholder="（留空表示清空该属性）" aria-label="静态值">'
    else if(m.source==='writeback')val=fSel(M+'value','响应字段',[['','请选择'],...(response?[[response,response]]:[])],m.value)
    else val='<span class="muted small-t">'+{user:'提交人 ID（执行开始时）',time:'执行开始时间'}[m.source]+'</span>'
@@ -1581,6 +1640,7 @@ const vtUsers=id=>[...new Set([...Object.values(W().objectTypes),...Object.value
 const vtDesc=v=>({none:'无',regex:'正则 '+v.constraint.pattern,enum:'枚举 '+v.constraint.values,range:(v.baseType==='String'?'长度 ':'范围 ')+(v.constraint.min||'-∞')+' ~ '+(v.constraint.max||'+∞')}[v.constraint.kind])
 /* ============ Object Explorer ============ */
 function pageExplorer(otId,pk){
+ if(WORKSPACE_ID==='loftyworks'&&!otId)return pageLoftyJourney()
  const read=ontologyReadScope(),ots=Object.values(read.types)
  const workspaceActions=workspaceActionBar()
  if(!ots.length)return head('Object Explorer','使用已保存到 Ontology 的对象、关系和动作。')+workspaceActions+'<div class="empty">Ontology 中还没有已保存的对象类型。请先在 Ontology Manager 中创建并 Save，或在 <a href="#/discover">Discover</a> 加载样例。</div>'
@@ -2090,8 +2150,7 @@ WIZ.actionType={title:'New action type',steps:['Action type','Mapping','Metadata
    d.name=d.name.trim();d.apiName=d.apiName.trim()
    if(!d.name)throw Error('请输入 Action type name。')
    if(!/^[a-z][A-Za-z0-9]{0,99}$/.test(d.apiName))throw Error('API name 须为 camelCase。')
-   const base=d.apiName;let n=2
-   while(Object.values(W().actionTypes).some(a=>a.apiName===d.apiName))d.apiName=base+n++
+   if(Object.values(W().actionTypes).some(a=>a.apiName===d.apiName))throw Error('Action API name 已存在，请使用不同名称。')
   }
   if(step===3&&!d.groups.length)throw Error('至少选择一个用户组。')
   if(step===4&&!PROJECTS.includes(d.location))throw Error('请选择保存位置。')
@@ -2269,7 +2328,7 @@ function renderReview(frame){
 function renderActionForm(frame){
  const m=S.ui.modal,onto=m.test?W():C(),at=onto.actionTypes[m.at]
  if(!at)return frame('动作不存在','','<span></span>'+B('closeModal','关闭'))
- const fromAip=m.aipTurn!==undefined,read=fromAip?ontologyReadScope():null
+ const fromAip=m.aipTurn!==undefined,read=fromAip?aipReadScope():null
  const replacement=fromAip?aipAgentPolicy(at).replacementParameter:''
  const choicesFor=p=>fromAip?aipActionOptions(at,p,read,m.vals,m.aipProposal.excluded):paramChoices(at,p,m.vals,onto)
  const eff=effectiveParams(at,m.vals,onto)
@@ -2290,8 +2349,8 @@ function renderActionForm(frame){
   if(p.type==='Object reference'&&p.multiple){const t=onto.objectTypes[p.objectType],sel=listOf(m.vals[p.id]);return '<label class="fld"><span>'+label+' <small>'+esc(otName(p.objectType,onto))+' · 可多选</small></span><select multiple size="4" data-bind="'+esc(bind)+'">'+objectsOf(p.objectType,onto).filter(o=>!ch||ch.includes(String(o[t.primaryKey]))).map(o=>{const k=String(o[t.primaryKey]),ti=titleOf(p.objectType,o,onto);return '<option value="'+esc(k)+'"'+(sel.includes(k)?' selected':'')+'>'+esc((ti&&ti!==k?ti+' · ':'')+k)+'</option>'}).join('')+'</select></label>'}
   if(p.multiple)return fInp(bind,label+' <small>逗号分隔</small>',Array.isArray(m.vals[p.id])?m.vals[p.id].join(', '):m.vals[p.id])
   if(p.type==='Object reference')return fSel(bind,label+' <small>'+esc(otName(p.objectType,onto))+(ch?' · 已过滤':'')+'</small>',[['','请选择'],...objectsOf(p.objectType,onto).filter(o=>!ch||ch.includes(String(o[onto.objectTypes[p.objectType].primaryKey]))).map(o=>{const t=onto.objectTypes[p.objectType];const ti=titleOf(p.objectType,o,onto),k=o[t.primaryKey];return [k,(ti&&ti!==k?ti+' · ':'')+k+(o.status?' · '+o.status:'')]})],m.vals[p.id])
-  if(p.type==='Interface reference')return fSel(bind,label+' <small>接口 · '+esc(onto.interfaces[p.interface]?.name||'')+'</small>',[['','请选择'],...ifaceImpls(p.interface,onto).filter(t=>!ifaceActionOff(t,at.id,p.interface)).flatMap(t=>objectsOf(t.id,onto).map(o=>{const k=o[t.primaryKey],ti=titleOf(t.id,o,onto);return [irefOf(t.id,k),t.name+' · '+(ti&&ti!==k?ti+' · ':'')+k]}))],m.vals[p.id])
-  if(p.type==='Object type')return fSel(bind,label+' <small>实现了「'+esc(onto.interfaces[p.interface]?.name||'')+'」的对象类型</small>',[['','请选择'],...ifaceImpls(p.interface,onto).filter(t=>!ifaceActionOff(t,at.id,p.interface)).map(t=>[t.id,t.name])],m.vals[p.id])
+  if(p.type==='Interface reference')return fSel(bind,label+' <small>接口 · '+esc(onto.interfaces[p.interface]?.name||'')+'</small>',[['','请选择'],...ifaceImpls(p.interface,onto).filter(t=>!ifaceActionOff(t,at.id,p.interface)).flatMap(t=>objectsOf(t.id,onto).map(o=>{const k=o[t.primaryKey],ti=titleOf(t.id,o,onto);return [irefOf(t.id,k),t.name+' · '+(ti&&ti!==k?ti+' · ':'')+k]})).filter(([v])=>!ch||ch.includes(v))],m.vals[p.id])
+  if(p.type==='Object type')return fSel(bind,label+' <small>实现了「'+esc(onto.interfaces[p.interface]?.name||'')+'」的对象类型</small>',[['','请选择'],...ifaceImpls(p.interface,onto).filter(t=>!ifaceActionOff(t,at.id,p.interface)&&(!ch||ch.includes(t.id))).map(t=>[t.id,t.name])],m.vals[p.id])
   if(ch)return fSel(bind,label,[['','请选择'],...ch],m.vals[p.id])
   if(p.type==='Boolean')return fSel(bind,label,[['',''],['true','true'],['false','false']],m.vals[p.id])
   return fInp(bind,label,m.vals[p.id],p.type==='Date'?'type="date"':(p.type==='Integer'||p.type==='Double')?'inputmode="decimal"':'')
@@ -2305,7 +2364,7 @@ function renderActionForm(frame){
   else{
    res+='<div class="note ok">'+(m.done?'已提交。':'试运行通过，以下是将要应用的编辑（'+r.edits.length+' 个对象）：')+'</div>'+r.edits.map(e=>{if(e.link){const l=onto.linkTypes[e.link];return '<h4>'+badge(RULES[e.type][0],e.type==='createLink'?'new':'del')+' '+esc(l.a.displayName+' ↔ '+l.b.displayName)+'</h4><p>'+esc(titleOf(l.a.objectType,findObj(l.a.objectType,e.a,onto),onto)||e.a)+' ↔ '+esc(titleOf(l.b.objectType,findObj(l.b.objectType,e.b,onto),onto)||e.b)+'</p>'}const ot=onto.objectTypes[e.ot];return '<h4>'+badge(e.type,e.type==='create'?'new':e.type==='delete'?'del':'mod')+' '+esc(ot.name)+' '+esc(e.pk)+'</h4><div class="scroll"><table class="diff"><thead><tr><th>属性</th><th>变更前</th><th>变更后</th></tr></thead><tbody>'+ot.properties.filter(p=>(e.before?.[p.id]??'')!==(e.after?.[p.id]??'')).map(p=>'<tr><td>'+esc(p.name)+'</td><td class="b">'+esc(e.before?.[p.id]??'')+'</td><td class="a">'+esc(e.after?.[p.id]??'')+'</td></tr>').join('')+'</tbody></table></div>'}).join('')
   }
-  if(!r.failures.length&&r.edits.length&&!at.rules.some(rule=>rule.type==='applyScenario')&&!at.effects?.length&&!m.scenarioSaved){
+  if(!r.failures.length&&r.edits.length&&at.allowScenario!==false&&!at.rules.some(rule=>rule.type==='applyScenario')&&!at.effects?.length&&!m.scenarioSaved){
    res+='<div class="row action-tools">'+fInp('ui.modal.scenarioName','场景名称',m.scenarioName||'')+B('saveActionScenario','保存为场景')+'</div>'
   }
   if(m.scenarioSaved)res+='<p class="note ok">场景已暂存。可在 Object Explorer 的工作区动作中选择已发布的合并动作。</p>'
@@ -2420,12 +2479,13 @@ const AFTER={
 
 /* ---- 点击动作 ---- */
 const ACT={
+ ukIntegration(op){void runUkIntegration(op)},
  toggleNav(){S.ui.nav=!S.ui.nav},
  toggleNew(){S.ui.newMenu=!S.ui.newMenu},
  toggleMore(){S.ui.more=!S.ui.more},
  goBack(arg){go(arg)},
  reset(){S.ui.modal={kind:'confirm',title:'重置工作台',text:'重置会清空所有对象类型、关系、动作、函数和业务数据，恢复到初始数据集。',act:'doReset',label:'重置'};S.ui.msg=null},
- doReset(){S=fresh();loadConfiguredWorkspace();go('discover');toast('已重置。')},
+ doReset(){S=fresh();loadConfiguredWorkspace();go(WORKSPACE_ID==='loftyworks'?'loftyworks':WORKSPACE_ID==='rental-demo'?'aip':'discover');toast('已重置。')},
  loadSample(){loadSample();go('object-types');toast('样例配置已加载并保存到 Ontology。')},
  launchTransfer(){
   if(Object.keys(C().objectTypes).length||Object.keys(W().objectTypes).length||S.logs.length)throw Error('现有配置仍在使用。点击「重置」后再打开转租实操。')
@@ -2599,7 +2659,7 @@ const ACT={
  actionSubmit(){runForm(false)},
  saveActionScenario(){
   const m=S.ui.modal,r=m.result,at=C().actionTypes[m.at]
-  if(!at||!r||r.failures.length||!r.edits.length||at.effects?.length||at.rules.some(rule=>rule.type==='applyScenario')||m.scenarioSaved)throw Error('请先试运行一个只修改 Ontology 的动作。')
+  if(!at||at.allowScenario===false||!r||r.failures.length||!r.edits.length||at.effects?.length||at.rules.some(rule=>rule.type==='applyScenario')||m.scenarioSaved)throw Error('此动作不支持暂存场景，或尚未通过试运行。')
   const name=m.scenarioName.trim()
   if(!name)throw Error('请输入场景名称。')
   S.scenarios.unshift({id:'scenario-'+hex(12),name,status:'staged',edits:clone(r.edits)})
@@ -2659,10 +2719,10 @@ function runForm(dry){
  m.done=false
  m.scenarioSaved=false
  if(m.aipTurn!==undefined){
-  const read=ontologyReadScope()
+  const read=aipReadScope()
   if(!aipActionType(read,at?.apiName)||m.aipProposal.version!==at.version)throw Error('当前用户或 Action 版本已变化，请重新检查草稿。')
   for(const p of effectiveParams(at,m.vals,onto)){
-   if(p.hidden||p.type!=='Object reference'||!m.vals[p.id])continue
+   if(!['Object reference','Interface reference','Object type'].includes(p.type)||!m.vals[p.id])continue
    const choices=aipActionOptions(at,p,read,m.vals,m.aipProposal.excluded)
    const selected=p.multiple?listOf(m.vals[p.id]):[String(m.vals[p.id])]
    if(selected.some(value=>!choices.includes(value)))throw Error('所选'+p.name+'不符合当前提交条件，请重新选择。')
@@ -2684,7 +2744,7 @@ function runForm(dry){
 /* ============ 事件 ============ */
 document.addEventListener('click',e=>{
  const a=e.target.closest('a[href^="#/"]')
- if(a){e.preventDefault();if(a.dataset.act==='closeModal')closeModal();go(a.getAttribute('href').slice(2));return}
+ if(a){if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();if(a.dataset.act==='closeModal')closeModal();go(a.getAttribute('href').slice(2));return}
  const b=e.target.closest('[data-act]')
  if(!b){if(S.ui.newMenu||S.ui.more){if(!e.target.closest('.dropdown')){S.ui.newMenu=false;S.ui.more=false;render()}}return}
  if(b.disabled)return
@@ -2722,6 +2782,7 @@ document.addEventListener('change',async e=>{
 })
 document.addEventListener('compositionend',e=>{if(e.target.dataset?.bind)e.target.dispatchEvent(new Event('input',{bubbles:true}))})
 const CHANGE={
+ objectPropertyParam(t){setPath(t.dataset.path,t.value?t.value+'.':'')},
  selectRuleKind(t){S.ui.addRuleKind=t.value},
  selectRuleInterface(t){S.ui.ruleIface=t.value},
  toggleScenarioRuleScope(t){
@@ -2926,10 +2987,11 @@ class LocalDate extends String{
  equals(o){return String(this)===String(o)}
  toISOString(){return String(this)}
 }
-function makeRuntime(onto,{edit=false}={}){
+function makeRuntime(onto,{edit=false,read=null}={}){
  const store=new Map(),linkEdits=[],handles=new Map(),baseCache={}
+ const runtimeLinks=ot=>linksOf(ot.id,onto).filter(l=>!read||(read.types[l[other(sideOf(l,ot.id))].objectType]&&read.exposure[ot.id]?.links.includes(l.id+':'+sideOf(l,ot.id))))
  const key=(ot,pk)=>ot.id+'|'+pk
- const baseList=ot=>baseCache[ot.id]??=objectsOf(ot.id,onto)
+ const baseList=ot=>baseCache[ot.id]??=(read?read.objects(ot.id):objectsOf(ot.id,onto))
  const baseObj=(ot,pk)=>baseList(ot).find(o=>String(o[ot.primaryKey])===String(pk))
  const current=(ot,pk)=>{const e=store.get(key(ot,pk));if(e)return e.kind==='deleted'?undefined:e.cur;return baseObj(ot,pk)}
  const allObjects=ot=>{const out=[];for(const o of baseList(ot)){const c=current(ot,o[ot.primaryKey]);if(c)out.push(c)}for(const e of store.values())if(e.ot===ot&&e.kind==='created')out.push(e.cur);return out}
@@ -2959,7 +3021,7 @@ function makeRuntime(onto,{edit=false}={}){
     const pairs=joinPairs(l).map(p=>p.slice());for(const e of linkEdits)if(e.link===l.id){const i=pairs.findIndex(p=>p[0]===e.a&&p[1]===e.b);if(e.type==='createLink'&&i<0)pairs.push([e.a,e.b]);if(e.type==='deleteLink'&&i>=0)pairs.splice(i,1)}
     const [f,t]=s==='a'?[0,1]:[1,0];return pairs.filter(p=>p[f]===String(pk)).map(p=>current(toOT,p[t])).filter(Boolean)
    }
-   const b=baseObj(ot,pk);return b?linkedObjects(l,s,b,onto):[]
+   const b=baseObj(ot,pk);return b?linkedObjects(l,s,b,onto).filter(x=>!read||baseObj(toOT,x[toOT.primaryKey])):[]
   }
   const H=x=>handle(toOT,x[toOT.primaryKey])
   const join=(x,type)=>{needEdit();const [a,b]=s==='a'?[String(pk),String(x.__pk)]:[String(x.__pk),String(pk)];const i=linkEdits.findIndex(e=>e.link===l.id&&e.a===a&&e.b===b);if(i>=0)linkEdits.splice(i,1);else linkEdits.push({type,link:l.id,a,b})}
@@ -2990,7 +3052,7 @@ function makeRuntime(onto,{edit=false}={}){
     if(name==='delete')return ()=>{needEdit();const e=store.get(k);if(e&&e.kind==='created'){store.delete(k);return}const b=e?e.before:baseObj(ot,pk);if(!b)throw new Error('找不到 '+ot.name+' '+pk+'。');store.set(k,{ot,pk:String(pk),kind:'deleted',before:b,cur:null})}
     const p=ot.properties.find(x=>x.apiName===name)
     if(p){const c=current(ot,pk);if(!c)throw new Error(ot.name+' '+pk+' 不存在或已删除。');return toVal(p,c[p.id])}
-    for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return linkAccessor(ot,pk,l,s)}
+    for(const l of runtimeLinks(ot)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return linkAccessor(ot,pk,l,s)}
     return undefined
    },
    set(_,name,v){
@@ -3019,7 +3081,7 @@ function makeRuntime(onto,{edit=false}={}){
    matchAnyToken:s=>P(o=>String(s).split(/\s+/).some(t=>t&&String(o[id]).includes(t))),
    matchAllTokens:s=>P(o=>String(s).split(/\s+/).every(t=>!t||String(o[id]).includes(t)))
   }}
-  for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return {isPresent:()=>P(o=>linkedHandles(ot,o[ot.primaryKey],l,s).length>0)}}
+  for(const l of runtimeLinks(ot)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return {isPresent:()=>P(o=>linkedHandles(ot,o[ot.primaryKey],l,s).length>0)}}
   throw new Error(ot.name+' 没有属性 '+name+'（过滤只能用属性 API name）。')
  }})
  const fieldOf=(ot,fn)=>{const f=fn(new Proxy({},{get(_,name){const p=ot.properties.find(x=>x.apiName===name);if(!p)throw new Error(ot.name+' 没有属性 '+String(name)+'。');return {__field:p.id,asc:()=>({__order:p.id,dir:1})}}}));if(!f||(!f.__field&&!f.__order))throw new Error('需要返回一个属性，例如 x => x.monthlyRent。');return f}
@@ -3028,7 +3090,7 @@ function makeRuntime(onto,{edit=false}={}){
   const st={pred:null,order:[],limit:null,hops:0,only:null,...state}
   const rows=()=>{
    if(st.hops>3)throw new Error('一个函数里最多 3 次 search around。')
-   let r=baseList(ot).filter(o=>(!st.only||st.only.has(String(o[ot.primaryKey])))&&(!st.pred||st.pred.test(o)))
+   let r=allObjects(ot).filter(o=>(!st.only||st.only.has(String(o[ot.primaryKey])))&&(!st.pred||st.pred.test(o)))
    if(st.order.length)r=r.slice().sort((a,b)=>{for(const o of st.order){const c=cmp(a[o.__order],b[o.__order])*o.dir;if(c)return c}return 0})
    if(st.limit!=null)r=r.slice(0,st.limit)
    return r
@@ -3048,7 +3110,7 @@ function makeRuntime(onto,{edit=false}={}){
   return new Proxy(api,{get(t,name){
    if(name in t)return t[name]
    if(typeof name==='string'&&name.startsWith('searchAround')){
-    for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id),o=other(s);if('searchAround'+toPascal(l[o].apiName)===name){return ()=>{const toOT=onto.objectTypes[l[o].objectType],keys=new Set();for(const x of rows())for(const y of linkedHandles(ot,x[ot.primaryKey],l,s))keys.add(String(y.__pk));return objectSet(toOT,{hops:st.hops+1,only:keys})}}}
+    for(const l of runtimeLinks(ot)){const s=sideOf(l,ot.id),o=other(s);if('searchAround'+toPascal(l[o].apiName)===name){return ()=>{const toOT=onto.objectTypes[l[o].objectType],keys=new Set();for(const x of rows())for(const y of linkedHandles(ot,x[ot.primaryKey],l,s))keys.add(String(y.__pk));return objectSet(toOT,{hops:st.hops+1,only:keys})}}}
     throw new Error(ot.name+' 没有 '+name+'()。')
    }
    return undefined
@@ -3100,9 +3162,9 @@ function fnShow(v){
  return String(v)
 }
 /* 执行一个已编译的函数；edit=true 时收集编辑但不写入 */
-function runFunction(meta,rawArgs,onto,{edit=false}={}){
+function runFunction(meta,rawArgs,onto,{edit=false,read=null}={}){
  const t0=performance.now()
- const rt=makeRuntime(onto,{edit:edit&&meta.kind==='edit'})
+ const rt=makeRuntime(onto,{edit:edit&&meta.kind==='edit',read})
  try{
   const Cls=new Function('Objects','Filters','UserFacingError','LocalDate','Timestamp','"use strict";'+meta.js+';return '+meta.cls)(rt.Objects,rt.Filters,UserFacingError,LocalDate,LocalDate)
   const args=meta.inputs.map(inp=>fnArg(inp,rawArgs[inp.name],onto,rt))
@@ -3391,10 +3453,30 @@ function paramExtras(at,p,i){
 }
 
 /* ============ 本地持久化（localStorage） ============ */
-const STORE_KEY='rental-ontology:v2'+(WORKSPACE_ID==='rental'?'':':'+WORKSPACE_ID)
+const practiceId=new URLSearchParams(location.search).get('practice')||''
+const STORE_KEY='rental-ontology:v2'+(WORKSPACE_ID==='rental'?'':':'+WORKSPACE_ID)+(WORKSPACE_ID==='builder'&&/^[A-Za-z0-9_-]{1,80}$/.test(practiceId)?':practice:'+practiceId:'')
 let persistTimer=null,storeWarned=false
+function packWorkspace(state){
+ const functionCode={},ids=new Map();
+ const packed=JSON.parse(JSON.stringify(state,(key,value)=>{
+  if(key==='js'&&typeof value==='string'){
+   if(!ids.has(value)){const id='code'+ids.size;ids.set(value,id);functionCode[id]=value}
+   return {$functionCodeRef:ids.get(value)}
+  }
+  return value
+ }));
+ return {state:packed,functionCode}
+}
+function unpackWorkspace(data){
+ return JSON.parse(JSON.stringify(data.state),(key,value)=>{
+  if(key==='js'&&value&&typeof value==='object'&&typeof value.$functionCodeRef==='string'){
+   const source=data.functionCode?.[value.$functionCodeRef];if(typeof source!=='string')throw Error('函数运行代码快照不完整。');return source
+  }
+  return value
+ })
+}
 function persist(){
- try{const {ui,...rest}=S;localStorage.setItem(STORE_KEY,JSON.stringify({v:2,route:ROUTE,recent:ui.recent,state:rest}));S.ui.stored=true}
+ try{const {ui,...rest}=S;localStorage.setItem(STORE_KEY,JSON.stringify({v:2,route:ROUTE,recent:ui.recent,...packWorkspace(rest)}));S.ui.stored=true}
  catch(e){S.ui.stored=false;if(!storeWarned){storeWarned=true;toast('浏览器存储不可用或已满，刷新后数据不会保留。',true)}}
 }
 function schedulePersist(){clearTimeout(persistTimer);persistTimer=setTimeout(persist,150)}
@@ -3403,7 +3485,7 @@ function restore(){
   const raw=localStorage.getItem(STORE_KEY);if(!raw)return false
   const d=JSON.parse(raw);if(d?.v!==2||!d.state)return false
   const base=fresh()
-  S={...base,...d.state,ui:{...base.ui,recent:d.recent||[]}}
+  S={...base,...unpackWorkspace(d),ui:{...base.ui,recent:d.recent||[]}}
   ROUTE=d.route||'discover'
   return true
  }catch{return false}
@@ -3453,6 +3535,7 @@ function aipViewPlan(view,read){
  return {root,types,links,columns}
 }
 function aipViewCatalog(read){
+ if(activeAssistant())return []
  const catalog=[]
  for(const view of WORKSPACE.views||[]){
   const plan=aipViewPlan(view,read)
@@ -3529,14 +3612,14 @@ function aipRunView(request,asOf,read){
 function aipReadableLinks(read,ot){
  return linksOf(ot.id,read.onto).flatMap(link=>{
   const from=sideOf(link,ot.id),end=link[other(from)],target=read.types[end.objectType]
-  return target?[{link,from,target,apiName:end.apiName}]:[]
+  return target&&(!read.exposure||read.exposure[ot.id]?.links.includes(link.id+':'+from))?[{link,from,target,apiName:end.apiName}]:[]
  })
 }
 function aipCatalog(read){
  return Object.values(read.types).map(ot=>({
-  apiName:ot.apiName,name:ot.name,
-  properties:readableProperties(ot).map(p=>({apiName:p.apiName,name:p.name,type:p.baseType})),
-  links:aipReadableLinks(read,ot).map(({apiName,target})=>({apiName,to:target.apiName}))
+  apiName:ot.apiName,name:ot.name,description:ot.description||'',primaryKey:pkProp(ot)?.apiName,
+  properties:readableProperties(ot).map(p=>({apiName:p.apiName,name:p.name,type:p.baseType,description:p.description||''})),
+  links:aipReadableLinks(read,ot).map(({apiName,target,link,from})=>({apiName,name:link[other(from)].displayName||apiName,from:ot.apiName,to:target.apiName,cardinality:cardOf(link,other(from)),description:link.description||'',direction:from+'→'+other(from)}))
  }))
 }
 function aipActionCondition(conditions,mode,ctx){
@@ -3552,38 +3635,51 @@ function aipActionCondition(conditions,mode,ctx){
  if(mode==='none')return values.includes(true)?false:values.includes(null)?null:true
  return values.includes(false)?false:values.includes(null)?null:true
 }
-const aipAgentPolicy=at=>({...WORKSPACE.actions?.[at.id],...at.agent})
+const aipAgentPolicy=at=>activeAssistant()?{enabled:!!activeAssistant().config.actions[at.id]}:({...WORKSPACE.actions?.[at.id],...at.agent,...(S.aipConfig?.actions&&Object.hasOwn(S.aipConfig.actions,at.id)?{enabled:S.aipConfig.actions[at.id]}:{})})
 function aipActionType(read,apiName){
  if(!Object.hasOwn(USERS,read.user))return null
  const matches=Object.values(read.onto.actionTypes).filter(at=>at.apiName===apiName)
  if(matches.length!==1)return null
  const [at]=matches
- if(!aipAgentPolicy(at).enabled||!read.types[at.objectType])return null
- if(at.parameters.some(p=>p.type==='Object reference'&&!read.types[p.objectType]))return null
+ if(!aipAgentPolicy(at).enabled||aipActionScopeErrors(at,{types:read.exposure},read.onto).length)return null
  return aipActionCondition(at.criteria,at.criteriaMode,{at,vals:{},onto:read.onto})!==false?at:null
 }
 function aipActionCatalog(read){
  return Object.values(read.onto.actionTypes).filter(at=>aipActionType(read,at.apiName)===at).map(at=>{
   const policy=aipAgentPolicy(at)
   const effects=at.rules.map(rule=>{
+   if(LINK_RULES.includes(rule.type)){const l=read.onto.linkTypes[rule.linkType];return {operation:rule.type,link:l?.b.apiName,from:read.types[l?.a.objectType]?.apiName,to:read.types[l?.b.objectType]?.apiName,aParameter:rule.aParam,bParameter:rule.bParam}}
+   if(rule.type==='function'){
+    const f=fnResolve(rule)
+    return {operation:'function',functionId:rule.fn,version:f?.version,objectTypes:f?.meta.edits||[],inputs:rule.inputs,confirmationRequired:true}
+   }
+   if(IFACE_RULES.includes(rule.type)||INTERFACE_LINK_RULES.includes(rule.type)){
+    return {operation:rule.type,interface:read.onto.interfaces[rule.interface]?.apiName,properties:(rule.mappings||[]).map(m=>m.prop),constraint:rule.constraint,
+     implementations:aipInterfaceImpls(at,rule.interface,read).map(ot=>({objectType:ot.apiName,propertyMapping:Object.fromEntries(Object.entries(ot.interfaces.find(i=>i.iface===rule.interface).mapping).map(([key,id])=>[key,propOf(ot,id)?.apiName]).filter(([,api])=>api))}))}
+   }
    const target=read.types[rule.objectType]
    const fields=target?readableProperties(target):[]
    return {operation:rule.type,objectType:target?.apiName,
     properties:(rule.mappings||[]).flatMap(m=>fields.filter(p=>p.id===m.prop).map(p=>p.apiName))}
   })
-  return {apiName:at.apiName,name:at.name,...(policy.intent?{intent:policy.intent}:{}),effects,
-   description:at.description,replacementParameter:policy.replacementParameter||'',
+  return {apiName:at.apiName,name:at.name,objectType:read.types[at.objectType]?.apiName,...(policy.intent?{intent:policy.intent}:{}),effects,
+   description:assistantToolDescription(at,activeAssistant()?.config),replacementParameter:policy.replacementParameter||'',
    parameters:effectiveParams(at,{},read.onto).filter(p=>!p.hidden).map(p=>{
     const type=read.types[p.objectType]
     const path=policy.lookup?.[p.id]?.link
     const via=type&&path&&aipReadableLinks(read,type).find(l=>l.apiName===path)
-    return {name:p.id,label:p.name,type:type?.apiName||p.type,required:p.required,
+    const impls=['Interface reference','Object type'].includes(p.type)?aipInterfaceImpls(at,p.interface,read):null
+    return {name:p.id,label:p.name,type:type?.apiName||p.type,required:p.required,multiple:!!p.multiple,
+     ...(impls?{interface:read.onto.interfaces[p.interface]?.apiName,allowedTypes:impls.map(t=>({apiName:t.apiName,name:t.name,referencePrefix:t.id,primaryKey:pkProp(t)?.apiName})),valueFormat:p.type==='Interface reference'?'referencePrefix:对象主键；先查询具体对象，不要猜测主键。':'具体 Object Type 的 API name'}:{}),
+     ...(p.constraint==='choice'?{allowedValues:splitList(p.options)}:{}),
      ...(via?{lookupVia:{link:via.apiName,objectType:via.target.apiName,label:via.target.name}}:{})}
    })}
  })
 }
 function aipActionOptions(at,p,read,vals,excluded){
  const eligible=paramChoices(at,p,vals,read.onto)
+ if(p.type==='Object type')return aipInterfaceImpls(at,p.interface,read).map(ot=>ot.id)
+ if(p.type==='Interface reference')return aipInterfaceImpls(at,p.interface,read).flatMap(ot=>read.objects(ot.id).map(o=>irefOf(ot.id,o[ot.primaryKey])))
  if(p.type!=='Object reference')return eligible
  const objType=read.types[p.objectType]
  if(!objType)return []
@@ -3622,8 +3718,8 @@ function aipDraftOptions(proposal,at,read){
 }
 function aipRefreshProposal(proposal,at,read){
  proposal.fields=effectiveParams(at,proposal.vals,read.onto).filter(p=>!p.hidden&&proposal.vals[p.id]!==undefined).map(p=>{
-  const value=proposal.vals[p.id],ot=read.types[p.objectType]
-  const obj=ot&&read.objects(ot.id).find(r=>String(r[ot.primaryKey])===String(value))
+  const value=proposal.vals[p.id],ref=p.type==='Interface reference'?parseIref(value):null,ot=read.types[ref?.ot||p.objectType]
+  const obj=ot&&read.objects(ot.id).find(r=>String(r[ot.primaryKey])===String(ref?.pk||value))
   return {id:p.id,name:p.name,value:obj?aipRecord(ot,obj).label+' · '+value:String(value)}
  })
  proposal.choices=aipDraftOptions(proposal,at,read)
@@ -3651,6 +3747,20 @@ function aipMakeActionProposal(action,question,read,conversation){
   const chineseDate=p.type==='Date'&&aipDate(value)?year+'年'+Number(month)+'月'+Number(day)+'日':''
   const mentioned=source.includes(aipNormalize(value).replace(/\s+/g,''))||(chineseDate&&source.includes(chineseDate))
   const focus=conversation.focus
+  if(p.type==='Object type'){
+   const target=aipInterfaceImpls(at,p.interface,read).find(t=>[t.id,t.apiName,t.name].includes(value))
+   if(target&&(mentioned||source.includes(aipNormalize(target.name))))aipSetActionValue(at,vals,p.id,target.id)
+   continue
+  }
+  if(p.type==='Interface reference'){
+   const ref=parseIref(value),impls=aipInterfaceImpls(at,p.interface,read)
+   const matches=impls.flatMap(t=>ref?(ref.ot===t.id?read.objects(t.id).filter(o=>String(o[t.primaryKey])===ref.pk).map(o=>({t,o})):[]):aipFindObjects(read,t,value).map(o=>({t,o})))
+   const match=matches.length===1?matches[0]:null
+   if(match&&(mentioned||(ref&&source.includes(aipNormalize(ref.pk)))||(focus?.type===match.t.apiName&&String(focus.id)===String(match.o[match.t.primaryKey])))){
+    aipSetActionValue(at,vals,p.id,irefOf(match.t.id,match.o[match.t.primaryKey]));resolution.push({field:p.name,record:aipRecord(match.t,match.o)})
+   }else warnings.push('请在表单中选择'+p.name+'。')
+   continue
+  }
   const refType=read.types[p.objectType]
   const focusLink=refType&&aipReadableLinks(read,refType).find(l=>l.apiName===aipAgentPolicy(at).lookup?.[p.id]?.link)
   const fromFocus=focus&&(refType?.apiName===focus.type||focusLink?.target.apiName===focus.type)&&[focus.id,focus.name].some(entry=>aipNormalize(entry)===aipNormalize(value))
@@ -3666,8 +3776,8 @@ function aipMakeActionProposal(action,question,read,conversation){
   }
  }
  for(const p of visible){
-  if(p.type!=='Object reference'||!vals[p.id])continue
-  if(!read.objects(p.objectType).some(obj=>String(obj[read.types[p.objectType].primaryKey])===String(vals[p.id]))){
+  if(!['Object reference','Interface reference','Object type'].includes(p.type)||!vals[p.id])continue
+  if(!aipActionOptions(at,p,read,vals,excluded).includes(String(vals[p.id]))){
    aipSetActionValue(at,vals,p.id,undefined)
    warnings.push(p.name+'需要重新选择。')
   }
@@ -3684,7 +3794,7 @@ function aipMakeActionProposal(action,question,read,conversation){
 function retainAipDraft(modal){
  const draft=modal?.aipProposal
  if(!draft||draft.submitted||S.ui.aip?.pending!==draft||S.ui.aip.user!==S.user)return
- const read=ontologyReadScope(),at=aipActionType(read,draft.apiName)
+ const read=aipReadScope(),at=aipActionType(read,draft.apiName)
  if(!at||at.id!==draft.id||at.version!==draft.version)return
  draft.vals=Object.fromEntries(effectiveParams(at,modal.vals,read.onto)
   .filter(p=>!p.hidden&&modal.vals[p.id]!==''&&modal.vals[p.id]!=null).map(p=>[p.id,modal.vals[p.id]]))
@@ -3696,12 +3806,21 @@ function recordAipSubmission(modal,at){
  turn.proposal.submitted=true
  aip.pending=null
  turn.message='已提交「'+at.name+'」。'
- const read=ontologyReadScope()
+ const read=aipReadScope()
  const records=modal.result.edits.flatMap(edit=>{
   const ot=read.types[edit.ot]
   return ot&&edit.after?[aipRecord(ot,edit.after)]:[]
  })
  aip.lastAction={apiName:at.apiName,name:at.name,records}
+ turn.receipt=modal.result.edits.flatMap(edit=>{
+  if(LINK_RULES.includes(edit.type)){
+   const link=read.onto.linkTypes[edit.link||edit.linkType]
+   if(link)return [{object:edit.a+' ↔ '+edit.b,field:link.b.displayName,before:edit.type==='createLink'?'未关联':'已关联',after:edit.type==='createLink'?'已关联':'未关联'}]
+  }
+  const ot=read.types[edit.ot];if(!ot)return []
+  return readableProperties(ot).filter(p=>String(edit.before?.[p.id]??'')!==String(edit.after?.[p.id]??'')).map(p=>({object:ot.name+' · '+edit.pk,field:p.name,before:String(edit.before?.[p.id]??'—'),after:String(edit.after?.[p.id]??'—')}))
+ })
+ turn.records=records
  turn.steps.push({title:'用户确认并提交 Action',tool:at.apiName,detail:'已提交 '+modal.result.edits.length+' 项变更。',records})
 }
 function aipConversation(aip){
@@ -3741,49 +3860,48 @@ function aipFilters(ot,filters,asOf){
  })
 }
 function aipOntologyQuery(query,asOf,read){
- const ot=aipType(read,query?.objectType)
- if(!ot)throw Error('当前用户的可读范围内没有这个对象类型。')
- if(!['count','list'].includes(query.mode))throw Error('请选择统计或列表查询。')
+ let ot=aipType(read,query?.objectType)
+ if(!ot)throw Error('该 Object Type 未向助手开放。')
+ if(!['count','list'].includes(query.mode))throw Error('查询模式无效。')
  const conditions=aipFilters(ot,query.filters,asOf)
- const fields=readableProperties(ot)
- if(!Array.isArray(query.properties)||query.properties.length>8)throw Error('返回属性参数无效。')
- const selected=query.properties.map(apiName=>{
-  const p=fields.find(p=>p.apiName===apiName)
-  if(!p)throw Error('当前用户的可读范围内没有这个返回属性。')
-  return p
- })
- const distinct=new Map()
- for(const obj of read.objects(ot.id)){
-  const pk=obj[ot.primaryKey]
-  if(pk!=null&&String(pk)!=='')distinct.set(String(pk),obj)
+ const unique=(type,rows)=>[...new Map(rows.filter(obj=>obj[type.primaryKey]!=null&&String(obj[type.primaryKey])!=='').map(obj=>[String(obj[type.primaryKey]),obj])).values()]
+ let rows=unique(ot,read.objects(ot.id)).filter(obj=>conditions.every(f=>f.match(obj)))
+ const steps=[{title:'定位查询起点',tool:ot.apiName,detail:(conditions.map(f=>f.text).join(' 且 ')||'已开放范围')+' · 匹配 '+rows.length+' 个',records:[]}]
+ const resolve=step=>{
+  const matches=aipReadableLinks(read,ot).filter(l=>l.apiName===step?.link)
+  if(matches.length!==1)throw Error('Link 未开放或方向不明确。')
+  return {...matches[0],filters:aipFilters(matches[0].target,step.filters,asOf)}
  }
- let rows=[...distinct.values()].filter(obj=>conditions.every(f=>f.match(obj)))
- const steps=[{
-  title:'读取当前用户可见对象',tool:ot.apiName,
-  detail:USERS[read.user].name+' · 可读范围包含 '+distinct.size+' 个'+ot.name+'对象'+
-   (conditions.length?' · '+conditions.map(f=>f.text).join(' 且 ')+' · 匹配 '+rows.length+' 个':''),
-  records:[]
- }]
  if(query.related!=null){
-  const matches=aipReadableLinks(read,ot).filter(l=>l.apiName===query.related.link)
-  if(matches.length!==1)throw Error('当前用户的可读范围内无法确定这条关联。')
-  const {target,link,from,apiName}=matches[0]
-  const relatedFilters=aipFilters(target,query.related.filters,asOf)
-  rows=rows.filter(obj=>linkedObjects(link,from,obj,read.onto,read.objects).some(related=>relatedFilters.every(f=>f.match(related))))
-  steps.push({title:'按关联对象筛选',tool:ot.apiName+'.'+apiName,
-   detail:'至少有一条关联'+target.name+(relatedFilters.length?'满足 '+relatedFilters.map(f=>f.text).join(' 且 '):'')+' · 匹配 '+rows.length+' 个'+ot.name,records:[]})
+  const {target,link,from,apiName,filters}=resolve(query.related)
+  rows=rows.filter(obj=>linkedObjects(link,from,obj,read.onto,read.objects).some(other=>filters.every(f=>f.match(other))))
+  steps.push({title:'按关联对象筛选起点',tool:ot.apiName+'.'+apiName,detail:'关联'+target.name+'满足条件 · 保留 '+rows.length+' 个'+ot.name,records:[]})
  }
+ const path=query.traverse??[]
+ if(!Array.isArray(path)||path.length>3)throw Error('最多支持三跳查询。')
+ for(const step of path){
+  const {target,link,from,apiName,filters}=resolve(step),previous=ot
+  rows=unique(target,rows.flatMap(obj=>linkedObjects(link,from,obj,read.onto,read.objects))).filter(obj=>filters.every(f=>f.match(obj)))
+  ot=target
+  steps.push({title:'Search Around → '+ot.name,tool:previous.apiName+'.'+apiName,
+   detail:previous.name+' → '+ot.name+' · '+(filters.map(f=>f.text).join(' 且 ')||'沿已配置关系')+' · 去重后 '+rows.length+' 个',records:[]})
+ }
+ if(!Array.isArray(query.properties)||query.properties.length>8)throw Error('返回属性参数无效。')
+ const selected=query.properties.map(name=>{const p=readableProperties(ot).find(p=>p.apiName===name);if(!p)throw Error('结果属性未向助手开放。');return p})
+ const offset=query.offset??0,limit=query.limit??15
+ if(!Number.isInteger(offset)||offset<0||offset>10000||!Number.isInteger(limit)||limit<1||limit>50)throw Error('分页参数无效。')
+ rows.sort((a,b)=>String(a[ot.primaryKey]).localeCompare(String(b[ot.primaryKey])))
  const counted=query.mode==='count'
- const records=counted?[]:rows.slice(0,15).map(obj=>{
-  const attributes=selected.map(p=>({name:p.name,value:String(obj[p.id]??'').slice(0,100)}))
+ const records=counted?[]:rows.slice(offset,offset+limit).map(obj=>{
+  const attributes=selected.map(p=>({apiName:p.apiName,name:p.name,value:String(obj[p.id]??'').slice(0,120)}))
   return {...aipRecord(ot,obj,attributes.map(p=>p.name+' '+p.value).join(' · ')),attributes}
  })
- const basis=[...conditions.map(f=>f.text),...steps.slice(1).map(s=>s.detail)].join(' · ')||'当前用户可见的全部'+ot.name
- const aggregate={mode:query.mode,objectType:ot.apiName,label:ot.name,total:rows.length,basis}
- const message='当前用户可查到 '+rows.length+' 个符合条件的'+ot.name+'对象。'
- steps.push({title:counted?'统计查询结果':'列出查询结果',tool:ot.apiName,detail:message+
-  (!counted&&rows.length>records.length?' · 显示前 '+records.length+' 个':''),records})
- return {message,aggregate,records,steps,leases:[],candidates:[]}
+ const basis=steps.map(s=>s.tool+'：'+s.detail).join('；')
+ const aggregate={mode:query.mode,objectType:ot.apiName,label:ot.name,total:rows.length,basis,offset,limit,
+  returned:records.length,nextOffset:!counted&&offset+records.length<rows.length?offset+records.length:null}
+ const message='查到 '+rows.length+' 个符合条件的'+ot.name+'对象。'+(!counted?'本页返回 '+records.length+' 个。':'')
+ steps.push({title:counted?'统计结果':'返回本页结果',tool:ot.apiName,detail:message,records})
+ return {message,aggregate,records,steps,candidates:[],...(rows.length===1?{focus:{type:ot.apiName,id:String(rows[0][ot.primaryKey]),name:aipRecord(ot,rows[0]).label}}:{})}
 }
 async function aipRequest(path,data){
  if(location.protocol!=='http:'&&location.protocol!=='https:')throw Error('请从本地工作台服务打开 AIP 面板。')
@@ -3797,10 +3915,10 @@ async function aipRequest(path,data){
  return result
 }
 async function checkAipConnection(){
- if(aipConnection!==null||route()[0]!=='aip')return
+ if(aipConnection!==null||!['aip','aip-agents','build'].includes(route()[0]))return
  aipConnection={checking:true}
  try{aipConnection=await aipRequest('config')}catch(error){aipConnection={error:error.message}}
- if(route()[0]==='aip')render()
+ if(['aip','aip-agents','build'].includes(route()[0]))render()
 }
 function aipResultForModel(result,asOf){
  if(result.aggregate)return {
@@ -3817,68 +3935,71 @@ async function submitAip(question,selectedLookup,asOf=aipState().asOf){
  question=question.trim()
  const aip=aipState()
  if(!question||aip.busy)return
- const turn={question,asOf,message:'等待模型选择工具…',steps:[],candidates:[],records:[]}
+ const turn={question,asOf,message:'等待模型选择工具…',steps:[],calls:[],candidates:[],records:[]}
  aip.turns.push(turn)
  if(aip.turns.length>15)aip.turns.shift()
- aip.selected=aip.turns.length-1
- aip.busy=true
- render()
- focusAipReply()
+ aip.selected=aip.turns.length-1;aip.busy=true
+ render();focusAipReply()
  try{
   if(!aipDate(asOf))throw Error('请选择有效的查询日期。')
-  const scope=ontologyReadScope()
-  const plan=await aipRequest('plan',{question,asOf,selectedLookup,
-   workspace:{name:WORKSPACE.name},conversation:aipConversation(aip),
-   objectTypes:aipCatalog(scope),views:aipViewCatalog(scope),actions:aipActionCatalog(scope)})
+  const scope=aipReadScope()
+  let plan=await aipRequest('plan',{question,asOf,selectedLookup,
+   workspace:{name:WORKSPACE.name},agent:activeAssistant()?{name:activeAssistant().name,instructions:activeAssistant().instructions,version:S.aipAgents[S.activeAgent].version}:null,conversation:aipConversation(aip),
+   objectTypes:aipCatalog(scope),views:aipViewCatalog(scope),actions:aipActionCatalog(scope),functions:aipFunctionCatalog(scope),toolGuidance:aipToolGuidance(),retrievalContext:aipRetrievalContext(scope)})
   if(S.ui.aip!==aip||S.user!==aip.user)return
-  turn.model=plan.model
-  if(plan.tool==='prepare_action'){
-   const read=ontologyReadScope(),proposal=aipMakeActionProposal(plan.action,question,read,aip)
-   if(aip.pending) aip.pending.superseded=true
-   aip.pending=proposal
-   turn.proposal=proposal
-   turn.message=proposal.mode==='revise'?'已更新「'+proposal.name+'」草稿，原有的其他参数已保留。':'已准备「'+proposal.name+'」草稿。请核对参数后提交。'
-   turn.steps.push({title:proposal.mode==='revise'?'修改待确认草稿':'模型准备 Action',tool:proposal.apiName,detail:USERS[read.user].name+' · 等待用户确认',records:[]})
-   for(const target of proposal.resolution)turn.steps.push({title:'定位'+target.field,tool:target.via||target.record.typeId,
-    detail:'已匹配 '+target.record.id,records:[target.record]})
-   return
+  turn.modelContext=plan.initialContext;turn.toolDefinitions=plan.tools
+  for(let n=0;n<=8;n++){
+   if(S.ui.aip!==aip||S.user!==aip.user)return
+   turn.model=plan.model
+   if(plan.tool==='prepare_action'){
+    const proposal=aipMakeActionProposal(plan.action,question,aipReadScope(),aip)
+    if(aip.pending)aip.pending.superseded=true
+    aip.pending=proposal;turn.proposal=proposal
+    turn.message=proposal.mode==='revise'?'已更新「'+proposal.name+'」草稿，请核对后提交。':'已准备「'+proposal.name+'」草稿，请核对后提交。'
+    turn.calls.push({tool:plan.tool,arguments:plan.action,result:{status:'awaiting_confirmation'}})
+    turn.steps.push({title:'准备 Action，等待确认',tool:proposal.apiName,detail:'尚未提交业务变更',records:[]})
+    for(const target of proposal.resolution)turn.steps.push({title:'定位'+target.field,tool:target.via||target.record.typeId,detail:'已匹配 '+target.record.id,records:[target.record]})
+    return
+   }
+   if(!plan.toolId){
+    turn.message=plan.answer||'本轮已结束。'
+    turn.steps.push({title:plan.limited?'达到调用上限':'模型生成回答',tool:plan.model,detail:plan.limited?'可缩小问题后继续查询。':'根据已提供上下文和工具结果回答。',records:[]})
+    return
+   }
+   const args=plan.query||plan.view||plan.discovery||plan.functionCall||plan.request
+   let output=plan.result
+   turn.steps.push({title:'模型请求工具',tool:plan.tool,detail:JSON.stringify(args),records:[]})
+   if(output){
+    turn.steps.push({title:output.error?'请求未执行':output.kind==='action_catalog'?'返回候选 Action':'读取结构定义',tool:plan.tool,
+     detail:output.error||(output.kind==='action_schema'?output.action.name+' · '+output.action.parameters.length+' 个参数 · '+output.action.description:output.kind==='schema'?output.objectType.name+' · '+output.objectType.properties.length+' 个属性 · '+output.objectType.links.length+' 个方向 Link':'找到 '+output.total+' 个'+(output.kind==='action_catalog'?' Action':'类型')+'；本页 '+output.items.length+' 个：'+output.items.map(item=>item.name).join('、')),records:[]})
+   }else{
+    try{
+     if(plan.tool==='call_function'){
+      output=aipRunFunction(plan.functionCall,aipReadScope())
+      turn.steps.push({title:'执行只读 Function',tool:output.functionId,detail:'v'+output.version+' · 返回 '+JSON.stringify(output.value),records:[]})
+     }else{
+     const read=aipReadScope(),result=plan.tool==='query_ontology'?aipOntologyQuery(plan.query,asOf,read):aipRunView(plan.view,asOf,read)
+     const {steps,...rest}=result;Object.assign(turn,rest);turn.steps.push(...steps)
+     if(result.focus)aip.focus=result.focus
+     output=aipResultForModel(result,asOf)
+     if(result.candidates.length){turn.calls.push({tool:plan.tool,arguments:args,result:output});return}
+     }
+    }catch(error){output={error:error.message};turn.steps.push({title:'查询被拒绝',tool:plan.tool,detail:error.message,records:[]})}
+   }
+   turn.calls.push({tool:plan.tool,arguments:args,result:output})
+   turn.message='已完成 '+turn.calls.length+' 次工具调用，模型正在判断下一步…'
+   if(route()[0]==='aip')render()
+   plan=await aipRequest('answer',{toolId:plan.toolId,result:output})
   }
-  if(!plan.toolId){
-   turn.message=plan.answer
-   return
-  }
-  const read=ontologyReadScope()
-  const generic=plan.tool==='query_ontology'
-  const result=generic?aipOntologyQuery(plan.query,asOf,read):aipRunView(plan.view,asOf,read)
-  Object.assign(turn,result)
-  turn.steps.unshift({
-   title:generic?'模型调用 Ontology 查询工具':'模型运行配置的查询视图',tool:plan.tool,
-   detail:plan.model+(generic?' · 对象类型 '+result.aggregate.objectType:' · 查找 '+plan.view.lookup)+' · 查询日 '+asOf,records:[]
-  })
-  if(result.focus)aip.focus=result.focus
-  if(result.candidates.length)return
-  turn.message='查询完成，模型正在整理回答…'
-  if(route()[0]==='aip')render()
-  try{
-   const reply=await aipRequest('answer',{toolId:plan.toolId,result:aipResultForModel(result,asOf)})
-   turn.message=reply.answer
-   turn.steps.push({title:'模型根据查询结果回答',tool:reply.model,detail:'模型根据工作台返回的查询结果生成回答。',records:[]})
-  }catch(error){
-   turn.message=result.message
-   turn.error='对象查询已完成。模型回答失败：'+error.message
-  }
- }catch(error){
-  turn.message='这次请求未完成。'
-  turn.error=error.message
- }finally{
+  throw Error('已达到本轮调用上限。')
+ }catch(error){turn.message=turn.records.length?'查询已返回部分结果，后续处理未完成。':'这次请求未完成。';turn.error=error.message}
+ finally{
   aip.busy=false
-  if(S.ui.aip===aip&&S.user===aip.user&&route()[0]==='aip'){
-   render()
-   focusAipReply()
-  }
+  if(S.ui.aip===aip&&S.user===aip.user&&route()[0]==='aip'){render();focusAipReply()}
  }
 }
 function aipSamplePlan(){
+ if(activeAssistant()||WORKSPACE_ID==='builder')return null
  if(diff().length)return null
  const onto=C()
  if(Object.values(onto).every(group=>!Object.keys(group).length)&&!S.logs.length&&!Object.keys(S.edits).length){
@@ -3946,15 +4067,16 @@ function renderAipTurn(turn,index,selected,busy){
   turn.view.excludedTotal+' 条</strong><ul>'+turn.view.excluded.map(({record})=>
    '<li>'+aipObjectLink(record)+' · '+esc(record.detail)+'</li>').join('')+'</ul></div>':''
  return '<article class="aip-turn"><div class="aip-question">'+esc(turn.question)+'</div><div class="aip-reply">'+
-  '<p class="aip-message">'+esc(turn.message)+'</p>'+(turn.error?'<p class="aip-model-error" role="alert">'+esc(turn.error)+'</p>':'')+renderAipProposal(turn.proposal,index,busy)+aggregate+records+(viewRows?'<ul>'+viewRows+'</ul>':'')+excluded+
+  '<p class="aip-message">'+esc(turn.message)+'</p>'+(turn.error?'<p class="aip-model-error" role="alert">'+esc(turn.error)+'</p>':'')+renderAipProposal(turn.proposal,index,busy)+renderAipReceipt(turn)+aggregate+records+(viewRows?'<ul>'+viewRows+'</ul>':'')+excluded+
   '<div class="aip-turn-tools">'+controls+B('aipTrace',index===selected?'正在查看轨迹':'查看轨迹','small',index,'aria-pressed="'+(index===selected)+'"')+'</div></div></article>'
 }
 function pageAip(){
+ if(WORKSPACE_ID==='builder'&&!activeAssistant())return pageAssistantBuilder()
  const aip=aipState(),turn=aip.turns[aip.selected],plan=aipSamplePlan()
- const actions=aipActionCatalog(ontologyReadScope()),canPrepare=actions.length>0
+ const actions=aipActionCatalog(aipReadScope()),canPrepare=actions.length>0
  const disabled=aip.busy?'disabled':''
  const modelLabel=aipConnection?.configured?aipConnection.model+(canPrepare?' · 操作需确认':' · 只读'):aipConnection?.checking||!aipConnection?'正在检查模型配置':'模型服务未配置'
- const examples=WORKSPACE.examples.filter(example=>(!example.action||actions.some(action=>action.apiName===example.action))&&(!example.whenDraft||aip.pending))
+ const examples=(activeAssistant()?[]:WORKSPACE.examples).filter(example=>(!example.action||actions.some(action=>action.apiName===example.action))&&(!example.whenDraft||aip.pending))
  const workspaces=Object.entries(AGENT_WORKSPACES).filter(([id])=>id!==WORKSPACE_ID).map(([id,w])=>
   '<a href="?workspace='+encodeURIComponent(id)+'#/aip">'+esc(w.name)+'</a>').join('')
  const sample=plan?'<div class="card aip-ready row spread"><p>'+(plan==='blank'?'样例会加载租赁模型，并为张三签订一份当前有效租约。':'已有租赁模型，样例会为张三签订一份当前有效租约。')+'</p>'+
@@ -3964,8 +4086,8 @@ function pageAip(){
   '<p class="aip-step-detail">'+esc(step.detail)+'</p>'+(step.records.length?'<div class="aip-records">'+step.records.map(record=>
    '<div class="aip-record">'+aipObjectLink(record)+(record.label!==record.id?' <span>'+esc(record.id)+'</span>':'')+(record.detail?' <span>· '+esc(record.detail)+'</span>':'')+'</div>').join('')+'</div>':'')+'</li>').join('')+'</ol>':
   '<div class="aip-empty-trace">'+(turn?'这次没有执行工具。':'发送问题后，这里会显示所用的工具、查询对象和操作状态。')+'</div>'
- return head('AIP · '+esc(WORKSPACE.name),'基于当前 Ontology、角色和对话上下文工作。',workspaces+badge(modelLabel,'gray'))+
-  sample+'<div class="aip-grid"><section class="aip-card" aria-labelledby="aip-chat-heading"><header class="aip-card-head"><div>'+
+ return head('AIP · '+esc(activeAssistant()?.name||WORKSPACE.name),'基于当前 Ontology、角色和对话上下文工作。',workspaces+badge(modelLabel,'gray'))+
+  renderRentalDemo()+sample+renderAipExposure()+'<div class="aip-grid"><section class="aip-card" aria-labelledby="aip-chat-heading"><header class="aip-card-head"><div>'+
   '<h2 id="aip-chat-heading">对话</h2><p>使用已保存的 Ontology 和当前对象数据</p>'+(aipConnection?.error?'<p>'+esc(aipConnection.error)+'</p>':'')+'</div>'+
   '<label class="fld"><span>查询基准日</span><input id="aipAsOf" type="date" value="'+esc(aip.asOf)+'" required form="aipForm"></label></header>'+
   '<div id="aipTranscript" class="aip-transcript" role="log" aria-label="对话记录">'+(aip.turns.length?aip.turns.map((item,i)=>renderAipTurn(item,i,aip.selected,aip.busy)).join(''):
@@ -3975,7 +4097,7 @@ function pageAip(){
   '<div class="aip-input-row"><input id="aipQuestion" aria-label="业务问题" placeholder="输入业务问题…" value="'+esc(aip.draft)+'" autocomplete="off" required maxlength="240"><button type="submit" class="primary" '+disabled+'>'+(aip.busy?'处理中':'发送')+'</button></div>'+
   '<p class="aip-notice">'+(aipConnection?.provider==='codex'?'本机 Codex 使用当前 ChatGPT 登录处理问题和必要的查询结果。':'问题和回答所需的查询结果会发送给模型服务。')+'</p></form></section>'+
   '<section class="aip-card" aria-labelledby="aip-trace-heading"><header class="aip-card-head"><div><h2 id="aip-trace-heading">'+(turn?.proposal?'操作轨迹':'查询轨迹')+'</h2><p>'+
-  (turn?.proposal?'准备草稿 → 用户确认 → 提交 Action':turn?'查询基准日 '+esc(turn.asOf):'当前用户 '+esc(USERS[S.user]?.name))+'</p></div></header>'+trace+'</section></div>'
+  (turn?.proposal?'准备草稿 → 用户确认 → 提交 Action':turn?'查询基准日 '+esc(turn.asOf):'当前用户 '+esc(USERS[S.user]?.name))+'</p></div></header>'+trace+'</section></div>'+renderAipModelContext(turn)
 }
 function focusAipReply(){
  requestAnimationFrame(()=>{
@@ -3986,10 +4108,11 @@ function focusAipReply(){
 }
 Object.assign(ACT,{
  aipExample(text){if(WORKSPACE.examples.some(example=>example.text===text))void submitAip(text)},
+ rentalDemoAsk(text){if(WORKSPACE_ID==='rental-demo')void submitAip(text)},
  aipOpenAction(index){
   const aip=aipState(),proposal=aip.turns[index]?.proposal
   if(!proposal||aip.pending!==proposal||aip.busy)return
-  const read=ontologyReadScope(),at=aipActionType(read,proposal.apiName)
+  const read=aipReadScope(),at=aipActionType(read,proposal.apiName)
   if(!at||at.id!==proposal.id||at.version!==proposal.version)throw Error('当前权限或 Action 配置已变化，请重新发送请求。')
   aip.selected=Number(index)
   openActionForm(proposal.id,'','',proposal.vals)
@@ -4001,7 +4124,7 @@ Object.assign(ACT,{
  aipPickOption(arg){
   const [index,id]=JSON.parse(arg),aip=aipState(),turn=aip.turns[index],proposal=turn?.proposal
   if(!proposal||aip.pending!==proposal||aip.busy)return
-  const read=ontologyReadScope(),at=aipActionType(read,proposal.apiName)
+  const read=aipReadScope(),at=aipActionType(read,proposal.apiName)
   if(!at||at.version!==proposal.version)throw Error('当前权限或 Action 配置已变化。')
   const choices=aipDraftOptions(proposal,at,read),record=choices?.records.find(r=>r.id===id)
   if(!record)throw Error('该选项当前已不可用。')
@@ -4030,13 +4153,22 @@ document.addEventListener('submit',e=>{
  aipState().draft=''
  void submitAip(question)
 })
+installAipExposure()
+installAuthoring()
+installLoftyWorks()
+installLoftyBusiness()
+installLoftyJourney()
+window.addEventListener('popstate',()=>go(location.hash.startsWith('#/')?location.hash.slice(2):WORKSPACE_HOME,false))
+window.addEventListener('hashchange',()=>{const h=location.hash.startsWith('#/')?location.hash.slice(2):WORKSPACE_HOME;if(h!==ROUTE)go(h,false)})
 window.addEventListener('pagehide',persist)
-if(restore())toast('已恢复上次的工作区。')
+if(restore()){if(WORKSPACE_ID==='loftyworks')upgradeLoftyWorks();toast('已恢复上次的工作区。')}
 else loadConfiguredWorkspace()
 document.title=WORKSPACE.name+' · Ontology Lab'
 if(location.hash.startsWith('#/'))ROUTE=location.hash.slice(2)
+else if(WORKSPACE_ID==='uk-lettings')ROUTE=WORKSPACE_HOME
 render()
 void checkAipConnection()
+restoreUkIntegration()
 </script>
 </body>
 </html>

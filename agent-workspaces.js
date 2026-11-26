@@ -151,3 +151,421 @@ const AGENT_WORKSPACES = {
     }]
   }
 }
+
+// Synthetic UK lettings exports: order, transfer instruction, and client-account statement.
+AGENT_WORKSPACES['uk-lettings'] = {
+  "name": "英国租赁 · 跨系统入账核验",
+  "types": [
+    {
+      "id": "RentalOrder",
+      "apiName": "RentalOrder",
+      "name": "租赁订单",
+      "primaryKey": "order_id",
+      "title": "order_id",
+      "description": "租赁系统导出的订单",
+      "properties": [
+        [
+          "order_id",
+          "order_id",
+          "String"
+        ],
+        [
+          "agency_account",
+          "agency_account",
+          "String"
+        ],
+        [
+          "client_account",
+          "client_account",
+          "String"
+        ],
+        [
+          "landlord",
+          "landlord",
+          "String"
+        ],
+        [
+          "landlord_account",
+          "landlord_account",
+          "String"
+        ],
+        [
+          "amount_pence",
+          "amount_pence",
+          "Integer"
+        ],
+        [
+          "currency",
+          "currency",
+          "String"
+        ],
+        [
+          "status",
+          "status",
+          "String"
+        ],
+        [
+          "uploaded_by",
+          "uploaded_by",
+          "String"
+        ],
+        [
+          "upload_id",
+          "upload_id",
+          "String"
+        ],
+        [
+          "created_at",
+          "created_at",
+          "String"
+        ]
+      ],
+      "rows": [
+        [
+          "ORD-001",
+          "AGENCY-GBP-01",
+          "CLIENT-GBP-01",
+          "Alder Homes",
+          "LANDLORD-01",
+          78000,
+          "GBP",
+          "Pending",
+          "agency.ops",
+          "UPLOAD-1",
+          "2026-10-08T08:01:00Z"
+        ],
+        [
+          "ORD-002",
+          "AGENCY-GBP-01",
+          "CLIENT-GBP-01",
+          "Birch Homes",
+          "LANDLORD-02",
+          62500,
+          "GBP",
+          "Pending",
+          "agency.ops",
+          "UPLOAD-2",
+          "2026-10-08T08:01:00Z"
+        ],
+        [
+          "ORD-003",
+          "AGENCY-GBP-01",
+          "CLIENT-GBP-01",
+          "Cedar Homes",
+          "LANDLORD-03",
+          91000,
+          "GBP",
+          "Pending",
+          "agency.ops",
+          "UPLOAD-3",
+          "2026-10-08T08:01:00Z"
+        ]
+      ]
+    },
+    {
+      "id": "TransferInstruction",
+      "apiName": "TransferInstruction",
+      "name": "支付指令",
+      "primaryKey": "transfer_id",
+      "title": "transfer_id",
+      "description": "用订单号和支付参考号连接租赁系统与银行流水",
+      "properties": [
+        [
+          "transfer_id",
+          "transfer_id",
+          "String"
+        ],
+        [
+          "order_id",
+          "order_id",
+          "String"
+        ],
+        [
+          "purpose",
+          "purpose",
+          "String"
+        ],
+        [
+          "from_account",
+          "from_account",
+          "String"
+        ],
+        [
+          "to_account",
+          "to_account",
+          "String"
+        ],
+        [
+          "amount_pence",
+          "amount_pence",
+          "Integer"
+        ],
+        [
+          "currency",
+          "currency",
+          "String"
+        ],
+        [
+          "submitted_at",
+          "submitted_at",
+          "String"
+        ]
+      ],
+      "rows": [
+        [
+          "REF-1-IN",
+          "ORD-001",
+          "IN",
+          "AGENCY-GBP-01",
+          "CLIENT-GBP-01",
+          78000,
+          "GBP",
+          "2026-10-08T08:00:00Z"
+        ],
+        [
+          "REF-1-OUT",
+          "ORD-001",
+          "OUT",
+          "CLIENT-GBP-01",
+          "LANDLORD-01",
+          78000,
+          "GBP",
+          "2026-10-08T09:00:00Z"
+        ],
+        [
+          "REF-2-IN",
+          "ORD-002",
+          "IN",
+          "AGENCY-GBP-01",
+          "CLIENT-GBP-01",
+          62500,
+          "GBP",
+          "2026-10-08T08:00:00Z"
+        ],
+        [
+          "REF-2-OUT",
+          "ORD-002",
+          "OUT",
+          "CLIENT-GBP-01",
+          "LANDLORD-02",
+          62500,
+          "GBP",
+          "2026-10-08T09:00:00Z"
+        ],
+        [
+          "REF-2-REFUND",
+          "ORD-002",
+          "REFUND",
+          "CLIENT-GBP-01",
+          "AGENCY-GBP-01",
+          62500,
+          "GBP",
+          "2026-10-08T10:45:00Z"
+        ],
+        [
+          "REF-3-IN",
+          "ORD-003",
+          "IN",
+          "AGENCY-GBP-01",
+          "CLIENT-GBP-01",
+          91000,
+          "GBP",
+          "2026-10-08T08:00:00Z"
+        ],
+        [
+          "REF-3-OUT",
+          "ORD-003",
+          "OUT",
+          "CLIENT-GBP-01",
+          "LANDLORD-03",
+          91000,
+          "GBP",
+          "2026-10-08T09:00:00Z"
+        ]
+      ]
+    },
+    {
+      "id": "BankStatementLine",
+      "apiName": "BankStatementLine",
+      "name": "客户账户银行流水",
+      "primaryKey": "line_id",
+      "title": "line_id",
+      "description": "银行系统导出的客户账户流水",
+      "properties": [
+        [
+          "line_id",
+          "line_id",
+          "String"
+        ],
+        [
+          "account_id",
+          "account_id",
+          "String"
+        ],
+        [
+          "counterparty_account",
+          "counterparty_account",
+          "String"
+        ],
+        [
+          "signed_pence",
+          "signed_pence",
+          "Integer"
+        ],
+        [
+          "currency",
+          "currency",
+          "String"
+        ],
+        [
+          "bank_ref",
+          "bank_ref",
+          "String"
+        ],
+        [
+          "posted_at",
+          "posted_at",
+          "String"
+        ],
+        [
+          "booking_date_uk",
+          "booking_date_uk",
+          "String"
+        ],
+        [
+          "return_of",
+          "return_of",
+          "String"
+        ]
+      ],
+      "rows": [
+        [
+          "ST-1-IN",
+          "CLIENT-GBP-01",
+          "AGENCY-GBP-01",
+          78000,
+          "GBP",
+          "REF-1-IN",
+          "2026-10-08T08:15:00Z",
+          "2026-10-08",
+          ""
+        ],
+        [
+          "ST-2-IN",
+          "CLIENT-GBP-01",
+          "AGENCY-GBP-01",
+          62500,
+          "GBP",
+          "REF-2-IN",
+          "2026-10-08T08:15:00Z",
+          "2026-10-08",
+          ""
+        ],
+        [
+          "ST-3-IN",
+          "CLIENT-GBP-01",
+          "AGENCY-GBP-01",
+          91000,
+          "GBP",
+          "REF-3-IN",
+          "2026-10-08T08:15:00Z",
+          "2026-10-08",
+          ""
+        ],
+        [
+          "ST-1-OUT",
+          "CLIENT-GBP-01",
+          "LANDLORD-01",
+          -78000,
+          "GBP",
+          "REF-1-OUT",
+          "2026-10-08T09:03:00Z",
+          "2026-10-08",
+          ""
+        ],
+        [
+          "ST-2-OUT",
+          "CLIENT-GBP-01",
+          "LANDLORD-02",
+          -62500,
+          "GBP",
+          "REF-2-OUT",
+          "2026-10-08T09:03:00Z",
+          "2026-10-08",
+          ""
+        ],
+        [
+          "ST-3-OUT",
+          "CLIENT-GBP-01",
+          "LANDLORD-03",
+          -91000,
+          "GBP",
+          "REF-3-OUT",
+          "2026-10-08T09:03:00Z",
+          "2026-10-08",
+          ""
+        ],
+        [
+          "ST-2-RETURN",
+          "CLIENT-GBP-01",
+          "LANDLORD-02",
+          62500,
+          "GBP",
+          "REF-2-OUT",
+          "2026-10-08T10:10:00Z",
+          "2026-10-08",
+          "ST-2-OUT"
+        ],
+        [
+          "ST-2-REFUND",
+          "CLIENT-GBP-01",
+          "AGENCY-GBP-01",
+          -62500,
+          "GBP",
+          "REF-2-REFUND",
+          "2026-10-08T10:50:00Z",
+          "2026-10-08",
+          ""
+        ]
+      ]
+    }
+  ],
+  "links": [
+    {
+      "id": "transfer-order",
+      "from": "TransferInstruction",
+      "to": "RentalOrder",
+      "property": "order_id",
+      "forward": [
+        "租赁订单",
+        "order"
+      ],
+      "reverse": [
+        "支付指令",
+        "transfers"
+      ]
+    },
+    {
+      "id": "statement-transfer",
+      "from": "BankStatementLine",
+      "to": "TransferInstruction",
+      "property": "bank_ref",
+      "forward": [
+        "支付指令",
+        "transfer"
+      ],
+      "reverse": [
+        "银行流水",
+        "statementLines"
+      ]
+    }
+  ],
+  "actionTypes": [],
+  "actions": {},
+  "views": [],
+  "examples": [
+    {
+      "text": "ORD-001 的钱到账了吗？请沿订单的 transfers 找到 IN 支付指令，再沿 statementLines 查询流水。核对金额、币种和两端账户，只报告客户账户是否入账，并列出证据编号。"
+    }
+  ]
+}

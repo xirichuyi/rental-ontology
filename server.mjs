@@ -4,6 +4,9 @@ import { readFile } from 'node:fs/promises'
 import { actionProposalSchema, answerWithCodex, checkCodex, CodexError, codexLabel, ontologyQuerySchema, planWithCodex, savedViewSchema } from './codex-provider.mjs'
 
 const port = Number(process.env.RENTAL_PORT || 43219)
+// 默认只允许本机访问。需要经隧道公开时，设置允许的公网域名后缀，例如 RENTAL_PUBLIC_HOSTS=.trycloudflare.com
+const publicHosts = (process.env.RENTAL_PUBLIC_HOSTS || '').split(',').map(h => h.trim().toLowerCase()).filter(Boolean)
+const isPublicHost = host => !!host && publicHosts.some(suffix => host.toLowerCase().endsWith(suffix))
 const apiKey = process.env.OPENAI_API_KEY?.trim()
 const provider = process.env.RENTAL_MODEL_PROVIDER || (apiKey ? 'chat_completions' : 'codex')
 const useCodex = provider === 'codex'
@@ -222,7 +225,8 @@ async function answer(body) {
 
 const server = createServer(async (req, res) => {
   const host = req.headers.host
-  if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) return sendJson(res, 403, { error: '仅支持本机访问。' })
+  const local = host === `127.0.0.1:${port}` || host === `localhost:${port}`
+  if (!local && !isPublicHost(host)) return sendJson(res, 403, { error: '仅支持本机访问。' })
   const path = new URL(req.url, 'http://' + host).pathname
   try {
     if (req.method === 'GET' && (path === '/' || path === '/index.html' || path === '/agent-workspaces.js')) {
@@ -233,7 +237,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && path === '/api/aip/config') return sendJson(res, 200, { configured, model, provider, error: configError })
     if (req.method === 'POST' && (path === '/api/aip/plan' || path === '/api/aip/answer')) {
-      if (req.headers.origin && req.headers.origin !== 'http://' + host) return sendJson(res, 403, { error: '请从工作台页面访问。' })
+      if (req.headers.origin && req.headers.origin !== 'http://' + host && !(isPublicHost(host) && req.headers.origin === 'https://' + host)) return sendJson(res, 403, { error: '请从工作台页面访问。' })
       const body = await readJson(req)
       const result = path === '/api/aip/plan' ? await plan(body) : await answer(body)
       return sendJson(res, 200, result)

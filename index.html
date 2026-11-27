@@ -132,7 +132,7 @@ dialog::backdrop{background:#1c2127a8}
 .cond-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
 .res-list li{margin:3px 0}
 .diff td.b{color:var(--red-t);text-decoration:line-through}.diff td.a{color:var(--green-t);font-weight:600}
-.crit{list-style:none;padding:0;margin:8px 0}.crit li{padding:5px 8px;border-radius:3px;margin-bottom:3px;font-size:13px}.crit li.pass{background:var(--green-l)}.crit li.fail{background:var(--red-l)}
+.crit{list-style:none;padding:0;margin:8px 0}.crit li{padding:5px 8px;border-radius:3px;margin-bottom:3px;font-size:13px}.crit li.pass{background:var(--green-l)}.crit li.fail{background:var(--red-l)}.crit li.pending{background:#f6f7f9;color:#5f6b7c}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1c2127;color:#fff;padding:9px 16px;border-radius:4px;box-shadow:0 6px 20px #0004;z-index:50;max-width:calc(100vw - 32px)}
 .toast.bad{background:#ac2f33}.toast:empty{display:none}
 .obj-list a{display:block;padding:7px 10px;border-bottom:1px solid var(--line2);color:var(--text)}.obj-list a[aria-current]{background:var(--blue-l);font-weight:600}.obj-list a:hover{text-decoration:none;background:var(--hover)}
@@ -322,7 +322,7 @@ function objectsOf(otId,onto=C()){
   for(const r of ds.rows){
    const o={};for(const p of ot.properties)o[p.id]=p.column?(r[ds.fields.indexOf(p.column)]??''):''
    const k=String(o[ot.primaryKey])
-   if(ed.deleted.includes(k))continue
+   if(ed.deleted.includes(k)||Object.hasOwn(ed.created,k))continue // 删除后用同一主键重新创建的对象取代数据集中的原行
    out.push(ed.modified[k]?{...o,...ed.modified[k]}:o)
   }
  }
@@ -335,6 +335,11 @@ const fkLinksFrom=(otId,onto=W())=>Object.values(onto.linkTypes).filter(l=>l.mod
 function fkTargetOf(otId,propId,onto=W()){return fkLinksFrom(otId,onto).find(l=>l.fk.property===propId)?.b.objectType||''}
 const linksOf=(otId,onto=W())=>Object.values(onto.linkTypes).filter(l=>l.a.objectType===otId||l.b.objectType===otId)
 const sideOf=(l,otId)=>l.a.objectType===otId?'a':'b'
+/* 关系的「出发端」：普通关系只有一端是该对象类型；自关联（如 员工 → 上级）两端都是，各算一次 */
+const isSelfLink=l=>l.a.objectType===l.b.objectType
+const linkEnds=(otId,onto=W())=>linksOf(otId,onto).flatMap(l=>isSelfLink(l)?[{l,s:'a'},{l,s:'b'}]:[{l,s:sideOf(l,otId)}])
+const endKey=(l,s)=>isSelfLink(l)?l.id+'@'+s:l.id
+const endOf=(key,otId,onto=W())=>{const [id,s]=String(key||'').split('@'),l=onto.linkTypes[id];return l?{l,s:s||sideOf(l,otId)}:null}
 const other=s=>s==='a'?'b':'a'
 function cardOf(l,toSide){ // 从另一端看向 toSide 的数量
  if(l.cardinality==='many-to-many')return 'many'
@@ -372,9 +377,9 @@ function paramProp(at,vals,path,onto){
  return x.obj[prop]
 }
 function linkOptionsFor(ot,lc,onto=W()){
- return linksOf(ot.id,onto).filter(l=>{const s=sideOf(l,ot.id),o=other(s),tgt=onto.objectTypes[l[o].objectType]
+ return linksOf(ot.id,onto).filter(l=>[...new Set(isSelfLink(l)?['a','b']:[sideOf(l,ot.id)])].some(s=>{const o=other(s),tgt=onto.objectTypes[l[o].objectType]
   const okT=lc.targetKind==='interface'?implementsIf(tgt,lc.target):l[o].objectType===lc.target
-  return okT&&(cardOf(l,o)==='many'?'MANY':'ONE')===lc.cardinality})
+  return okT&&(cardOf(l,o)==='many'?'MANY':'ONE')===lc.cardinality}))
 }
 /* Join table 的配对 = 数据集行 + 通过 Action 新增的关联 − 删除的关联 */
 function joinPairs(l){
@@ -501,6 +506,7 @@ function validateOnto(onto=W()){
   if(l.mode==='fk'){
    const fp=propOf(A,l.fk.property),pk=pkProp(B)
    if(!fp)E(c,k,'外键属性 '+l.fk.property+' 不存在。')
+   else if(isSelfLink(l)&&fp.id===A.primaryKey)E(c,k,'自关联的外键不能是主键本身。')
    else if(pk&&fp.baseType!==pk.baseType)E(c,k,'外键 '+fp.id+'（'+fp.baseType+'）与主键 '+pk.id+'（'+pk.baseType+'）类型不一致。')
   }
   if(l.mode==='join'){
@@ -513,6 +519,12 @@ function validateOnto(onto=W()){
    const la=onto.linkTypes[l.back.aLink],lb=onto.linkTypes[l.back.bLink]
    if(!onto.objectTypes[l.back.middle])E(c,k,'中间对象类型不存在。')
    if(!la||!lb)E(c,k,'需要中间对象到两端的多对一关系。')
+   else{
+    const edge=(x,end,side)=>{if(x.mode!=='fk'||x.a.objectType!==l.back.middle||x.b.objectType!==end)E(c,k,side+'关系「'+x.a.displayName+' ↔ '+x.b.displayName+'」必须是从 '+otName(l.back.middle,onto)+' 指向 '+otName(end,onto)+' 的外键（多对一）关系。')}
+    edge(la,l.a.objectType,'左侧');edge(lb,l.b.objectType,'右侧')
+    if(l.back.aLink===l.back.bLink)E(c,k,'左右两侧不能使用同一条关系。')
+    if(l.back.middle===l.a.objectType||l.back.middle===l.b.objectType)E(c,k,'Backing object type 不能是两端的对象类型。')
+   }
   }
   const prev=C().linkTypes[k]
   if(prev&&JSON.stringify([prev.fk,prev.join,prev.back,prev.cardinality])!==JSON.stringify([l.fk,l.join,l.back,l.cardinality]))Wn(c,k,'Reindexing will make objects unavailable — 修改键或基数会重建索引，Workshop 中的 search-around 可能暂时失效。')
@@ -535,6 +547,13 @@ function validateOnto(onto=W()){
   }
   const refOK=path=>{const [pid,prop]=String(path).split('.');const p=at.parameters.find(x=>x.id===pid);if(!p)return false;if(!prop)return true;if(p.type==='Interface reference')return !!onto.interfaces[p.interface]?.properties.some(x=>x.apiName===prop);return p.type==='Object reference'&&!!propOf(onto.objectTypes[p.objectType],prop)}
   at.parameters.forEach((p,pi)=>{if(p.default?.kind!=='objprop')return;const src=String(p.default.value).split('.')[0],si=at.parameters.findIndex(x=>x.id===src);if(!refOK(p.default.value))E(c,k,'参数 '+p.name+' 的默认值引用了无效的对象参数属性。');else if(si>=pi)E(c,k,'参数 '+p.name+' 的 Object property default value 只能引用排在它前面的参数。')})
+  const deletedBy=new Set()
+  for(const r of at.rules){
+   if(['modify','delete','createOrModify','modifyIface','deleteIface'].includes(r.type)&&r.objectParam){
+    if(deletedBy.has(r.objectParam))E(c,k,'规则「'+RULES[r.type][0]+'」引用的对象已被前面的删除规则删除。删除规则应放在最后。')
+    if(r.type==='delete'||r.type==='deleteIface')deletedBy.add(r.objectParam)
+   }
+  }
   for(const r of at.rules){
    if(r.type==='applyScenario'){
     if(!r.objectTypes?.length&&!r.linkTypes?.length)E(c,k,'至少选择一个允许合并的对象类型或关系类型。')
@@ -760,6 +779,7 @@ function interfaceLinkEdits(rule,at,vals,onto,edits){
  if(link.mode!=='fk')throw Error('这条关联由中间对象维护，请通过该中间对象的 Action 更新。')
  const owner=side==='a'?source:target
  const fk=link.fk.property
+ if(edits.some(e=>e.type==='delete'&&e.ot===owner.ot.id&&String(e.pk)===a))throw Error(owner.ot.name+'「'+a+'」已在本次提交中删除，不能再修改它的关联。')
  const prior=edits.find(e=>e.ot===owner.ot.id&&String(e.pk)===a&&e.after)
  const before=prior?.after||owner.obj
  if(!create&&String(before[fk]??'')!==b)throw Error('关联不存在。')
@@ -797,6 +817,11 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
  }
  for(const p of at.parameters)if(p.hidden&&p.default?.kind==='objprop')vals[p.id]=ref(p.default.value)??''
  const eff=effectiveParams(at,vals,onto)
+ const empty=v=>v===''||v==null||(Array.isArray(v)&&!v.length)
+ for(const p of eff)if(p.overrideDefault&&empty(vals[p.id]))vals[p.id]=p.overrideDefault
+ // 必填参数还没填时，引用它的提交条件暂不判定，避免和「必填」重复报错
+ const missing=new Set(eff.filter(p=>p.required&&empty(p.multiple?listOf(vals[p.id]):vals[p.id])).map(p=>p.id))
+ const refsMissing=c=>c.kind==='group'?(c.children||[]).some(refsMissing):c.kind==='param'&&[c.left,c.rightKind==='param'?c.right:''].some(x=>missing.has(String(x||'').split('.')[0]))
  for(const p of eff){
   const items=p.multiple?listOf(vals[p.id]):(vals[p.id]===''||vals[p.id]==null?[]:[vals[p.id]])
   if(!items.length){if(p.required)failures.push('参数「'+p.name+'」为必填。');continue}
@@ -810,10 +835,11 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
   }
  }
  const criteria=evalCondList(at.criteria,at.criteriaMode||'all',{at,vals,onto})
+ if(at.criteriaMode!=='none')criteria.results.forEach((r,i)=>{if(!r.pass&&refsMissing(at.criteria[i]))r.pending=true})
  crit.push(...criteria.results)
  crit.pass=criteria.pass
  if(!crit.pass){
-  const bad=at.criteriaMode==='none'?crit.filter(c=>c.pass):crit.filter(c=>!c.pass)
+  const bad=at.criteriaMode==='none'?crit.filter(c=>c.pass):crit.filter(c=>!c.pass&&!c.pending)
   for(const c of bad)failures.push(c.message||'提交条件未满足：'+c.label)
  }
  failures.push(...actionEffectErrors(at,onto))
@@ -831,6 +857,16 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
   if(m.source==='time')return today()
   if(m.source==='writeback')return writeback[m.value]??''
   return ''
+ }
+ // 规则按顺序编译成「每个对象一条最终编辑」：建→改 合并为建，改→删 合并为删；删除后再改/删、重复创建、删除本次新建的对象都非法
+ const stage=e=>{
+  const eot=onto.objectTypes[e.ot],label=(eot?.name||e.ot)+'「'+e.pk+'」'
+  const prior=edits.find(x=>!x.link&&x.ot===e.ot&&String(x.pk)===String(e.pk))
+  if(!prior){edits.push(e);return true}
+  if(prior.type==='delete'){failures.push(label+' 已在本次提交中删除，后面的规则不能再修改或删除它。');return false}
+  if(e.type==='create'){failures.push('同一次提交不能重复创建 '+label+'。');return false}
+  if(e.type==='delete'){if(prior.type==='create'){failures.push('不能删除本次提交中新建的 '+label+'。');return false}prior.type='delete';prior.after=null;return true}
+  prior.after=e.after;return true
  }
  for(const r of at.rules){
   if(r.type==='applyScenario'){
@@ -876,19 +912,19 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
     if(!r.mappings.some(m=>ifaceLocal(rot,it.id,m.prop)===rot.primaryKey)){failures.push(rot.name+' 的主键 '+rot.primaryKey+' 没有通过接口属性映射，无法用接口动作创建。');continue}
     const after={};for(const p of rot.properties)after[p.id]=''
     for(const m of r.mappings){const local=ifaceLocal(rot,it.id,m.prop);if(local)after[local]=String(mapValue(m,rot)??'')}
-    edits.push({type:'create',ot:rot.id,pk:after[rot.primaryKey],before:null,after})
+    stage({type:'create',ot:rot.id,pk:after[rot.primaryKey],before:null,after})
     continue
    }
    const x=paramObject(at,vals,r.objectParam,onto)
    if(!x){failures.push('未找到要'+(r.type==='deleteIface'?'删除':'修改')+'的对象。');continue}
    const rot=x.ot,pk=String(x.obj[rot.primaryKey])
    if(ifaceActionOff(rot,at.id,it.id)){failures.push(rot.name+' 已在 Interface action control 中禁用此动作。');continue}
-   if(r.type==='deleteIface'){edits.push({type:'delete',ot:rot.id,pk,before:x.obj,after:null});continue}
+   if(r.type==='deleteIface'){stage({type:'delete',ot:rot.id,pk,before:x.obj,after:null});continue}
    const prior=edits.find(e=>e.ot===rot.id&&String(e.pk)===pk),before=prior?.after||x.obj,after={...before}
    let bad=false
    for(const m of r.mappings){const local=ifaceLocal(rot,it.id,m.prop);if(!local)continue;if(local===rot.primaryKey){failures.push('接口属性 '+m.prop+' 映射到 '+rot.name+' 的主键，主键不能被修改。');bad=true;continue}after[local]=String(mapValue(m,rot)??'')}
    if(bad)continue
-   if(prior)prior.after=after;else edits.push({type:'modify',ot:rot.id,pk,before,after})
+   stage({type:'modify',ot:rot.id,pk,before,after})
    continue
   }
   if(LINK_RULES.includes(r.type)){
@@ -908,10 +944,10 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
    const after={};for(const p of rot.properties)after[p.id]=''
    for(const m of r.mappings)after[m.prop]=String(mapValue(m,rot)??'')
    if(r.type==='createOrModify'&&!r.mappings.some(m=>m.prop===rot.primaryKey))after[rot.primaryKey]=crypto.randomUUID?crypto.randomUUID():hex(8)+'-'+hex(4)+'-'+hex(4)+'-'+hex(4)+'-'+hex(12)
-   edits.push({type:'create',ot:rot.id,pk:after[rot.primaryKey],before:null,after})
+   if(!stage({type:'create',ot:rot.id,pk:after[rot.primaryKey],before:null,after}))return
    for(const lk of r.links||[]){
     const l=onto.linkTypes[lk.linkType];if(!l)continue
-    const s=l.a.objectType===rot.id?'a':'b',targets=listOf(vals[lk.param])
+    const s=isSelfLink(l)?(lk.side||'a'):l.a.objectType===rot.id?'a':'b',targets=listOf(vals[lk.param])
     for(const t of targets){const [a,b]=s==='a'?[String(after[rot.primaryKey]),String(t)]:[String(t),String(after[rot.primaryKey])];edits.push({type:'createLink',link:l.id,a,b})}
    }
   }
@@ -923,9 +959,9 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
    const prior=edits.find(e=>e.ot===rot.id&&String(e.pk)===String(pk))
    const before=prior?.after||objs(rot.id).find(o=>String(o[rot.primaryKey])===String(pk))
    if(!before){failures.push('未找到要修改的'+rot.name+'「'+(pk||'')+'」。');continue}
-   if(r.type==='delete'){edits.push({type:'delete',ot:rot.id,pk,before,after:null});continue}
+   if(r.type==='delete'){stage({type:'delete',ot:rot.id,pk,before,after:null});continue}
    const after={...before};for(const m of r.mappings){if(m.prop===rot.primaryKey&&r.type==='createOrModify')continue;after[m.prop]=String(mapValue(m,rot)??'')}
-   if(prior)prior.after=after;else edits.push({type:'modify',ot:rot.id,pk,before,after})
+   stage({type:'modify',ot:rot.id,pk,before,after})
   }
  }
  // Ontology 完整性
@@ -952,6 +988,8 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
   const vkey=e=>e.link?'link|'+e.link+'|'+e.a+'|'+e.b:e.ot+'|'+e.pk
   S.objVer??={}
   for(const e of edits)S.objVer[vkey(e)]=(S.objVer[vkey(e)]||0)+1
+  // 用已删除对象的主键重新创建：记下原先的删除/修改状态，撤销时恢复
+  for(const e of edits)if(e.type==='create'){const E=S.edits[e.ot];if(E&&(E.deleted.includes(String(e.pk))||E.modified[e.pk]))e.restore={deleted:E.deleted.includes(String(e.pk)),modified:E.modified[e.pk]??null}}
   S.lastSubmission={at:at.id,user:S.user,time:Date.now(),edits:clone(edits),ver:Object.fromEntries(edits.map(e=>[vkey(e),S.objVer[vkey(e)]])),logRid:null}
   for(const e of edits){
    if(e.link){
@@ -961,7 +999,7 @@ function evaluateAction(at,vals,onto=C(),{dry=true}={}){
     continue
    }
    const E=S.edits[e.ot]??={created:{},modified:{},deleted:[]}
-   if(e.type==='create')E.created[e.pk]=e.after
+   if(e.type==='create'){E.created[e.pk]=e.after;E.deleted=E.deleted.filter(x=>x!==String(e.pk));delete E.modified[e.pk]}
    if(e.type==='modify'){if(E.created[e.pk])E.created[e.pk]=e.after;else E.modified[e.pk]=e.after}
    if(e.type==='delete')E.deleted.push(String(e.pk))
   }
@@ -1158,7 +1196,7 @@ function topo(left,mid,right,leftSub,rightSub,midLabel='',rightLabel=''){
 /* ============ 路由 ============ */
 let ROUTE='discover'
 const route=()=>(ROUTE||'discover').split('/').map(decodeURIComponent)
-function go(h){ROUTE=h;S.ui.nav=false;S.ui.newMenu=false;S.ui.more=false;S.ui.search='';const r=route();if(r[0]==='object-types'&&r[1]){S.ui.recent=[r[1],...S.ui.recent.filter(x=>x!==r[1])].slice(0,6)}render();window.scrollTo(0,0);void checkAipConnection()}
+function go(h,{push=true}={}){ROUTE=h;if(push&&location.hash!=='#/'+h)history.pushState(null,'','#/'+h);S.ui.nav=false;S.ui.newMenu=false;S.ui.more=false;S.ui.search='';const r=route();if(r[0]==='object-types'&&r[1]){S.ui.recent=[r[1],...S.ui.recent.filter(x=>x!==r[1])].slice(0,6)}render();window.scrollTo(0,0);void checkAipConnection()}
 
 /* ============ 外壳 ============ */
 function renderHeader(){
@@ -1275,7 +1313,7 @@ function otOverview(ot){
  '<section class="card"><div class="spread"><h3>Properties</h3><a href="#/object-types/'+esc(ot.id)+'/properties">编辑属性 →</a></div>'+table(['名称','ID','API name','类型','Keys'],ot.properties.map(p=>[esc(p.name),'<code>'+esc(p.id)+'</code>','<code>'+esc(p.apiName)+'</code>',esc(p.baseType),(p.id===ot.primaryKey?badge('Primary key','pk')+' ':'')+(p.id===ot.titleKey?badge('Title key','title'):'')]))+'</section>'+
  '<section class="card"><h3>Data</h3>'+table(ot.properties.map(p=>esc(p.name)),objs.slice(0,8).map(o=>ot.properties.map(p=>esc(o[p.id]))),'暂无对象')+(objs.length>8?'<p class="muted small-t">共 '+objs.length+' 个对象，显示前 8 个。</p>':'')+'</section>'+
  '</div><div>'+
- '<section class="card"><div class="spread"><h3>Link type graph</h3>'+B('newLinkType','＋ Create new link type','small','a:'+ot.id)+'</div>'+(links.length?links.map(l=>{const s=sideOf(l,ot.id),o=other(s);return '<a href="#/link-types/'+esc(l.id)+'" style="display:block">'+topo(ot.name,l.mode==='fk'?'':(l.mode==='join'?l.join.dataset:otName(l.back.middle)),otName(l[o].objectType),cardOf(l,s)==='many'?'many':'one',cardOf(l,o)==='many'?'many':'one',l[o].displayName)+'</a>'}).join(''):'<div class="empty">还没有关系</div>')+'</section>'+
+ '<section class="card"><div class="spread"><h3>Link type graph</h3>'+B('newLinkType','＋ Create new link type','small','a:'+ot.id)+'</div>'+(links.length?linkEnds(ot.id).map(({l,s})=>{const o=other(s);return '<a href="#/link-types/'+esc(l.id)+'" style="display:block">'+topo(ot.name,l.mode==='fk'?'':(l.mode==='join'?l.join.dataset:otName(l.back.middle)),otName(l[o].objectType),cardOf(l,s)==='many'?'many':'one',cardOf(l,o)==='many'?'many':'one',l[o].displayName)+'</a>'}).join(''):'<div class="empty">还没有关系</div>')+'</section>'+
  '<section class="card"><div class="spread"><h3>Action types</h3>'+B('newActionType','＋ New','small',ot.id)+'</div>'+(ats.length?'<ul class="res-list">'+ats.map(a=>'<li><a href="#/action-types/'+esc(a.id)+'">'+esc(a.name)+'</a> '+badge(isIfaceAction(a)?'接口动作':a.objectType===ot.id?RULES[a.rules[0]?.type]?.[0]||'':'参数引用')+'</li>').join('')+'</ul>':'<div class="empty">暂无动作</div>')+'</section>'+
  '<section class="card"><div class="spread"><h3>Interfaces</h3><a href="#/object-types/'+esc(ot.id)+'/interfaces">管理 →</a></div>'+(ot.interfaces.length?'<ul class="res-list">'+ot.interfaces.map(i=>'<li><a href="#/interfaces/'+esc(i.iface)+'">'+esc(W().interfaces[i.iface]?.name||i.iface)+'</a></li>').join('')+'</ul>':'<p class="muted small-t">未实现接口。到 Interfaces 页点「＋ Implement new interface」。</p>')+'</section>'+
  '<section class="card"><h3>Dependents & Usage</h3><ul class="res-list">'+[...links.map(l=>'<li>Link type · <a href="#/link-types/'+esc(l.id)+'">'+esc(l.a.displayName+' ↔ '+l.b.displayName)+'</a></li>'),...ats.map(a=>'<li>Action type · <a href="#/action-types/'+esc(a.id)+'">'+esc(a.name)+'</a></li>'),...ot.interfaces.map(i=>'<li>Interface · <a href="#/interfaces/'+esc(i.iface)+'">'+esc(W().interfaces[i.iface]?.name||i.iface)+'</a></li>')].join('')+'</ul>'+(!links.length&&!ats.length&&!ot.interfaces.length?'<p class="muted small-t">没有依赖此对象类型的资源。</p>':'')+'</section>'+
@@ -1346,6 +1384,7 @@ function linkTypeView(id){
  let key=''
  if(l.mode==='fk')key=fSel(P+'fk.property','外键属性（'+esc(A?.name)+'）',(A?.properties||[]).map(p=>[p.id,p.name+' ('+p.id+', '+p.baseType+')']),l.fk.property)+'<p class="muted small-t">→ '+esc(Bt?.name)+'.'+esc(Bt?.primaryKey)+'（主键）</p>'+fSel(P+'cardinality','Cardinality',[['many-to-one','多对一（多个 '+(A?.name||'')+' → 一个 '+(Bt?.name||'')+'）'],['one-to-one','一对一（声明，不强制）']],l.cardinality)
  if(l.mode==='join'){const ds=S.datasets[l.join.dataset];key='<p>Join table: <a href="#/datasets/'+encodeURIComponent(l.join.dataset)+'">'+esc(l.join.dataset)+'</a></p><div class="grid2">'+fSel(P+'join.aCol','映射到 '+esc(A?.name)+' 主键',ds?ds.fields:[],l.join.aCol)+fSel(P+'join.bCol','映射到 '+esc(Bt?.name)+' 主键',ds?ds.fields:[],l.join.bCol)+'</div>'}
+ if(l.mode!=='back')key+='<div style="margin-top:10px">'+B('openToBacked','Update to object-backed','small','',active?'disabled title="active 状态的关系不能修改键"':'')+'<p class="muted small-t">把连接方式改为 Object type：由一个中间对象（Backing object type）连接两端，中间对象可携带关系属性。</p></div>'
  if(l.mode==='back')key='<p>Backing object type：'+otLink(l.back.middle)+'</p><p class="muted small-t">左侧关系 '+esc(W().linkTypes[l.back.aLink]?.b.displayName||l.back.aLink)+' · 右侧关系 '+esc(W().linkTypes[l.back.bLink]?.b.displayName||l.back.bLink)+'</p>'
  const objsA=objectsOf(l.a.objectType,W())
  return '<div class="crumb"><a href="#/link-types">Link types</a> / '+esc(l.a.displayName+' ↔ '+l.b.displayName)+'</div>'+
@@ -1427,7 +1466,7 @@ function atRules(at){
   const unused=(rot?.properties||[]).filter(p=>!r.mappings.some(m=>m.prop===p.id))
   return '<section class="card"><div class="spread"><h3>Rule '+(ri+1)+' · '+esc(RULES[r.type][0])+' · '+esc(rot?.name||r.objectType)+'</h3>'+ruleBtns+'</div><p class="muted small-t">'+esc(RULES[r.type][1])+'</p>'+
   (r.type!=='create'?fSel(P+'objectParam','Object（引用 '+esc(rot?.name||'')+' 的对象参数'+(r.type==='createOrModify'?'，留空时新建':'')+'）',[['','请选择'],...objParams.map(p=>[p.id,p.name+(p.hidden?'（隐藏）':'')+(p.multiple?'（列表）':'')])],r.objectParam):'')+
-  (r.type==='create'?(()=>{const js=Object.values(W().linkTypes).filter(l=>l.mode==='join'&&(l.a.objectType===rot?.id||l.b.objectType===rot?.id));return '<div style="margin-top:10px"><b class="small-t">Links</b>'+(r.links||[]).map((lk,li)=>{const l=W().linkTypes[lk.linkType],oth=l?l[l.a.objectType===rot.id?'b':'a'].objectType:'';return '<div class="row" style="margin-top:4px">'+fSel(P+'links.'+li+'.linkType','Link type',js.map(x=>[x.id,x.a.displayName+' ↔ '+x.b.displayName]),lk.linkType)+fSel(P+'links.'+li+'.param','关联到（参数）',[['','请选择'],...at.parameters.filter(p=>p.type==='Object reference'&&p.objectType===oth).map(p=>[p.id,p.name+(p.multiple?'（列表）':'')])],lk.param)+B('removeRuleLink','移除','small ghost',at.id+'|'+ri+'|'+li)+'</div>'}).join('')+(js.length?'<div style="margin-top:4px">'+B('addRuleLink','＋ Add link','small',at.id+'|'+ri)+'</div>':'<p class="muted small-t">该对象类型没有多对多关系，Add link 不可用（一对多请写外键属性）。</p>')+'</div>'})():'')+
+  (r.type==='create'?(()=>{const js=Object.values(W().linkTypes).filter(l=>l.mode==='join'&&(l.a.objectType===rot?.id||l.b.objectType===rot?.id));return '<div style="margin-top:10px"><b class="small-t">Links</b>'+(r.links||[]).map((lk,li)=>{const l=W().linkTypes[lk.linkType],oth=l?l[l.a.objectType===rot.id?'b':'a'].objectType:'';return '<div class="row" style="margin-top:4px">'+fSel(P+'links.'+li+'.linkType','Link type',js.map(x=>[x.id,x.a.displayName+' ↔ '+x.b.displayName]),lk.linkType)+(l&&isSelfLink(l)?fSel(P+'links.'+li+'.side','新对象作为',[['a','「'+l.a.displayName+'」一端'],['b','「'+l.b.displayName+'」一端']],lk.side||'a'):'')+fSel(P+'links.'+li+'.param','关联到（参数）',[['','请选择'],...at.parameters.filter(p=>p.type==='Object reference'&&p.objectType===oth).map(p=>[p.id,p.name+(p.multiple?'（列表）':'')])],lk.param)+B('removeRuleLink','移除','small ghost',at.id+'|'+ri+'|'+li)+'</div>'}).join('')+(js.length?'<div style="margin-top:4px">'+B('addRuleLink','＋ Add link','small',at.id+'|'+ri)+'</div>':'<p class="muted small-t">该对象类型没有多对多关系，Add link 不可用（一对多请写外键属性）。</p>')+'</div>'})():'')+
   (r.type==='delete'?'':'<div class="scroll" style="margin-top:10px"><table><thead><tr><th>Property</th><th>Value source</th><th>Value</th><th></th></tr></thead><tbody>'+r.mappings.map((m,mi)=>{
    const M=P+'mappings.'+mi+'.',prop=propOf(rot,m.prop)
    const response=writebackField(at)
@@ -1614,7 +1653,7 @@ function objectView(ot,obj){
 
  return '<section class="card"><div class="spread"><div class="res-head">'+icon(ot)+'<div><h2 style="margin:0">'+esc(titleOf(ot.id,obj))+'</h2><span class="muted small-t">'+esc(ot.name)+' · '+esc(pk)+'</span></div></div><div class="row">'+actionsFor(ot.id).map(a=>B('openAction',esc(a.name),'primary',a.id+'|'+ot.id+'|'+pk)).join('')+'</div></div>'+
  '<dl class="kv" style="margin-top:12px">'+ot.properties.filter(p=>p.visibility!=='hidden').map(p=>{const t=fkTargetOf(ot.id,p.id,C());const v=obj[p.id];return '<dt>'+esc(p.name)+'</dt><dd>'+(t&&v?'<a href="#/explorer/'+esc(t)+'/'+encodeURIComponent(v)+'">'+esc(titleOf(t,findObj(t,v))||v)+'</a> <code>'+esc(v)+'</code>':esc(v)||'<span class="muted">—</span>')+'</dd>'}).join('')+'</dl></section>'+
- links.map(l=>{const s=sideOf(l,ot.id),o=other(s),to=C().objectTypes[l[o].objectType],objs=linkedObjects(l,s,obj)
+ linkEnds(ot.id,C()).map(({l,s})=>{const o=other(s),to=C().objectTypes[l[o].objectType],objs=linkedObjects(l,s,obj)
   const note=WORKSPACE.linkNotes?.[l.id]
   return '<section class="card"><div class="spread"><h3>'+esc(l[o].displayName)+' <span class="muted small-t">('+esc(to.name)+' · '+cardOf(l,o)+')</span></h3><span class="muted small-t">'+objs.length+'</span></div>'+
    (note?'<p class="muted small-t">'+esc(note)+'</p>':'')+
@@ -1638,6 +1677,15 @@ function renderModal(){
  if(m.kind==='review')return renderReview(frame)
  if(m.kind==='confirmDelete'){
   return frame('删除 '+esc(COLL[m.c]),'<p>确定要删除 <b>'+esc(resName(m.c,m.k))+'</b> 吗？删除会暂存为工作区更改，<b>Save</b> 后才生效。</p>'+(m.c==='objectTypes'?'<p class="note warn">依赖此对象类型的关系、动作将在 Review edits 中报错，需要一起处理。已有的用户编辑会被删除。</p>':'')+(m.c==='linkTypes'?'<p class="note warn">删除关系会触发重建索引，依赖它的应用可能失效。</p>':''),'<span></span><div>'+B('closeModal','取消')+B('confirmDelete','Delete','danger solid')+'</div>',true)
+ }
+ if(m.kind==='toBacked'){
+  const l=W().linkTypes[m.link],P='ui.modal.',ots=Object.values(W().objectTypes).filter(o=>o.id!==l.a.objectType&&o.id!==l.b.objectType).map(o=>[o.id,o.name])
+  const edges=end=>Object.values(W().linkTypes).filter(x=>x.mode==='fk'&&x.a.objectType===m.middle&&x.b.objectType===end).map(x=>[x.id,otName(m.middle)+' → '+otName(end)+' · '+x.b.displayName])
+  return frame('Update link type to object-backed link type','<p class="muted">选择 Backing object type，以及它连到两端的多对一（外键）关系。更新后关系的连接方式变为 Object type，Save 后生效。</p>'+
+   topo(otName(l.a.objectType),otName(m.middle)||'?',otName(l.b.objectType),'','','N : 1','1 : N')+
+   fSel(P+'middle','Backing object type',[['','请选择'],...ots],m.middle,'data-after="toBackedMiddle"')+
+   '<div class="grid2" style="margin-top:10px">'+fSel(P+'aLink','到 '+esc(otName(l.a.objectType))+' 的关系',[['','（不存在，请先创建）'],...edges(l.a.objectType)],m.aLink)+fSel(P+'bLink','到 '+esc(otName(l.b.objectType))+' 的关系',[['','（不存在，请先创建）'],...edges(l.b.objectType)],m.bLink)+'</div>',
+   '<span></span><div>'+B('closeModal','Cancel')+B('confirmToBacked','Update to object-backed','primary')+'</div>')
  }
  if(m.kind==='fnTag')return renderFnTag(frame)
  if(m.kind==='confirm')return frame(esc(m.title),'<p>'+esc(m.text)+'</p>','<span></span><div>'+B('closeModal','取消')+B(m.act,esc(m.label),'danger solid')+'</div>',true)
@@ -1728,20 +1776,27 @@ function generateActions(ot,group){
 }
 
 /* ---- Link type wizard ---- */
+/* 官方：关系的 API name 由 Display name 自动生成，可再修改；中文名称无法转写时退回到对象类型 API name */
+const linkApiFrom=(displayName,fallback)=>toCamel(displayName)||fallback
 function linkDefaults(d){
  const [a,b]=d.mode==='fk'?[d.fkOt,d.pkOt]:[d.left,d.right]
  const A=W().objectTypes[a],Bt=W().objectTypes[b]
  if(!A||!Bt)return
- const many=d.mode!=='fk'
- d.a={displayName:A.plural||A.name,plural:A.plural||A.name,apiName:toCamel(A.apiName)+(d.mode==='fk'&&d.card==='one-to-one'?'':'s')}
- d.b={displayName:Bt.name,plural:Bt.plural||Bt.name,apiName:toCamel(Bt.apiName)+(many?'s':'')}
+ const many=d.mode!=='fk',self=a===b,manyA=d.mode!=='fk'||d.card!=='one-to-one'
+ // 自关联两侧指向同一对象类型，默认名称加上方向，避免 API name 冲突（例如 员工 → 上级 / 下属）
+ d.a={displayName:self?A.name+'（来源）':A.plural||A.name,plural:A.plural||A.name}
+ d.b={displayName:self?Bt.name+'（目标）':Bt.name,plural:Bt.plural||Bt.name}
+ const fa=toCamel(A.apiName)+(self?'Source':'')+(manyA?'s':''),fb=toCamel(Bt.apiName)+(self?'Target':'')+(many?'s':'')
+ d.a.apiName=linkApiFrom(d.a.displayName,fa);d.b.apiName=linkApiFrom(d.b.displayName,fb)
+ if(d.a.apiName===d.b.apiName){d.a.apiName=fa;d.b.apiName=fb}
  if(d.mode==='fk'){
-  const guess=A.properties.find(p=>p.baseType===pkProp(Bt)?.baseType&&[b+'_id',toCamel(Bt.apiName)+'Id',b+'Id',Bt.apiName.toLowerCase()+'_id'].includes(p.id))
+  const guess=A.properties.find(p=>!(self&&p.id===A.primaryKey)&&p.baseType===pkProp(Bt)?.baseType&&[b+'_id',toCamel(Bt.apiName)+'Id',b+'Id',Bt.apiName.toLowerCase()+'_id'].includes(p.id))
   d.fkProp=guess?.id||''
  }
  if(d.mode==='back'){
-  d.aLink=Object.values(W().linkTypes).find(l=>l.mode==='fk'&&l.a.objectType===d.middle&&l.b.objectType===a)?.id||''
-  d.bLink=Object.values(W().linkTypes).find(l=>l.mode==='fk'&&l.a.objectType===d.middle&&l.b.objectType===b)?.id||''
+  const edges=end=>Object.values(W().linkTypes).filter(l=>l.mode==='fk'&&l.a.objectType===d.middle&&l.b.objectType===end)
+  d.aLink=edges(a)[0]?.id||''
+  d.bLink=edges(b).find(l=>l.id!==d.aLink)?.id||''
  }
 }
 WIZ.linkType={title:'Create a new link type',steps:['Relationship type','Link resources','Link type names','Save location'],finishLabel:'Submit',doc:'https://www.palantir.com/docs/foundry/object-link-types/create-link-type/',
@@ -1780,29 +1835,31 @@ WIZ.linkType={title:'Create a new link type',steps:['Relationship type','Link re
   if(step===2){
    const [a,b]=d.mode==='fk'?[d.fkOt,d.pkOt]:[d.left,d.right]
    const manyA=d.mode!=='fk'||d.card!=='one-to-one',manyB=d.mode!=='fk'
-   const side=(s,from,to,many)=>'<div class="side-card"><div class="spread"><b>'+esc(otName(from))+' → '+esc(otName(to))+'</b>'+badge(many?'many':'one')+'</div><div style="display:grid;gap:8px;margin-top:8px">'+fInp(P+s+'.displayName','Display name',d[s].displayName)+fInp(P+s+'.plural','Plural display name',d[s].plural)+fInp(P+s+'.apiName','API name',d[s].apiName)+'</div><code class="api-prev">'+esc(toCamel(W().objectTypes[from]?.apiName||'x')+'.'+d[s].apiName+(many?'.all()':'.get()'))+'</code></div>'
-   return '<p class="muted">为每一侧命名：名称描述「指向该对象类型」的关系。两侧属于同一个 Link type，可双向遍历。API name 以小写字母开头、仅字母数字、1–100 字符，在同一对象类型的关系中唯一。</p><div class="grid2">'+side('b',a,b,manyB)+side('a',b,a,manyA)+'</div>'
+   const side=(s,from,to,many)=>'<div class="side-card"><div class="spread"><b>'+esc(otName(from))+' → '+esc(otName(to))+'</b>'+badge(many?'many':'one')+'</div><div style="display:grid;gap:8px;margin-top:8px">'+fInp(P+s+'.displayName','Display name',d[s].displayName,'data-after="linkName" data-arg="'+s+'"')+fInp(P+s+'.plural','Plural display name',d[s].plural)+fInp(P+s+'.apiName','API name',d[s].apiName,'data-after="linkApi" data-arg="'+s+'"')+'</div><code class="api-prev">'+esc(toCamel(W().objectTypes[from]?.apiName||'x')+'.'+d[s].apiName+(many?'.all()':'.get()'))+'</code></div>'
+   return '<p class="muted">为每一侧命名：名称描述「指向该对象类型」的关系。两侧属于同一个 Link type，可双向遍历。API name 由 Display name 自动生成，可手动修改；以小写字母开头、仅字母数字、1–100 字符，在同一对象类型的关系中唯一。</p><div class="grid2">'+side('b',a,b,manyB)+side('a',b,a,manyA)+'</div>'
   }
   return fSel(P+'location','保存位置（Project）',projOpts,d.location)+'<p class="note">点击 <b>Submit</b> 后 Link type 被创建但<b>尚未保存</b>到 Ontology。请在右上角点击 Save → Review edits → Save。</p>'+topo(otName(d.mode==='fk'?d.fkOt:d.left),d.mode==='fk'?'':(d.mode==='join'?d.dataset:otName(d.middle)),otName(d.mode==='fk'?d.pkOt:d.right),d.a.displayName,d.b.displayName)
  },
  next(d,step){
-  if(step===0&&Object.keys(W().objectTypes).length<2)throw Error('至少需要两个对象类型。请先创建对象类型。')
+  if(step===0&&!Object.keys(W().objectTypes).length)throw Error('至少需要一个对象类型。请先创建对象类型。')
   if(step===1){
    if(d.mode==='fk'){
     const A=W().objectTypes[d.fkOt],Bt=W().objectTypes[d.pkOt]
-    if(!A||!Bt||A===Bt)throw Error('请选择两个不同的对象类型。')
+    if(!A||!Bt)throw Error('请选择两端的对象类型。')
     const fp=propOf(A,d.fkProp);if(!fp)throw Error('请选择外键属性。')
+    if(A===Bt&&fp.id===A.primaryKey)throw Error('自关联的外键不能是主键本身，请选择指向同类对象的属性（例如 上级编号）。')
     if(fp.baseType!==pkProp(Bt)?.baseType)throw Error('外键 '+fp.id+'（'+fp.baseType+'）与主键 '+Bt.primaryKey+'（'+pkProp(Bt)?.baseType+'）类型不一致。')
     if(Object.values(W().linkTypes).some(l=>l.mode==='fk'&&l.a.objectType===A.id&&l.fk.property===fp.id))throw Error('外键 '+fp.id+' 已用于另一条关系。')
    }
    if(d.mode==='join'){
-    if(d.left===d.right||!W().objectTypes[d.left]||!W().objectTypes[d.right])throw Error('请选择两个不同的对象类型。')
+    if(!W().objectTypes[d.left]||!W().objectTypes[d.right])throw Error('请选择两端的对象类型。')
     if(!S.datasets[d.dataset])throw Error('请选择或生成 Join table dataset。')
     if(!d.lc||!d.rc||d.lc===d.rc)throw Error('一列只能映射到一个主键，请为两端选择不同的列。')
    }
    if(d.mode==='back'){
-    if(new Set([d.left,d.middle,d.right]).size<3)throw Error('左、中、右需要三个不同的对象类型。')
+    if(d.middle===d.left||d.middle===d.right)throw Error('Backing object type 不能是两端的对象类型。')
     if(!d.aLink||!d.bLink)throw Error('中间对象到两端各需要一条已存在的多对一关系。')
+    if(d.aLink===d.bLink)throw Error('左右两侧需要两条不同的关系。')
    }
   }
   if(step===2){
@@ -1810,6 +1867,7 @@ WIZ.linkType={title:'Create a new link type',steps:['Relationship type','Link re
    const [a,b]=d.mode==='fk'?[d.fkOt,d.pkOt]:[d.left,d.right]
    const used=new Set(Object.values(W().linkTypes).flatMap(l=>[l.a.objectType+'.'+l.b.apiName,l.b.objectType+'.'+l.a.apiName]))
    if(used.has(a+'.'+d.b.apiName)||used.has(b+'.'+d.a.apiName))throw Error('同一对象类型上的关系 API name 必须唯一。')
+   if(a===b&&d.a.apiName===d.b.apiName)throw Error('自关联两侧都在 '+otName(a)+' 上，两侧的 API name 不能相同。')
   }
  },
  finish(d){
@@ -2299,7 +2357,7 @@ function renderActionForm(frame){
  const r=m.result
  let res=''
  if(r){
-  res='<h4 style="margin-top:14px">Submission criteria</h4>'+(r.crit.length?'<ul class="crit">'+r.crit.map(c=>'<li class="'+(c.pass?'pass':'fail')+'">'+(c.pass?'✓ ':'✗ ')+esc(c.label)+(c.pass?'':' — <b>'+esc(c.message)+'</b>')+'</li>').join('')+'</ul>':'<p class="muted small-t">未配置提交条件。</p>')
+  res='<h4 style="margin-top:14px">Submission criteria</h4>'+(r.crit.length?'<ul class="crit">'+r.crit.map(c=>c.pending?'<li class="pending">… '+esc(c.label)+' <span class="muted">— 填写必填参数后校验</span></li>':'<li class="'+(c.pass?'pass':'fail')+'">'+(c.pass?'✓ ':'✗ ')+esc(c.label)+(c.pass?'':' — <b>'+esc(c.message)+'</b>')+'</li>').join('')+'</ul>':'<p class="muted small-t">未配置提交条件。</p>')
   if(r.steps?.length)res+='<h4>执行顺序</h4>'+renderExecutionSteps(r.steps)
   if(r.failures.length)res+='<div class="note bad"><b>无法提交：</b><ul style="margin:4px 0 0;padding-left:18px">'+r.failures.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul></div>'
   else{
@@ -2369,7 +2427,10 @@ const AFTER={
  otId(){S.ui.wiz.d.idTouched=true},
  linkReset(){const d=S.ui.wiz.d;linkDefaults(d)},
  linkReset2(){linkDefaults(S.ui.wiz.d)},
- linkReset3(){const d=S.ui.wiz.d;d.a.apiName=d.a.apiName.replace(/s$/,'')+(d.card==='one-to-one'?'':'s')},
+ linkReset3(){const d=S.ui.wiz.d;if(!d.a.apiTouched)d.a.apiName=d.a.apiName.replace(/s$/,'')+(d.card==='one-to-one'?'':'s')},
+ toBackedMiddle(){const m=S.ui.modal,l=W().linkTypes[m.link],e=end=>Object.values(W().linkTypes).filter(x=>x.mode==='fk'&&x.a.objectType===m.middle&&x.b.objectType===end);m.aLink=e(l.a.objectType)[0]?.id||'';m.bLink=e(l.b.objectType).find(x=>x.id!==m.aLink)?.id||''},
+ linkName(t){const d=S.ui.wiz.d,s=t.dataset.arg;if(!d[s].apiTouched){const api=toCamel(d[s].displayName);if(api)d[s].apiName=api}},
+ linkApi(t){S.ui.wiz.d[t.dataset.arg].apiTouched=true},
  joinCols(){const d=S.ui.wiz.d,ds=S.datasets[d.dataset];if(ds){d.lc=ds.fields[0]||'';d.rc=ds.fields[1]||''}},
  atInit(){initMappings(S.ui.wiz.d)},
  atName(){S.ui.wiz.d.nameTouched=true},
@@ -2485,6 +2546,8 @@ const ACT={
   const d=diff()
   for(const x of d){
    if(x.c==='actionTypes'&&x.type!=='del')W().actionTypes[x.k].version=(C().actionTypes[x.k]?.version||0)+1
+   // 保存时关闭了 Allow revert：此前的提交永久不可撤销，即使之后再打开
+   if(x.c==='actionTypes'&&(x.type==='del'||W().actionTypes[x.k].allowRevert===false))(S.revertOffAt??={})[x.k]=Date.now()
    if(x.c==='objectTypes'&&x.type==='del')delete S.edits[x.k]
    if(x.c==='objectTypes'&&x.type==='mod'&&C().objectTypes[x.k].primaryKey!==W().objectTypes[x.k].primaryKey)delete S.edits[x.k]
   }
@@ -2566,16 +2629,25 @@ const ACT={
  moveFormItem(arg){const [atId,i,d]=arg.split('|'),at=W().actionTypes[atId],o=formItems(at).map(x=>x.param?'p:'+x.param:'s:'+x.section.id),a=+i,b=a+(+d);[o[a],o[b]]=[o[b],o[a]];at.formOrder=o},
  moveSecParam(arg){const [atId,si,j,d]=arg.split('|'),ps=W().actionTypes[atId].sections[+si].params,a=+j,b=a+(+d);[ps[a],ps[b]]=[ps[b],ps[a]]},
  removeFromSection(arg){const [atId,si,j]=arg.split('|');W().actionTypes[atId].sections[+si].params.splice(+j,1)},
+ openToBacked(){const id=route()[1];S.ui.modal={kind:'toBacked',link:id,middle:'',aLink:'',bLink:''};S.ui.msg=null},
+ confirmToBacked(){
+  const m=S.ui.modal,l=W().linkTypes[m.link]
+  if(!W().objectTypes[m.middle])throw Error('请选择 Backing object type。')
+  if(!m.aLink||!m.bLink)throw Error('Backing object type 到两端各需要一条多对一关系，请先创建。')
+  if(m.aLink===m.bLink)throw Error('左右两侧需要两条不同的关系。')
+  l.mode='back';l.cardinality='many-to-many';l.back={middle:m.middle,aLink:m.aLink,bLink:m.bLink};l.fk=null;l.join=null
+  closeModal();toast('已更新为 object-backed link type，尚未保存。点击右上角 Save → Review edits 保存。')
+ },
  undoLast(){
   const sub=S.lastSubmission;S.ui.toast=null;clearTimeout(toastTimer)
   if(!sub||sub.expired)throw Error('撤销失败：只能在提交成功的提示中撤销。')
   if(sub.user!==S.user)throw Error('撤销失败：只有提交人可以撤销。')
-  const at=C().actionTypes[sub.at];if(!at||at.allowRevert===false)throw Error('撤销失败：提交后关闭了 Allow revert after action submission。')
+  const at=C().actionTypes[sub.at];if(!at||at.allowRevert===false||(S.revertOffAt?.[sub.at]||0)>=sub.time)throw Error('撤销失败：提交后关闭过 Allow revert after action submission，即使重新打开也不能撤销这次提交。')
   const vkey=e=>e.link?'link|'+e.link+'|'+e.a+'|'+e.b:e.ot+'|'+e.pk
   for(const e of sub.edits)if((S.objVer[vkey(e)]||0)!==sub.ver[vkey(e)])throw Error('撤销失败：'+(e.link?'关联 ':otName(e.ot,C())+' ')+(e.pk||e.a+' ↔ '+e.b)+' 之后又被修改过。')
   for(const e of sub.edits.slice().reverse()){
    if(e.link){const L=S.linkEdits[e.link],same=p=>p[0]===e.a&&p[1]===e.b;if(e.type==='createLink'){if(L.added.some(same))L.added=L.added.filter(p=>!same(p));else L.removed.push([e.a,e.b])}else{if(L.removed.some(same))L.removed=L.removed.filter(p=>!same(p));else L.added.push([e.a,e.b])}}
-   else{const E=S.edits[e.ot];if(e.type==='create')delete E.created[e.pk];if(e.type==='modify'){if(E.created[e.pk])E.created[e.pk]=e.before;else E.modified[e.pk]=e.before}if(e.type==='delete')E.deleted=E.deleted.filter(x=>x!==String(e.pk))}
+   else{const E=S.edits[e.ot];if(e.type==='create'){delete E.created[e.pk];if(e.restore){if(e.restore.deleted)E.deleted.push(String(e.pk));if(e.restore.modified)E.modified[e.pk]=e.restore.modified}}if(e.type==='modify'){if(E.created[e.pk])E.created[e.pk]=e.before;else E.modified[e.pk]=e.before}if(e.type==='delete')E.deleted=E.deleted.filter(x=>x!==String(e.pk))}
    S.objVer[vkey(e)]=(S.objVer[vkey(e)]||0)+1
   }
   const log=S.logs.find(l=>l.actionRid===sub.logRid);if(log){log.reverted=true;log.revertedBy=S.user;log.revertedAt=new Date().toISOString()}
@@ -2990,7 +3062,7 @@ function makeRuntime(onto,{edit=false}={}){
     if(name==='delete')return ()=>{needEdit();const e=store.get(k);if(e&&e.kind==='created'){store.delete(k);return}const b=e?e.before:baseObj(ot,pk);if(!b)throw new Error('找不到 '+ot.name+' '+pk+'。');store.set(k,{ot,pk:String(pk),kind:'deleted',before:b,cur:null})}
     const p=ot.properties.find(x=>x.apiName===name)
     if(p){const c=current(ot,pk);if(!c)throw new Error(ot.name+' '+pk+' 不存在或已删除。');return toVal(p,c[p.id])}
-    for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return linkAccessor(ot,pk,l,s)}
+    for(const {l,s} of linkEnds(ot.id,onto)){if(l[other(s)].apiName===name)return linkAccessor(ot,pk,l,s)}
     return undefined
    },
    set(_,name,v){
@@ -3019,7 +3091,7 @@ function makeRuntime(onto,{edit=false}={}){
    matchAnyToken:s=>P(o=>String(s).split(/\s+/).some(t=>t&&String(o[id]).includes(t))),
    matchAllTokens:s=>P(o=>String(s).split(/\s+/).every(t=>!t||String(o[id]).includes(t)))
   }}
-  for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id);if(l[other(s)].apiName===name)return {isPresent:()=>P(o=>linkedHandles(ot,o[ot.primaryKey],l,s).length>0)}}
+  for(const {l,s} of linkEnds(ot.id,onto)){if(l[other(s)].apiName===name)return {isPresent:()=>P(o=>linkedHandles(ot,o[ot.primaryKey],l,s).length>0)}}
   throw new Error(ot.name+' 没有属性 '+name+'（过滤只能用属性 API name）。')
  }})
  const fieldOf=(ot,fn)=>{const f=fn(new Proxy({},{get(_,name){const p=ot.properties.find(x=>x.apiName===name);if(!p)throw new Error(ot.name+' 没有属性 '+String(name)+'。');return {__field:p.id,asc:()=>({__order:p.id,dir:1})}}}));if(!f||(!f.__field&&!f.__order))throw new Error('需要返回一个属性，例如 x => x.monthlyRent。');return f}
@@ -3048,7 +3120,7 @@ function makeRuntime(onto,{edit=false}={}){
   return new Proxy(api,{get(t,name){
    if(name in t)return t[name]
    if(typeof name==='string'&&name.startsWith('searchAround')){
-    for(const l of linksOf(ot.id,onto)){const s=sideOf(l,ot.id),o=other(s);if('searchAround'+toPascal(l[o].apiName)===name){return ()=>{const toOT=onto.objectTypes[l[o].objectType],keys=new Set();for(const x of rows())for(const y of linkedHandles(ot,x[ot.primaryKey],l,s))keys.add(String(y.__pk));return objectSet(toOT,{hops:st.hops+1,only:keys})}}}
+    for(const {l,s} of linkEnds(ot.id,onto)){const o=other(s);if('searchAround'+toPascal(l[o].apiName)===name){return ()=>{const toOT=onto.objectTypes[l[o].objectType],keys=new Set();for(const x of rows())for(const y of linkedHandles(ot,x[ot.primaryKey],l,s))keys.add(String(y.__pk));return objectSet(toOT,{hops:st.hops+1,only:keys})}}}
     throw new Error(ot.name+' 没有 '+name+'()。')
    }
    return undefined
@@ -3302,9 +3374,9 @@ function filterObjects(at,vals,spec,objectType,onto){
  let objs=objectsOf(objectType,onto)
  const ot=onto.objectTypes[objectType]
  if(spec?.around?.fromParam&&spec.around.link){
-  const src=paramObject(at,vals,spec.around.fromParam,onto),l=onto.linkTypes[spec.around.link]
+  const src=paramObject(at,vals,spec.around.fromParam,onto),end=src&&endOf(spec.around.link,src.ot.id,onto),l=end?.l
   if(!src||!l)return []
-  const s=sideOf(l,src.ot.id)
+  const s=end.s
   const keys=new Set(linkedObjects(l,s,src.obj,onto).map(o=>String(o[ot.primaryKey])))
   objs=objs.filter(o=>keys.has(String(o[ot.primaryKey])))
  }
@@ -3374,8 +3446,8 @@ function paramFilterEditor(at,i,key,spec,objectType){
  const srcParams=above.filter(x=>(x.type==='Object reference'&&!x.multiple)||x.type==='Interface reference')
  const fromP=above.find(x=>x.id===spec?.around?.fromParam)
  const fromOT=fromP?.type==='Object reference'?fromP.objectType:''
- const links=fromOT?linksOf(fromOT).filter(l=>l[other(sideOf(l,fromOT))].objectType===objectType):[]
- return '<div class="grid2">'+fSel(Q+'around.fromParam','Starting set',[['','All objects（全部 '+esc(ot?.name||'')+'）'],...srcParams.filter(x=>x.type==='Object reference').map(x=>[x.id,'Search around · 从「'+x.name+'」出发'])],spec?.around?.fromParam||'')+(fromOT?fSel(Q+'around.link','经由关系',[['','请选择'],...links.map(l=>[l.id,l[other(sideOf(l,fromOT))].displayName])],spec.around.link):'<span></span>')+'</div>'+
+ const links=fromOT?linkEnds(fromOT).filter(({l,s})=>l[other(s)].objectType===objectType):[]
+ return '<div class="grid2">'+fSel(Q+'around.fromParam','Starting set',[['','All objects（全部 '+esc(ot?.name||'')+'）'],...srcParams.filter(x=>x.type==='Object reference').map(x=>[x.id,'Search around · 从「'+x.name+'」出发'])],spec?.around?.fromParam||'')+(fromOT?fSel(Q+'around.link','经由关系',[['','请选择'],...links.map(({l,s})=>[endKey(l,s),l[other(s)].displayName])],spec.around.link):'<span></span>')+'</div>'+
  (spec?.conditions||[]).map((f,j)=>{const F=Q+'conditions.'+j+'.';return '<div class="row" style="margin-top:6px">'+fSel(F+'prop','属性',[['','请选择'],...(ot?.properties||[]).map(p=>[p.id,p.name])],f.prop)+fSel(F+'source','值来源',[['static','Static value（逗号分隔，任一匹配）'],['param','From parameter'],['objprop','Object parameter property']],f.source)+(f.source==='static'?fInp(F+'value','值',f.value):f.source==='param'?fSel(F+'value','参数',[['','请选择'],...above.map(x=>[x.id,x.name])],f.value):fSel(F+'value','对象参数属性',[['','请选择'],...condRefs(at,i).filter(r=>r[0].includes('.'))],f.value))+B('removeParamFilter','移除','small ghost',at.id+'|'+i+'|'+key+'|'+j)+'</div>'}).join('')+
  '<div style="margin-top:6px">'+B('addParamFilter','＋ Filter on property','small',at.id+'|'+i+'|'+key)+'</div><p class="muted small-t">只显示属性等于任一给定值的对象。注意：静态值会对所有能查看此动作的人可见。提交前会再次校验所选值是否在范围内。</p>'
 }
@@ -3527,8 +3599,8 @@ function aipRunView(request,asOf,read){
 }
 
 function aipReadableLinks(read,ot){
- return linksOf(ot.id,read.onto).flatMap(link=>{
-  const from=sideOf(link,ot.id),end=link[other(from)],target=read.types[end.objectType]
+ return linkEnds(ot.id,read.onto).flatMap(({l:link,s:from})=>{
+  const end=link[other(from)],target=read.types[end.objectType]
   return target?[{link,from,target,apiName:end.apiName}]:[]
  })
 }
@@ -4035,6 +4107,9 @@ if(restore())toast('已恢复上次的工作区。')
 else loadConfiguredWorkspace()
 document.title=WORKSPACE.name+' · Ontology Lab'
 if(location.hash.startsWith('#/'))ROUTE=location.hash.slice(2)
+history.replaceState(null,'','#/'+ROUTE)
+// 浏览器后退/前进、手动修改地址栏时同步页面
+window.addEventListener('popstate',()=>{const h=location.hash.startsWith('#/')?location.hash.slice(2):'discover';if(h!==ROUTE){if(S.ui.modal)closeModal();go(h,{push:false})}})
 render()
 void checkAipConnection()
 </script>
